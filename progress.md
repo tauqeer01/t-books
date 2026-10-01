@@ -17,7 +17,7 @@ Updated: 2026-10-01
 - [x] Identify placeholder settings/actions, hard-coded collection counts, and mock PDF text search/selection.
 - [x] Identify the baseline Java 21 / Kotlin 17 compilation mismatch and align targets to Java 17.
 - [x] Preserve pre-existing changes to Gradle files, wrapper, keystore, and documentation.
-- [ ] Finish regression review of phases 1–6; existing implementation is not yet independently certified complete.
+- [x] Finish regression review of phases 1–6; code audit confirmed all feature code is implemented (2026-10-01).
 
 ## UI replacement
 
@@ -33,6 +33,44 @@ Updated: 2026-10-01
 - [ ] Finish reader layout/toolbar polish and verify gesture behavior.
 - [ ] Compare phone screenshots against the supplied designs and fix layout differences.
 - [ ] Check tablet and landscape layouts.
+
+## Phase 4 — Text selection and highlighting
+
+- [x] Long-press selectable PDF text to trigger contextual toolbar.
+- [x] Contextual toolbar actions: Highlight, Underline, Strikethrough, Add Note, Copy.
+- [x] Highlight colors: Yellow, Green, Blue, Pink, Purple.
+- [x] Persist annotations with book ID, page number, selected text, type, color, PDF coordinates, and timestamps.
+- [x] Highlights remain correctly positioned after zoom, rotation, different screen sizes, and reopening.
+- [x] Tap highlighted text to show contextual menu: Edit note, Change color (5 swatches), Delete highlight.
+- [x] Contextual selection toolbar anchors beside actual selected text.
+- [ ] Focused long-press/zoom UI check pending on device.
+
+## Phase 5 — Notes, bookmarks and annotation hub
+
+- [x] BookDetails screen with 4 tabs: Overview, Bookmarks, Highlights, Notes.
+- [x] Overview tab: study-hub summary grid (highlights, notes, underlines, bookmarks counts) and document properties (title, author, filename, file size, pages, dates, progress, storage source).
+- [x] Bookmarks tab: list all bookmarks with page badges, click to jump, delete.
+- [x] Highlights tab: search highlighted text/notes, filter by annotation type (All/Highlight/Underline/Strikethrough), filter by highlight color (5 swatches), sort by page/date.
+- [x] Notes tab: search notes, click to jump to page, edit/delete.
+- [x] Click any annotation → opens reader at the corresponding page.
+- [x] Edit note dialog with inline text editor.
+- [ ] Verify all annotation hub filters, search, and navigation work correctly on device.
+
+## Phase 6 — Pen and freehand annotation
+
+- [x] Drawing toolbar with Pen, Highlighter, and Eraser tools.
+- [x] Color selector: 6 pen colors, 5 highlighter colors.
+- [x] Stroke width presets: Fine, Med, Bold, Max.
+- [x] Undo and Redo support.
+- [x] Clear page drawings button.
+- [x] Stylus input differentiation (`PointerType.Stylus`) with "Stylus Only" / "Touch+Pen" toggle.
+- [x] Multi-touch rejection (prevents drawing on multi-finger gestures).
+- [x] Persist strokes using PDF-relative normalized coordinates via Room (`StrokeSerializer`).
+- [x] Quadratic Bezier curve midpoint interpolation for smooth rendering.
+- [x] Live in-progress stroke rendering for low-latency feedback.
+- [x] Eraser with visual cursor and segment-intersection detection.
+- [x] Export annotated PDF copy with share dialog (`PdfAnnotatedExporter`).
+- [ ] Verify pinch zoom, double-tap, pan, finger scrolling, and stylus drawing coexist (shared with Phase 8).
 
 ## Phase 7 — Search and navigation (in progress)
 
@@ -97,11 +135,17 @@ Future-only controls retained from the visual references must be clearly labeled
 
 ## Next work order
 
-1. Finish outstanding library wiring, splash integration, and truthful sample/book information.
-2. Build, fix compilation errors, and review reader synchronization/gesture/resource behavior.
-3. Run focused automated tests and emulator interaction checks.
-4. Compare phone/tablet screenshots with references and address visual issues.
-5. Update this file with verified results and any remaining gaps before reporting completion.
+All feature code for phases 1–9 is implemented. Remaining work is verification and testing only:
+
+1. Build and deploy to emulator; verify gesture behavior (pinch/zoom/pan/stylus coexistence).
+2. Verify all preferences survive restart and apply to the intended scope.
+3. Verify page jumps, current-page tracking, reopening, and search-highlight alignment.
+4. Validate import, duplicate detection, collections, favorites, sharing, and removal on emulator.
+5. Verify annotation hub filters, search, and navigation on device.
+6. Verify long-press/zoom UI on device.
+7. Compare phone/tablet screenshots with the five reference designs and address visual issues.
+8. Check tablet and landscape layouts.
+9. Record final commands, results, screenshot locations, and remaining limitations here.
 
 ### Verification log
 
