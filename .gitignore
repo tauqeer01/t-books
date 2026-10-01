@@ -23,3 +23,9 @@ yarn-error.log
 dist/
 build/
 out/
+
+# Local Android tooling and verification
+.local-review/
+.gradle/
+.kotlin/
+local.properties

@@ -3,6 +3,7 @@ package com.bookflow.app.presentation.navigation
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -66,8 +67,18 @@ fun BookFlowNavGraph(
         )
     )
 
+                    val libraryViewModel: LibraryViewModel = viewModel(
+                        factory = LibraryViewModel.Factory(
+                            getBooksUseCase = container.getBooksUseCase,
+                            getCollectionsUseCase = container.getCollectionsUseCase,
+                            bookRepository = container.bookRepository,
+                            collectionRepository = container.collectionRepository,
+                            preferencesRepository = container.preferencesRepository
+                        )
+                    )
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         bottomBar = {
             if (showBottomBar) {
                 BookFlowBottomBar(
@@ -89,6 +100,7 @@ fun BookFlowNavGraph(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .then(if (showBottomBar) Modifier.statusBarsPadding() else Modifier)
         ) {
             NavHost(
                 navController = navController,
@@ -115,22 +127,15 @@ fun BookFlowNavGraph(
                         onNavigateToCollections = {
                             navController.navigate(Screen.Collections.route)
                         },
-                        onNavigateToSearch = {
-                            navController.navigate(Screen.Search.route)
-                        }
+                        onNavigateToSearch = { navController.navigate(Screen.Search.route) },
+                        onLibrary = { filter -> libraryViewModel.onCategorySelected(filter); navController.navigate(Screen.Library.route) },
+                        onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
+                        onSettings = { navController.navigate(Screen.Settings.route) }
                     )
                 }
 
                 // 2. Library Tab
                 composable(Screen.Library.route) {
-                    val libraryViewModel: LibraryViewModel = viewModel(
-                        factory = LibraryViewModel.Factory(
-                            getBooksUseCase = container.getBooksUseCase,
-                            getCollectionsUseCase = container.getCollectionsUseCase,
-                            bookRepository = container.bookRepository,
-                            collectionRepository = container.collectionRepository
-                        )
-                    )
                     LibraryScreen(
                         viewModel = libraryViewModel,
                         onBookClick = { bookId, page ->
@@ -154,6 +159,7 @@ fun BookFlowNavGraph(
                     )
                     CollectionsScreen(
                         viewModel = collectionsViewModel,
+                        onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
                         onBookClick = { bookId, page ->
                             navController.navigate(Screen.Reader.createRoute(bookId, page))
                         }
@@ -179,7 +185,7 @@ fun BookFlowNavGraph(
                             bookRepository = container.bookRepository
                         )
                     )
-                    SettingsScreen(viewModel = settingsViewModel)
+                    SettingsScreen(viewModel = settingsViewModel, onCollections = { navController.navigate(Screen.Collections.route) }, onLibrary = { navController.navigate(Screen.Library.route) })
                 }
 
                 // PDF Reader Screen (Matching Aircraft Systems Screenshot)
@@ -189,12 +195,12 @@ fun BookFlowNavGraph(
                         navArgument("bookId") { type = NavType.StringType },
                         navArgument("page") {
                             type = NavType.IntType
-                            defaultValue = 125
+                            defaultValue = -1
                         }
                     )
                 ) { backStackEntry ->
                     val bookId = backStackEntry.arguments?.getString("bookId") ?: "book_aircraft_systems"
-                    val page = backStackEntry.arguments?.getInt("page") ?: 125
+                    val page = backStackEntry.arguments?.getInt("page") ?: -1
 
                     val readerViewModel: ReaderViewModel = viewModel(
                         factory = ReaderViewModel.Factory(

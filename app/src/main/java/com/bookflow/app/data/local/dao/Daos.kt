@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.bookflow.app.data.local.entity.AnnotationEntity
 import com.bookflow.app.data.local.entity.BookCollectionCrossRef
 import com.bookflow.app.data.local.entity.BookEntity
@@ -49,6 +50,15 @@ interface BookDao {
     @Query("SELECT COUNT(*) FROM books")
     suspend fun getBookCount(): Int
 
+    @Query("SELECT * FROM book_collection_cross_ref")
+    fun getAllCrossRefs(): Flow<List<BookCollectionCrossRef>>
+
+    @Transaction
+    suspend fun replaceCollections(bookId: String, collectionIds: List<String>) {
+        clearCollectionsForBook(bookId)
+        insertAllCrossRefs(collectionIds.distinct().map { BookCollectionCrossRef(bookId, it) })
+    }
+
     // Cross-ref (Many-to-Many with Collections)
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertCrossRef(crossRef: BookCollectionCrossRef)
@@ -76,6 +86,12 @@ interface BookDao {
 
 @Dao
 interface CollectionDao {
+    @Transaction
+    suspend fun removeCollection(id: String) {
+        deleteCrossRefsForCollection(id)
+        deleteCollectionById(id)
+    }
+
     @Query("SELECT * FROM collections ORDER BY name ASC")
     fun getAllCollections(): Flow<List<CollectionEntity>>
 
@@ -138,6 +154,9 @@ interface BookmarkDao {
 
     @Query("DELETE FROM bookmarks WHERE bookId = :bookId AND pageIndex = :pageIndex")
     suspend fun deleteBookmark(bookId: String, pageIndex: Int)
+
+    @Query("DELETE FROM bookmarks WHERE bookId = :bookId")
+    suspend fun deleteBookmarksForBook(bookId: String)
 
     @Query("DELETE FROM bookmarks WHERE id = :id")
     suspend fun deleteBookmarkById(id: String)

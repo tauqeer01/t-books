@@ -22,6 +22,7 @@ import com.bookflow.app.pdf.engine.PdfSource
 import com.bookflow.app.pdf.engine.RenderQuality
 import com.bookflow.app.pdf.generator.SamplePdfGenerator
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
@@ -39,13 +40,13 @@ class BookRepositoryImpl(
 ) : BookRepository {
 
     override fun getAllBooks(): Flow<List<Book>> {
-        return bookDao.getAllBooks().map { list ->
-            list.map { it.toDomain() }
+        return combine(bookDao.getAllBooks(), bookDao.getAllCrossRefs()) { books, refs ->
+            books.map { entity -> entity.toDomain().copy(collectionIds = refs.filter { it.bookId == entity.id }.map { it.collectionId }) }
         }
     }
 
     override fun getBookById(id: String): Flow<Book?> {
-        return bookDao.getBookById(id).map { it?.toDomain() }
+        return combine(bookDao.getBookById(id), bookDao.getCollectionIdsForBook(id)) { book, ids -> book?.toDomain()?.copy(collectionIds = ids) }
     }
 
     override fun getBooksByCollection(collectionId: String): Flow<List<Book>> {
@@ -119,6 +120,7 @@ class BookRepositoryImpl(
             }
 
             val pageCount = engine.getPageCount().coerceAtLeast(1)
+            val pdfMetadata = try { engine.documentMetadata() } catch (_: Exception) { null to null }
 
             // 5. Generate lightweight first-page thumbnail
             val thumbBitmap = engine.renderPage(0, scale = 0.4f, quality = RenderQuality.FAST)
@@ -131,8 +133,8 @@ class BookRepositoryImpl(
             // 6. Save in Room
             val bookEntity = BookEntity(
                 id = bookId,
-                title = bookTitle,
-                author = "Imported Document",
+                title = pdfMetadata.first?.takeIf { it.isNotBlank() } ?: bookTitle,
+                author = pdfMetadata.second?.takeIf { it.isNotBlank() } ?: "Unknown author",
                 filePath = "", // Kept empty because we read in-place from SAF URI
                 uriString = uriStr,
                 fileSizeBytes = metadata.fileSizeBytes,
@@ -144,7 +146,7 @@ class BookRepositoryImpl(
                 collectionId = null,
                 thumbnailPath = thumbnailPath,
                 coverColorHex = "#4F46E5",
-                lastReadTimestamp = System.currentTimeMillis(),
+                lastReadTimestamp = 0L,
                 addedTimestamp = System.currentTimeMillis()
             )
 
@@ -168,7 +170,7 @@ class BookRepositoryImpl(
                 importedBooks.add(result.getOrThrow())
             } else {
                 val error = result.exceptionOrNull()
-                if (error is IllegalStateException && error.message?.contains("already", ignoreCase = true) == true) {
+                if (error is IllegalStateException && (error.message?.contains("already", ignoreCase = true) == true || error.message?.contains("Duplicate", ignoreCase = true) == true)) {
                     duplicates++
                 } else {
                     failed++
@@ -192,6 +194,7 @@ class BookRepositoryImpl(
             bookDao.deleteBookById(bookId)
             bookDao.clearCollectionsForBook(bookId)
             annotationDao.deleteAnnotationsForBook(bookId)
+            bookmarkDao.deleteBookmarksForBook(bookId)
         }
     }
 
@@ -210,10 +213,12 @@ class BookRepositoryImpl(
             }
         }
 
+        if (!fileDeleted) return@withContext false
         FileUtils.deleteThumbnail(entity.thumbnailPath)
         bookDao.deleteBookById(bookId)
         bookDao.clearCollectionsForBook(bookId)
         annotationDao.deleteAnnotationsForBook(bookId)
+        bookmarkDao.deleteBookmarksForBook(bookId)
 
         fileDeleted
     }
@@ -229,9 +234,7 @@ class BookRepositoryImpl(
     }
 
     override suspend fun setBookCollections(bookId: String, collectionIds: List<String>) = withContext(Dispatchers.IO) {
-        bookDao.clearCollectionsForBook(bookId)
-        val refs = collectionIds.map { BookCollectionCrossRef(bookId, it) }
-        bookDao.insertAllCrossRefs(refs)
+        bookDao.replaceCollections(bookId, collectionIds)
     }
 
     override fun getCollectionIdsForBook(bookId: String): Flow<List<String>> {
@@ -265,198 +268,18 @@ class BookRepositoryImpl(
         } else null
         engine.close()
 
-        val books = listOf(
-            BookEntity(
-                id = "book_aircraft_systems",
-                title = "Aircraft Systems",
-                author = "Fundamentals • 5th Edition",
-                filePath = pdfFile.absolutePath,
-                uriString = null,
-                fileSizeBytes = pdfFile.length().coerceAtLeast(24500000),
-                pageCount = 1245,
-                currentPage = 125,
-                readingProgress = 0.10f,
-                isFavorite = true,
-                category = "PDF",
-                collectionId = "col_aviation",
-                thumbnailPath = sampleThumbPath,
-                coverColorHex = "#0C2340",
-                lastReadTimestamp = System.currentTimeMillis() - 1000 * 60 * 10,
-                addedTimestamp = System.currentTimeMillis() - 86400000 * 6
-            ),
-            BookEntity(
-                id = "book_human_anatomy",
-                title = "Human Anatomy",
-                author = "For Students • Netter Edition",
-                filePath = pdfFile.absolutePath,
-                uriString = null,
-                fileSizeBytes = 18400000,
-                pageCount = 870,
-                currentPage = 319,
-                readingProgress = 0.37f,
-                isFavorite = false,
-                category = "PDF",
-                collectionId = "col_medical",
-                thumbnailPath = null,
-                coverColorHex = "#991B1B",
-                lastReadTimestamp = System.currentTimeMillis() - 1000 * 60 * 45,
-                addedTimestamp = System.currentTimeMillis() - 86400000 * 5
-            ),
-            BookEntity(
-                id = "book_thermodynamics",
-                title = "Thermodynamics",
-                author = "Engineering Approach",
-                filePath = pdfFile.absolutePath,
-                uriString = null,
-                fileSizeBytes = 12600000,
-                pageCount = 560,
-                currentPage = 44,
-                readingProgress = 0.08f,
-                isFavorite = false,
-                category = "PDF",
-                collectionId = "col_study",
-                thumbnailPath = null,
-                coverColorHex = "#0369A1",
-                lastReadTimestamp = System.currentTimeMillis() - 1000 * 60 * 90,
-                addedTimestamp = System.currentTimeMillis() - 86400000 * 4
-            ),
-            BookEntity(
-                id = "book_physics",
-                title = "Physics",
-                author = "Quantum Principles",
-                filePath = pdfFile.absolutePath,
-                uriString = null,
-                fileSizeBytes = 9400000,
-                pageCount = 740,
-                currentPage = 51,
-                readingProgress = 0.07f,
-                isFavorite = false,
-                category = "EPUB",
-                collectionId = "col_study",
-                thumbnailPath = null,
-                coverColorHex = "#4338CA",
-                lastReadTimestamp = System.currentTimeMillis() - 86400000,
-                addedTimestamp = System.currentTimeMillis() - 86400000 * 3
-            ),
-            BookEntity(
-                id = "book_microbiology",
-                title = "Microbiology",
-                author = "Pathogens & Immunology",
-                filePath = pdfFile.absolutePath,
-                uriString = null,
-                fileSizeBytes = 15200000,
-                pageCount = 620,
-                currentPage = 13,
-                readingProgress = 0.02f,
-                isFavorite = false,
-                category = "PDF",
-                collectionId = "col_medical",
-                thumbnailPath = null,
-                coverColorHex = "#6D28D9",
-                lastReadTimestamp = System.currentTimeMillis() - 86400000 * 2,
-                addedTimestamp = System.currentTimeMillis() - 86400000 * 3
-            ),
-            BookEntity(
-                id = "book_organic_chemistry",
-                title = "Organic Chemistry",
-                author = "Structure & Synthesis",
-                filePath = pdfFile.absolutePath,
-                uriString = null,
-                fileSizeBytes = 22100000,
-                pageCount = 980,
-                currentPage = 209,
-                readingProgress = 0.21f,
-                isFavorite = false,
-                category = "PDF",
-                collectionId = "col_study",
-                thumbnailPath = null,
-                coverColorHex = "#334155",
-                lastReadTimestamp = System.currentTimeMillis() - 86400000 * 3,
-                addedTimestamp = System.currentTimeMillis() - 86400000 * 2
-            ),
-            BookEntity(
-                id = "book_mathematics",
-                title = "Mathematics",
-                author = "Calculus & Analysis",
-                filePath = pdfFile.absolutePath,
-                uriString = null,
-                fileSizeBytes = 14300000,
-                pageCount = 850,
-                currentPage = 127,
-                readingProgress = 0.15f,
-                isFavorite = false,
-                category = "PDF",
-                collectionId = "col_study",
-                thumbnailPath = null,
-                coverColorHex = "#1E293B",
-                lastReadTimestamp = System.currentTimeMillis() - 86400000 * 4,
-                addedTimestamp = System.currentTimeMillis() - 86400000 * 2
-            ),
-            BookEntity(
-                id = "book_aviation_fundamentals",
-                title = "Aviation Fundamentals",
-                author = "Principles of Flight",
-                filePath = pdfFile.absolutePath,
-                uriString = null,
-                fileSizeBytes = 31200000,
-                pageCount = 1245,
-                currentPage = 0,
-                readingProgress = 0.0f,
-                isFavorite = true,
-                category = "PDF",
-                collectionId = "col_aviation",
-                thumbnailPath = null,
-                coverColorHex = "#EA580C",
-                lastReadTimestamp = System.currentTimeMillis() - 86400000 * 5,
-                addedTimestamp = System.currentTimeMillis() - 86400000 * 1
-            ),
-            BookEntity(
-                id = "book_medical_microbiology",
-                title = "Medical Microbiology",
-                author = "Infectious Disease",
-                filePath = pdfFile.absolutePath,
-                uriString = null,
-                fileSizeBytes = 18700000,
-                pageCount = 870,
-                currentPage = 0,
-                readingProgress = 0.0f,
-                isFavorite = false,
-                category = "PDF",
-                collectionId = "col_medical",
-                thumbnailPath = null,
-                coverColorHex = "#047857",
-                lastReadTimestamp = System.currentTimeMillis() - 86400000 * 6,
-                addedTimestamp = System.currentTimeMillis() - 86400000 * 1
-            )
+        val now = System.currentTimeMillis()
+        val sample = BookEntity(
+            id = "book_aircraft_systems", title = "Aircraft Systems", author = "BookFlow sample document",
+            filePath = pdfFile.absolutePath, uriString = null, fileSizeBytes = pdfFile.length(),
+            pageCount = 2, currentPage = 0, readingProgress = 0f, isFavorite = false,
+            category = "PDF", collectionId = "col_aviation", thumbnailPath = sampleThumbPath,
+            coverColorHex = "#0C2340", lastReadTimestamp = 0L, addedTimestamp = now
         )
-        bookDao.insertAll(books)
-
-        // Seed Many-to-Many Relationships:
-        // A book can belong to multiple collections (e.g. Aircraft Systems belongs to Aviation AND Favorites!)
-        val crossRefs = listOf(
-            BookCollectionCrossRef("book_aircraft_systems", "col_aviation"),
-            BookCollectionCrossRef("book_aircraft_systems", "col_favorites"),
-            BookCollectionCrossRef("book_human_anatomy", "col_medical"),
-            BookCollectionCrossRef("book_human_anatomy", "col_study"),
-            BookCollectionCrossRef("book_thermodynamics", "col_study"),
-            BookCollectionCrossRef("book_thermodynamics", "col_research"),
-            BookCollectionCrossRef("book_physics", "col_study"),
-            BookCollectionCrossRef("book_microbiology", "col_medical"),
-            BookCollectionCrossRef("book_organic_chemistry", "col_study"),
-            BookCollectionCrossRef("book_mathematics", "col_study"),
-            BookCollectionCrossRef("book_aviation_fundamentals", "col_aviation"),
-            BookCollectionCrossRef("book_aviation_fundamentals", "col_exam"),
-            BookCollectionCrossRef("book_medical_microbiology", "col_medical")
-        )
-        bookDao.insertAllCrossRefs(crossRefs)
-
-        // Annotations
-        val annotations = listOf(
-            AnnotationEntity("ann_126_yellow", "book_aircraft_systems", 125, AnnotationType.HIGHLIGHT.name, "#FFE600", "The primary function of the aircraft systems is to ensure a continuous and reliable supply of power and services under all operating conditions.", "Primary systems requirement.", 45f, 245f, 550f, 280f, null, System.currentTimeMillis() - 1000 * 60 * 30),
-            AnnotationEntity("ann_126_pink", "book_aircraft_systems", 125, AnnotationType.HIGHLIGHT.name, "#F472B6", "The engine converts chemical energy from fuel into mechanical energy", "Important for exam!", 75f, 680f, 490f, 700f, null, System.currentTimeMillis() - 1000 * 60 * 20)
-        )
-        annotationDao.insertAll(annotations)
-
-        bookmarkDao.insertBookmark(BookmarkEntity("bm_126", "book_aircraft_systems", 125, "Chapter 3: Aircraft Systems", System.currentTimeMillis() - 1000 * 60 * 15))
+        bookDao.insertOrUpdateBook(sample)
+        bookDao.insertAllCrossRefs(listOf(
+            BookCollectionCrossRef(sample.id, "col_aviation"),
+            BookCollectionCrossRef(sample.id, "col_study")
+        ))
     }
 }

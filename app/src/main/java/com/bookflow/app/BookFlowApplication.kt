@@ -18,7 +18,11 @@ class BookFlowApplication : Application() {
         // Preload sample books and collections in the background
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                container.bookRepository.preloadSampleBooks()
+                val startup = getSharedPreferences("bookflow_startup", MODE_PRIVATE)
+                if (!startup.getBoolean("initialized", false)) {
+                    container.bookRepository.preloadSampleBooks()
+                    startup.edit().putBoolean("initialized", true).apply()
+                }
             } catch (_: Exception) {}
         }
     }

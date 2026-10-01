@@ -1,564 +1,133 @@
 package com.bookflow.app.presentation.screens.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
-import androidx.compose.material.icons.filled.AutoStories
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Create
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderSpecial
-import androidx.compose.material.icons.filled.FormatColorText
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.NavigateNext
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.TextFields
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bookflow.app.core.theme.BrandPurple
-import com.bookflow.app.core.theme.BrandPurpleSoft
-import com.bookflow.app.core.theme.HighlightBlue
-import com.bookflow.app.core.theme.HighlightGreen
-import com.bookflow.app.core.theme.HighlightPink
-import com.bookflow.app.core.theme.HighlightPurple
-import com.bookflow.app.core.theme.HighlightYellow
+import com.bookflow.app.presentation.components.BookFlowEmblem
 
 @Composable
-fun SettingsScreen(
-    viewModel: SettingsViewModel,
-    modifier: Modifier = Modifier
-) {
+fun SettingsScreen(viewModel: SettingsViewModel, onCollections: () -> Unit = {}, onLibrary: () -> Unit = {}, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(state.feedbackMessage) {
-        state.feedbackMessage?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearFeedback()
-        }
-    }
-
-    Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-            .statusBarsPadding(),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color(0xFFF8FAFC)
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-        ) {
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Header: Title + Subtitle + Search
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Settings",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A),
-                        fontSize = 28.sp
-                    )
-                    Text(
-                        text = "Customize your reading experience",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B)
-                    )
-                }
-
-                IconButton(onClick = {}) {
-                    Icon(imageVector = Icons.Default.Search, contentDescription = "Search", tint = Color(0xFF334155))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // BookFlow App Identity Banner Card (Matching Screenshot)
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(2.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(54.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(BrandPurpleSoft),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AutoStories,
-                            contentDescription = "BookFlow",
-                            tint = BrandPurple,
-                            modifier = Modifier.size(32.dp)
-                        )
+    var editor by remember { mutableStateOf<String?>(null) }
+    var information by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var query by remember { mutableStateOf("") }
+    var searching by remember { mutableStateOf(false) }
+    val prefs = state.preferences
+    BoxWithConstraints(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        val wide = maxWidth > 700.dp
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = if (wide) 64.dp else 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            item {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Settings", fontSize = 32.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
+                        Text("Customize your reading experience", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                     }
-
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "BookFlow",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
-                        )
-                        Text(
-                            text = "Version 1.0.0",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF64748B),
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = "Your Reading Companion",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF94A3B8),
-                            fontSize = 11.sp
-                        )
+                    IconButton(onClick = { searching = !searching }) { Icon(Icons.Default.Search, "Search settings") }
+                }
+                if (searching) OutlinedTextField(query, { query = it }, placeholder = { Text("Search settings") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+            }
+            item {
+                Surface(shape = RoundedCornerShape(18.dp), color = MaterialTheme.colorScheme.surface, onClick = { information = "BookFlow" to "Version 1.0.0 • Your Reading Companion\n\nRead and annotate PDFs entirely on your device." }) {
+                    Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        BookFlowEmblem(Modifier.size(48.dp))
+                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                            Text("BookFlow", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            Text("Version 1.0.0\nYour Reading Companion", fontSize = 12.sp, lineHeight = 16.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        Icon(Icons.Default.ChevronRight, null)
                     }
-
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = Color(0xFF94A3B8)
-                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(22.dp))
-
-            // GROUP 1: Reading Preferences
-            SettingsGroupTitle("Reading Preferences")
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(1.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsRowItem(
-                        icon = Icons.Default.MenuBook,
-                        iconBg = Color(0xFFEDE9FE),
-                        iconTint = Color(0xFF7C3AED),
-                        title = "Reading Mode",
-                        subtitle = "Vertical, Horizontal, Single Page",
-                        value = "Vertical",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.Default.LightMode,
-                        iconBg = Color(0xFFDCFCE7),
-                        iconTint = Color(0xFF16A34A),
-                        title = "Appearance",
-                        subtitle = "Light, Dark, Sepia",
-                        value = "Light",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.Default.TextFields,
-                        iconBg = Color(0xFFDBEAFE),
-                        iconTint = Color(0xFF2563EB),
-                        title = "Text & Display",
-                        subtitle = "Text size, page spacing, margins",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.Default.Description,
-                        iconBg = Color(0xFFFFEDD5),
-                        iconTint = Color(0xFFEA580C),
-                        title = "Page Navigation",
-                        subtitle = "Volume keys, screen orientation",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.Default.Visibility,
-                        iconBg = Color(0xFFF3E8FF),
-                        iconTint = Color(0xFF9333EA),
-                        title = "Screen & Auto Lock",
-                        subtitle = "Keep screen awake, brightness",
-                        onClick = {}
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // GROUP 2: Annotations
-            SettingsGroupTitle("Annotations")
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(1.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    // Highlight colors row with preview palette dots
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFFFEF3C7)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = null,
-                                tint = Color(0xFFD97706),
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(12.dp))
-
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Highlight Colors",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF0F172A)
-                            )
-                            Text(
-                                text = "Manage highlight color palette",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF64748B),
-                                fontSize = 12.sp
-                            )
-                        }
-
-                        // Color Dots Palette Preview
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            listOf(HighlightYellow, HighlightGreen, HighlightBlue, HighlightPink, HighlightPurple).forEach { c ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(c)
-                                )
+            val groups = listOf(
+                "Reading Preferences" to listOf(
+                    Setting(Icons.AutoMirrored.Filled.MenuBook, "Reading Mode", "Vertical, Horizontal, Single Page", prefs.scrollMode.displayName, 0),
+                    Setting(Icons.Default.LightMode, "Appearance", "Light, Dark, Sepia", prefs.readerTheme.displayName, 1),
+                    Setting(Icons.Default.TextFields, "Text & Display", "Page spacing, rendering quality", null, 2),
+                    Setting(Icons.Default.Description, "Page Navigation", "Volume keys, screen orientation", null, 3),
+                    Setting(Icons.Default.Visibility, "Screen & Auto Lock", "Keep screen awake, brightness", null, 0)),
+                "Annotations" to listOf(
+                    Setting(Icons.Default.Edit, "Highlight Colors", "Choose your default highlight color", "● ● ● ● ●", 3),
+                    Setting(Icons.Default.Create, "Pen & Drawing", "Stroke size, color, stylus settings", null, 4),
+                    Setting(Icons.Default.Description, "Notes", "Your notes and highlighted passages", null, 2),
+                    Setting(Icons.Default.BookmarkBorder, "Bookmarks", "Quick access to saved pages", null, 1)),
+                "Library & Files" to listOf(
+                    Setting(Icons.Default.FolderOpen, "Import & Storage", "Import PDFs from your device", null, 2),
+                    Setting(Icons.Default.Layers, "Library View", "Grid/List view, sort order", null, 0),
+                    Setting(Icons.Default.FolderSpecial, "Collections", "Manage your collections", null, 1)),
+                "Backup & Restore" to listOf(
+                    Setting(Icons.Default.CloudUpload, "Backup", "Export your library, settings and annotations", "Future", 0),
+                    Setting(Icons.Default.CloudDownload, "Restore", "Import from a backup file", "Future", 1)),
+                "Privacy & Security" to listOf(
+                    Setting(Icons.Default.Lock, "Privacy", "Your data stays on your device", null, 4),
+                    Setting(Icons.Default.Security, "App Lock", "Use PIN, biometrics or pattern", "Future", 2)),
+                "About" to listOf(Setting(Icons.Default.Info, "About BookFlow", "Version, open source libraries", null, 0))
+            )
+            groups.forEach { (title, rows) ->
+                val visible = rows.filter { query.isBlank() || (it.title + it.subtitle).contains(query, true) }
+                if (visible.isNotEmpty()) item {
+                    Text(title, fontWeight = FontWeight.Medium, fontSize = 15.sp, modifier = Modifier.padding(start = 4.dp, bottom = 6.dp))
+                    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface) {
+                        Column {
+                            visible.forEachIndexed { index, row ->
+                                SettingsRow(row) {
+                                    when (row.title) {
+                                        "Collections" -> onCollections()
+                                        "Import & Storage" -> onLibrary()
+                                        "Notes", "Bookmarks" -> information = row.title to "Open a book's information screen to browse ${row.title.lowercase()}, or use the navigation panel while reading. Tap an entry to jump to its page."
+                                        "Backup", "Restore", "App Lock" -> information = row.title to "Planned for a future release. Your library is currently stored on this device."
+                                        "Privacy" -> information = "Your books stay with you" to "No account, document uploads, or cloud backend. PDFs are opened from the locations you choose. Removing a book from your library preserves the original file."
+                                        "About BookFlow" -> information = "BookFlow 1.0.0" to "Built with Kotlin, Jetpack Compose, AndroidX, Room, DataStore, Coil and PDFBox Android (Apache License 2.0)."
+                                        else -> editor = row.title
+                                    }
+                                }
+                                if (index < visible.lastIndex) HorizontalDivider(Modifier.padding(start = 62.dp, end = 12.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = .45f))
                             }
                         }
-
-                        Spacer(modifier = Modifier.width(6.dp))
-
-                        Icon(imageVector = Icons.Default.ChevronRight, contentDescription = null, tint = Color(0xFF94A3B8))
                     }
-
-                    SettingsRowItem(
-                        icon = Icons.Default.Create,
-                        iconBg = Color(0xFFFFE4E6),
-                        iconTint = Color(0xFFE11D48),
-                        title = "Pen & Drawing",
-                        subtitle = "Stroke size, color, stylus settings",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.Default.Description,
-                        iconBg = Color(0xFFDBEAFE),
-                        iconTint = Color(0xFF2563EB),
-                        title = "Notes",
-                        subtitle = "Default note style and behavior",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.Default.Bookmark,
-                        iconBg = Color(0xFFDCFCE7),
-                        iconTint = Color(0xFF16A34A),
-                        title = "Bookmarks",
-                        subtitle = "Bookmark style and quick access",
-                        onClick = {}
-                    )
                 }
             }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // GROUP 3: Library & Files
-            SettingsGroupTitle("Library & Files")
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(1.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsRowItem(
-                        icon = Icons.Default.Folder,
-                        iconBg = Color(0xFFDBEAFE),
-                        iconTint = Color(0xFF2563EB),
-                        title = "Import & Storage",
-                        subtitle = "Import location, file management",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.Default.Layers,
-                        iconBg = Color(0xFFEDE9FE),
-                        iconTint = Color(0xFF7C3AED),
-                        title = "Library View",
-                        subtitle = "Grid/List view, sort order",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.Default.FolderSpecial,
-                        iconBg = Color(0xFFDCFCE7),
-                        iconTint = Color(0xFF16A34A),
-                        title = "Collections",
-                        subtitle = "Manage your collections",
-                        onClick = {}
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // GROUP 4: Backup & Restore
-            SettingsGroupTitle("Backup & Restore")
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(1.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsRowItem(
-                        icon = Icons.Default.CloudUpload,
-                        iconBg = Color(0xFFEDE9FE),
-                        iconTint = Color(0xFF7C3AED),
-                        title = "Backup",
-                        subtitle = "Export your library, settings and annotations",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.Default.CloudDownload,
-                        iconBg = Color(0xFFDCFCE7),
-                        iconTint = Color(0xFF16A34A),
-                        title = "Restore",
-                        subtitle = "Import from a backup file",
-                        onClick = {}
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // GROUP 5: Privacy & Security
-            SettingsGroupTitle("Privacy & Security")
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(1.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsRowItem(
-                        icon = Icons.Default.Lock,
-                        iconBg = Color(0xFFFFE4E6),
-                        iconTint = Color(0xFFE11D48),
-                        title = "Privacy",
-                        subtitle = "Your data stays on your device",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.Default.Security,
-                        iconBg = Color(0xFFDBEAFE),
-                        iconTint = Color(0xFF2563EB),
-                        title = "App Lock",
-                        subtitle = "Use PIN, biometrics or pattern",
-                        value = "Off",
-                        onClick = {}
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // GROUP 6: About
-            SettingsGroupTitle("About")
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(1.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    SettingsRowItem(
-                        icon = Icons.Default.Info,
-                        iconBg = Color(0xFFEDE9FE),
-                        iconTint = Color(0xFF7C3AED),
-                        title = "About BookFlow",
-                        subtitle = "Version, open source licenses",
-                        onClick = {}
-                    )
-                    SettingsRowItem(
-                        icon = Icons.AutoMirrored.Filled.Chat,
-                        iconBg = Color(0xFFDCFCE7),
-                        iconTint = Color(0xFF16A34A),
-                        title = "Send Feedback",
-                        subtitle = "Help us improve",
-                        onClick = {}
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(90.dp))
         }
     }
+    editor?.let { ReadingPreferencesEditor(prefs, it, { editor = null }, viewModel::savePreferences) }
+    information?.let { (title, body) -> AlertDialog(onDismissRequest = { information = null }, title = { Text(title) }, text = { Text(body) }, confirmButton = { TextButton(onClick = { information = null }) { Text("Done") } }) }
 }
 
-@Composable
-private fun SettingsGroupTitle(title: String) {
-    Text(
-        text = title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = Color(0xFF0F172A),
-        fontSize = 15.sp,
-        modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
-    )
-}
+private data class Setting(val icon: ImageVector, val title: String, val subtitle: String, val value: String?, val palette: Int)
 
 @Composable
-private fun SettingsRowItem(
-    icon: ImageVector,
-    iconBg: Color,
-    iconTint: Color,
-    title: String,
-    subtitle: String,
-    value: String? = null,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 13.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(iconBg),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = iconTint,
-                modifier = Modifier.size(20.dp)
-            )
+private fun SettingsRow(row: Setting, onClick: () -> Unit) {
+    val colors = listOf(BrandPurple, Color(0xFF00B889), Color(0xFF176CFF), Color(0xFFFFB800), Color(0xFFFF446C))
+    val tint = colors[row.palette]
+    Surface(onClick = onClick, color = Color.Transparent) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(shape = RoundedCornerShape(10.dp), color = tint.copy(alpha = .13f)) {
+                Icon(row.icon, null, Modifier.padding(7.dp).size(20.dp), tint = tint)
+            }
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                Text(row.title, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium)
+                Text(row.subtitle, fontSize = 10.sp, lineHeight = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            if (row.title == "Highlight Colors") Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                listOf(0xFFFFD923, 0xFF36D7A0, 0xFF438CFF, 0xFFEF66CB, 0xFFA470FF).forEach { color ->
+                    Box(Modifier.size(10.dp).background(Color(color), androidx.compose.foundation.shape.CircleShape))
+                }
+            } else row.value?.let { Text(it, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Icon(Icons.Default.ChevronRight, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF0F172A)
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF64748B),
-                fontSize = 12.sp
-            )
-        }
-
-        if (value != null) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF64748B),
-                fontSize = 13.sp
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-        }
-
-        Icon(
-            imageVector = Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint = Color(0xFF94A3B8),
-            modifier = Modifier.size(18.dp)
-        )
     }
 }

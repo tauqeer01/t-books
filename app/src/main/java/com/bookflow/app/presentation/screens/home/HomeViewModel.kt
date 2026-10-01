@@ -24,13 +24,14 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 data class HomeUiState(
+    val allBooks: List<Book> = emptyList(),
     val continueReadingBooks: List<Book> = emptyList(),
     val recentlyOpenedBooks: List<Book> = emptyList(),
     val myLibraryBooks: List<Book> = emptyList(),
     val collections: List<BookCollection> = emptyList(),
     val allAnnotations: List<com.bookflow.app.domain.model.BookAnnotation> = emptyList(),
     val selectedFilterPill: String = "All",
-    val filterPills: List<String> = listOf("All", "PDF", "EPUB", "Favorites", "Collections"),
+    val filterPills: List<String> = listOf("All", "PDF", "Recent", "Favorites", "Collections"),
     val searchQuery: String = "",
     val isImporting: Boolean = false,
     val toastMessage: String? = null
@@ -57,7 +58,8 @@ class HomeViewModel(
         annotationRepository.getAllAnnotations(),
         _selectedFilterPill,
         _searchQuery,
-        _isImporting
+        _isImporting,
+        _toastMessage
     ) { params ->
         @Suppress("UNCHECKED_CAST")
         val allBooks = params[0] as List<Book>
@@ -70,32 +72,34 @@ class HomeViewModel(
         val importing = params[5] as Boolean
 
         // Continue Reading: Books with progress > 0
-        val continueReading = allBooks.filter { it.readingProgress > 0f }.sortedByDescending { it.lastReadTimestamp }
+        val continueReading = allBooks.filter { it.readingProgress > 0f && it.readingProgress < 1f }.sortedByDescending { it.lastReadTimestamp }
 
         // Recently Opened: Next batch of active books
-        val recentlyOpened = allBooks.sortedByDescending { it.lastReadTimestamp }
+        val recentlyOpened = allBooks.filter { it.lastReadTimestamp > 0 }.sortedByDescending { it.lastReadTimestamp }
 
         // My Library: filtered by search or pill
         var library = allBooks
         if (pill == "Favorites") library = library.filter { it.isFavorite }
         if (pill == "PDF") library = library.filter { it.category == "PDF" }
-        if (pill == "EPUB") library = library.filter { it.category == "EPUB" }
+        if (pill == "Recent") library = library.filter { it.lastReadTimestamp > 0 }
         if (query.isNotBlank()) {
             library = library.filter {
-                it.title.contains(query, ignoreCase = true) || it.author.contains(query, ignoreCase = true)
+                it.title.contains(query, ignoreCase = true) || it.author.contains(query, ignoreCase = true) ||
+                    allAnnotations.any { annotation -> annotation.bookId == it.id && (annotation.selectedText.contains(query, true) || annotation.noteContent.contains(query, true)) }
             }
         }
 
         HomeUiState(
+            allBooks = allBooks,
             continueReadingBooks = continueReading,
             recentlyOpenedBooks = recentlyOpened,
             myLibraryBooks = library,
-            collections = collections,
+            collections = collections.map { collection -> collection.copy(bookCount = allBooks.count { collection.id in it.collectionIds }) },
             allAnnotations = allAnnotations,
             selectedFilterPill = pill,
             searchQuery = query,
             isImporting = importing,
-            toastMessage = _toastMessage.value
+            toastMessage = params[6] as String?
         )
     }.stateIn(
         scope = viewModelScope,
@@ -133,6 +137,10 @@ class HomeViewModel(
             }
         }
     }
+
+    fun toggleFavorite(book: Book) { viewModelScope.launch { bookRepository.toggleFavorite(book.id, !book.isFavorite) } }
+    fun removeBook(book: Book) { viewModelScope.launch { bookRepository.deleteBookFromLibrary(book.id) } }
+    fun setCollections(book: Book, ids: List<String>) { viewModelScope.launch { bookRepository.setBookCollections(book.id, ids) } }
 
     fun clearToast() {
         _toastMessage.value = null

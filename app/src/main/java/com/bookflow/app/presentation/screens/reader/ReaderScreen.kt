@@ -13,6 +13,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +38,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -78,6 +85,10 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PictureAsPdf
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.FindInPage
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SwapVert
@@ -111,8 +122,11 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import com.bookflow.app.presentation.screens.settings.ReadingPreferencesEditor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -147,7 +161,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bookflow.app.core.theme.BrandPurple
 import com.bookflow.app.domain.model.AnnotationType
 import com.bookflow.app.domain.model.BookAnnotation
-import com.bookflow.app.domain.model.PageScrollMode
 
 // Highlight Colors matching Phase 4 Requirements: Yellow, Green, Blue, Pink, Purple
 val HighlightColorPalette = listOf(
@@ -168,13 +181,13 @@ fun ReaderScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    ReaderWindowEffects(state, viewModel)
+
     // Zoom and pan state
     var scale by remember { mutableFloatStateOf(1f) }
     var offsetX by remember { mutableFloatStateOf(0f) }
     var offsetY by remember { mutableFloatStateOf(0f) }
 
-    var activeAnnotationTool by remember { mutableStateOf("pen") }
-    var selectedHighlightColorHex by remember { mutableStateOf("#FFE600") }
 
     // Toast notifications
     LaunchedEffect(state.toastMessage) {
@@ -187,6 +200,8 @@ fun ReaderScreen(
     // Back handler: Close overlays or reset zoom first, else exit reader
     BackHandler {
         when {
+            state.isMoreOptionsSheetOpen -> viewModel.openMoreOptionsSheet(false)
+            state.showReadingPreferences -> viewModel.showReadingPreferences(false)
             state.isDrawingModeActive -> viewModel.setDrawingMode(false)
             state.selectedTextSelection != null -> viewModel.clearSelection()
             state.activeAnnotationMenu != null -> viewModel.closeAnnotationMenu()
@@ -204,43 +219,69 @@ fun ReaderScreen(
         }
     }
 
+    if (state.showReadingPreferences) {
+        var scope by remember { mutableStateOf<Boolean?>(null) }
+        if (scope == null) AlertDialog(
+            onDismissRequest = { viewModel.showReadingPreferences(false) },
+            title = { Text("Reading preferences") },
+            text = { Column {
+                TextButton(onClick = { scope = true }) { Text("Customize this book") }
+                TextButton(onClick = { scope = false }) { Text("Change global defaults") }
+                TextButton(onClick = { viewModel.useGlobalPreferences(); viewModel.showReadingPreferences(false) }) { Text("Use global defaults for this book") }
+            } },
+            confirmButton = { TextButton(onClick = { viewModel.showReadingPreferences(false) }) { Text("Cancel") } }
+        ) else ReadingPreferencesEditor(state.preferences, onDismiss = { viewModel.showReadingPreferences(false) }, onSave = { viewModel.saveReadingPreferences(it, scope == true) })
+    }
+
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = {
+            SnackbarHost(
+                snackbarHostState,
+                Modifier.navigationBarsPadding().padding(
+                    bottom = if (state.areControlsVisible || state.isDrawingModeActive) 164.dp else 12.dp
+                )
+            )
+        },
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize().testTag("reader_screen")
-    ) { _ ->
+    ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF1F5F9))
+                .padding(innerPadding)
+                .background(Color(android.graphics.Color.parseColor(state.readerTheme.bgHex)))
         ) {
+            if (!state.isDocumentReady) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    if (state.errorMessage != null) Text(state.errorMessage!!, modifier = Modifier.padding(24.dp))
+                    else CircularProgressIndicator()
+                }
+            }
             // --- CORE READING CANVAS (Lazy Loading & Dual Mode) ---
-            BoxWithConstraints(
+            if (state.isDocumentReady) Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .pointerInput(Unit) {
-                        detectTransformGestures { _, pan, zoom, _ ->
-                            scale = (scale * zoom).coerceIn(1f, 4f)
-                            if (scale > 1.05f) {
-                                offsetX += pan.x
-                                offsetY += pan.y
-                            } else {
-                                offsetX = 0f
-                                offsetY = 0f
-                            }
-                        }
-                    }
-                    .pointerInput(Unit) {
-                        detectTapGestures(
-                            onDoubleTap = {
-                                if (scale > 1.2f) {
-                                    scale = 1f
-                                    offsetX = 0f
-                                    offsetY = 0f
-                                } else {
-                                    scale = 2.4f
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .pointerInput(state.isDrawingModeActive, state.isStylusOnlyDrawing) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            do {
+                                val event = awaitPointerEvent()
+                                val pressed = event.changes.count { it.pressed }
+                                val drawing = state.isDrawingModeActive && (!state.isStylusOnlyDrawing || event.changes.any { it.type == androidx.compose.ui.input.pointer.PointerType.Stylus })
+                                if (pressed >= 2 || (scale > 1.05f && !drawing && event.changes.none { it.isConsumed })) {
+                                    val zoom = event.calculateZoom()
+                                    val pan = event.calculatePan()
+                                    scale = (scale * zoom).coerceIn(1f, 4f)
+                                    val maxX = size.width * (scale - 1) / 2
+                                    val maxY = size.height * (scale - 1) / 2
+                                    offsetX = (offsetX + pan.x).coerceIn(-maxX, maxX)
+                                    offsetY = (offsetY + pan.y).coerceIn(-maxY, maxY)
+                                    event.changes.forEach { it.consume() }
                                 }
-                            }
-                        )
+                            } while (event.changes.any { it.pressed })
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {
@@ -265,7 +306,7 @@ fun ReaderScreen(
                             viewModel.onPageScrolled(visiblePage)
                         }
 
-                        LaunchedEffect(state.currentPage) {
+                        LaunchedEffect(state.navigationRequest) {
                             if (listState.firstVisibleItemIndex != state.currentPage) {
                                 listState.scrollToItem(state.currentPage)
                             }
@@ -279,7 +320,8 @@ fun ReaderScreen(
                                 start = 12.dp,
                                 end = 12.dp
                             ),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(state.preferences.pageSpacing.dp),
+                            userScrollEnabled = scale <= 1.05f,
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(state.pageCount, key = { it }) { pageIndex ->
@@ -292,6 +334,7 @@ fun ReaderScreen(
                                     state = state,
                                     activeSelection = if (state.selectedTextSelection?.pageIndex == pageIndex) state.selectedTextSelection else null,
                                     onAnnotationClick = { ann -> viewModel.onAnnotationTapped(ann) },
+                                    onDoubleTap = { scale = if (scale > 1.2f) 1f else 2.4f; offsetX = 0f; offsetY = 0f },
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .shadow(8.dp, RoundedCornerShape(4.dp))
@@ -311,14 +354,16 @@ fun ReaderScreen(
                             viewModel.onPageScrolled(pagerState.currentPage)
                         }
 
-                        LaunchedEffect(state.currentPage) {
+                        LaunchedEffect(state.navigationRequest) {
                             if (pagerState.currentPage != state.currentPage) {
-                                pagerState.animateScrollToPage(state.currentPage)
+                                pagerState.scrollToPage(state.currentPage)
                             }
                         }
 
                         HorizontalPager(
                             state = pagerState,
+                            userScrollEnabled = state.scrollMode != PageScrollMode.SINGLE_PAGE && scale <= 1.05f,
+                            pageSpacing = state.preferences.pageSpacing.dp,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(
                                 top = if (state.areControlsVisible) 64.dp else 12.dp,
@@ -341,9 +386,9 @@ fun ReaderScreen(
                                     state = state,
                                     activeSelection = if (state.selectedTextSelection?.pageIndex == pageIndex) state.selectedTextSelection else null,
                                     onAnnotationClick = { ann -> viewModel.onAnnotationTapped(ann) },
+                                    onDoubleTap = { scale = if (scale > 1.2f) 1f else 2.4f; offsetX = 0f; offsetY = 0f },
+                                    fitPageToViewport = true,
                                     modifier = Modifier
-                                        .fillMaxWidth(0.96f)
-                                        .aspectRatio(ratio)
                                         .shadow(12.dp, RoundedCornerShape(4.dp))
                                         .clip(RoundedCornerShape(4.dp))
                                         .background(Color.White)
@@ -351,40 +396,6 @@ fun ReaderScreen(
                             }
                         }
                     }
-                }
-            }
-
-            // --- PHASE 4: CONTEXTUAL TOOLBAR (When text is long-pressed/selected) ---
-            if (state.selectedTextSelection != null) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .statusBarsPadding()
-                        .padding(top = 64.dp, start = 16.dp, end = 16.dp)
-                ) {
-                    TextSelectionContextBar(
-                        selectedText = state.selectedTextSelection!!.text,
-                        selectedColorHex = selectedHighlightColorHex,
-                        onColorSelected = { selectedHighlightColorHex = it },
-                        onHighlight = {
-                            viewModel.createAnnotationFromSelection(AnnotationType.HIGHLIGHT, selectedHighlightColorHex)
-                        },
-                        onUnderline = {
-                            viewModel.createAnnotationFromSelection(AnnotationType.UNDERLINE, selectedHighlightColorHex)
-                        },
-                        onStrikethrough = {
-                            viewModel.createAnnotationFromSelection(AnnotationType.STRIKETHROUGH, selectedHighlightColorHex)
-                        },
-                        onAddNote = {
-                            viewModel.createAnnotationFromSelection(AnnotationType.NOTE, selectedHighlightColorHex)
-                        },
-                        onCopy = {
-                            viewModel.copySelectionToClipboard()
-                        },
-                        onDismiss = {
-                            viewModel.clearSelection()
-                        }
-                    )
                 }
             }
 
@@ -476,31 +487,6 @@ fun ReaderScreen(
                         // Actions: Scroll Mode Switcher, Outline/TOC, Search, Bookmark
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             IconButton(
-                                onClick = viewModel::toggleScrollMode,
-                                modifier = Modifier.size(38.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (state.scrollMode == PageScrollMode.HORIZONTAL_PAGING)
-                                        Icons.Default.ViewAgenda
-                                    else
-                                        Icons.AutoMirrored.Filled.ViewList,
-                                    contentDescription = "Switch Page Mode",
-                                    tint = BrandPurple
-                                )
-                            }
-
-                            IconButton(
-                                onClick = { viewModel.setDrawerOpen(true, tab = 0) },
-                                modifier = Modifier.size(38.dp).testTag("reader_toc_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                                    contentDescription = "Contents Outline",
-                                    tint = Color(0xFF334155)
-                                )
-                            }
-
-                            IconButton(
                                 onClick = { viewModel.setSearchOpen(!state.isSearchOpen) },
                                 modifier = Modifier.size(38.dp).testTag("reader_search_button")
                             ) {
@@ -522,28 +508,8 @@ fun ReaderScreen(
                                 )
                             }
 
-                            // Phase 6: Freehand Pen & Drawing Mode Toggle
-                            IconButton(
-                                onClick = { viewModel.setDrawingMode(!state.isDrawingModeActive) },
-                                modifier = Modifier.size(38.dp).testTag("reader_draw_toggle")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Create,
-                                    contentDescription = "Freehand Drawing",
-                                    tint = if (state.isDrawingModeActive) BrandPurple else Color(0xFF334155)
-                                )
-                            }
-
-                            // Phase 6: Export Annotated Copy
-                            IconButton(
-                                onClick = viewModel::exportAnnotatedPdf,
-                                modifier = Modifier.size(38.dp).testTag("reader_export_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PictureAsPdf,
-                                    contentDescription = "Export Annotated Copy",
-                                    tint = Color(0xFF334155)
-                                )
+                            IconButton(onClick = { viewModel.openMoreOptionsSheet(true) }, modifier = Modifier.size(40.dp)) {
+                                Icon(Icons.Default.MoreVert, "Reader options", tint = Color(0xFF334155))
                             }
                         }
                     }
@@ -708,6 +674,11 @@ fun ReaderScreen(
                                     }
                                 }
                             }
+                        } else if (state.isSearching) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            Text("Searching document…", modifier = Modifier.padding(12.dp))
+                        } else if (state.searchError != null) {
+                            Text(state.searchError!!, modifier = Modifier.padding(12.dp))
                         } else if (state.searchQuery.isNotBlank()) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
@@ -779,124 +750,51 @@ fun ReaderScreen(
                 }
             }
 
-            // --- BOTTOM READER CONTROL: ☰   🔍   126 / 540   🔖   ⋮ ---
             AnimatedVisibility(
-                visible = state.areControlsVisible && state.selectedTextSelection == null && !state.isDrawingModeActive,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                visible = state.isDocumentReady && state.areControlsVisible && state.selectedTextSelection == null && !state.isDrawingModeActive,
+                enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color.White.copy(alpha = 0.98f),
-                    shadowElevation = 10.dp,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Slim scrubbing slider for fast page browsing
-                        Slider(
-                            value = state.currentPage.toFloat(),
-                            onValueChange = { viewModel.jumpToPage(it.toInt()) },
-                            valueRange = 0f..(state.pageCount - 1).coerceAtLeast(1).toFloat(),
-                            colors = SliderDefaults.colors(
-                                thumbColor = BrandPurple,
-                                activeTrackColor = BrandPurple,
-                                inactiveTrackColor = Color(0xFFE2E8F0)
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(22.dp)
-                                .testTag("reader_scrubber_slider")
-                        )
-
-                        Spacer(modifier = Modifier.height(2.dp))
-
-                        // The 5 iconic controls: ☰   🔍   126 / 540   🔖   ⋮
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // 1. ☰ Table of Contents & Navigation Drawer
-                            IconButton(
-                                onClick = { viewModel.setDrawerOpen(true, 0) },
-                                modifier = Modifier.size(44.dp).testTag("reader_bottom_menu_toc")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Menu,
-                                    contentDescription = "Table of Contents & Navigation",
-                                    tint = Color(0xFF334155),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            // 2. 🔍 Search
-                            IconButton(
-                                onClick = { viewModel.setSearchOpen(!state.isSearchOpen) },
-                                modifier = Modifier.size(44.dp).testTag("reader_bottom_search")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search PDF",
-                                    tint = if (state.isSearchOpen) BrandPurple else Color(0xFF334155),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            // 3. 126 / 540 (Page entry & jump)
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFFF1F5F9),
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable { viewModel.openGoToPageDialog() }
-                                    .testTag("reader_bottom_page_entry")
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
-                                ) {
-                                    Text(
-                                        text = "${state.currentPage + 1} / ${state.pageCount}",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF0F172A),
-                                        fontSize = 13.5.sp
-                                    )
+                Column(Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding()) {
+                    val thumbnailState = rememberLazyListState()
+                    LaunchedEffect(state.currentPage) { thumbnailState.animateScrollToItem((state.currentPage - 2).coerceAtLeast(0)) }
+                    LazyRow(state = thumbnailState, modifier = Modifier.fillMaxWidth().background(Color(0xFFE2E2E9)), contentPadding = PaddingValues(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(state.pageCount) { page ->
+                            Column(Modifier.width(60.dp).clickable { viewModel.jumpToPage(page) }, horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(Modifier.height(70.dp).fillMaxWidth().border(if (page == state.currentPage) 2.dp else 1.dp, if (page == state.currentPage) BrandPurple else Color(0xFFCCCCD8), RoundedCornerShape(5.dp)).padding(3.dp).background(Color.White), contentAlignment = Alignment.Center) {
+                                    MiniPageThumbnail(page, viewModel)
                                 }
+                                Text("${page + 1}", fontSize = 10.sp, color = Color(0xFF101326))
                             }
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = { viewModel.setDrawerOpen(true, 0) }) { Icon(Icons.Default.Menu, "Contents, bookmarks and history") }
+                        IconButton(onClick = viewModel::previousPage, enabled = state.currentPage > 0) { Icon(Icons.Default.ChevronLeft, "Previous page") }
+                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                            var scrubPage by remember(state.currentPage) { mutableFloatStateOf(state.currentPage.toFloat()) }
+                            Slider(value = scrubPage, onValueChange = { scrubPage = it }, onValueChangeFinished = { viewModel.jumpToPage(scrubPage.toInt()) }, valueRange = 0f..(state.pageCount - 1).coerceAtLeast(1).toFloat(), enabled = state.pageCount > 1, modifier = Modifier.height(32.dp))
+                            Text("${state.currentPage + 1} / ${state.pageCount}", fontSize = 11.sp, color = Color(0xFF101326), modifier = Modifier.clickable { viewModel.openGoToPageDialog() })
+                        }
+                        IconButton(onClick = viewModel::nextPage, enabled = state.currentPage < state.pageCount - 1) { Icon(Icons.Default.ChevronRight, "Next page") }
+                        IconButton(onClick = viewModel::openGoToPageDialog) { Icon(Icons.Default.FindInPage, "Go to page") }
+                    }
+                }
+            }
 
-                            // 4. 🔖 Bookmark
-                            IconButton(
-                                onClick = viewModel::toggleBookmark,
-                                modifier = Modifier.size(44.dp).testTag("reader_bottom_bookmark")
-                            ) {
-                                Icon(
-                                    imageVector = if (state.isCurrentPageBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                                    contentDescription = "Bookmark",
-                                    tint = if (state.isCurrentPageBookmarked) BrandPurple else Color(0xFF334155),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            // 5. ⋮ More Options
-                            IconButton(
-                                onClick = { viewModel.openMoreOptionsSheet(true) },
-                                modifier = Modifier.size(44.dp).testTag("reader_bottom_more_options")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.MoreVert,
-                                    contentDescription = "More Options",
-                                    tint = Color(0xFF334155),
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
+            if (state.isMoreOptionsSheetOpen) {
+                ModalBottomSheet(onDismissRequest = { viewModel.openMoreOptionsSheet(false) }) {
+                    Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                        Text("Reader options", style = MaterialTheme.typography.titleLarge)
+                        listOf(
+                            "Reading preferences" to { viewModel.showReadingPreferences(true) },
+                            "Contents & navigation" to { viewModel.setDrawerOpen(true, 0) },
+                            "Page thumbnails" to { viewModel.openThumbnailsDrawer() },
+                            "Bookmarks" to { viewModel.setDrawerOpen(true, 1) },
+                            "Annotations" to { viewModel.setDrawerOpen(true, 2) },
+                            "Reading history" to { viewModel.setDrawerOpen(true, 3) },
+                            "Export annotated copy" to { viewModel.exportAnnotatedPdf() }
+                        ).forEach { (label, action) ->
+                            TextButton(onClick = { viewModel.openMoreOptionsSheet(false); action() }, modifier = Modifier.fillMaxWidth()) { Text(label, Modifier.fillMaxWidth()) }
                         }
                     }
                 }
@@ -1141,8 +1039,9 @@ fun ReaderScreen(
                     var selectedTab by remember { mutableIntStateOf(state.activeDrawerTab) }
 
                     Column(modifier = Modifier.fillMaxWidth().height(480.dp)) {
-                        TabRow(
+                        androidx.compose.material3.ScrollableTabRow(
                             selectedTabIndex = selectedTab,
+                            edgePadding = 0.dp,
                             indicator = { tabPositions ->
                                 TabRowDefaults.SecondaryIndicator(
                                     Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
@@ -1165,9 +1064,16 @@ fun ReaderScreen(
                                 onClick = { selectedTab = 2 },
                                 text = { Text("Highlights (${state.allBookAnnotations.size})", fontWeight = FontWeight.Bold) }
                             )
+                            Tab(selected = selectedTab == 3, onClick = { selectedTab = 3 }, text = { Text("History") })
                         }
 
                         when (selectedTab) {
+                            3 -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp)) {
+                                if (state.readingHistory.isEmpty()) item { Text("Pages you visit appear here.") }
+                                items(state.readingHistory.asReversed()) { page ->
+                                    TextButton(onClick = { viewModel.jumpToPage(page); viewModel.setDrawerOpen(false) }, modifier = Modifier.fillMaxWidth()) { Text("Page ${page + 1}") }
+                                }
+                            }
                             0 -> {
                                 if (state.outline.isEmpty()) {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1396,13 +1302,17 @@ fun PdfPageItem(
     state: ReaderUiState,
     activeSelection: com.bookflow.app.pdf.engine.PdfTextSelection?,
     onAnnotationClick: (BookAnnotation) -> Unit,
+    onDoubleTap: () -> Unit = {},
+    fitPageToViewport: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    var pageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var pageBitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
+    var actualRatio by remember(pageIndex) { mutableFloatStateOf(aspectRatio) }
     var isLoading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(pageIndex) {
+    LaunchedEffect(pageIndex, state.preferences.highResolutionRendering, state.isDocumentReady) {
         isLoading = true
+        actualRatio = viewModel.loadPageAspectRatio(pageIndex)
         val bitmap = viewModel.loadPageBitmap(pageIndex)
         pageBitmap = bitmap
         isLoading = false
@@ -1417,11 +1327,11 @@ fun PdfPageItem(
 
     Box(
         modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(aspectRatio.coerceIn(0.4f, 2.0f))
+            .aspectRatio(actualRatio, matchHeightConstraintsFirst = fitPageToViewport)
             .pointerInput(pageIndex, annotations, state.isDrawingModeActive) {
                 if (!state.isDrawingModeActive) {
                     detectTapGestures(
+                        onDoubleTap = { onDoubleTap() },
                         onLongPress = { tapOffset ->
                             val normX = tapOffset.x / size.width.toFloat()
                             val normY = tapOffset.y / size.height.toFloat()
@@ -1440,9 +1350,7 @@ fun PdfPageItem(
                             if (hit != null) {
                                 onAnnotationClick(hit)
                             } else {
-                                viewModel.clearSelection()
-                                viewModel.closeAnnotationMenu()
-                                viewModel.toggleControls()
+                                viewModel.onPageTapped(pageIndex, normX, normY)
                             }
                         }
                     )
@@ -1457,12 +1365,45 @@ fun PdfPageItem(
                 modifier = Modifier.fillMaxSize()
             )
 
+            if (state.preferences.nightTreatment) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .28f)))
+            if (state.isSearchHighlightActive && state.activeSearchHighlight?.pageIndex == pageIndex) {
+                Canvas(Modifier.fillMaxSize()) {
+                    state.activeSearchHighlight.bounds.forEach { rect ->
+                        drawRect(Color(0xFFFFC400).copy(alpha = .5f), Offset(rect.left * size.width, rect.top * size.height), Size(rect.width * size.width, rect.height * size.height))
+                    }
+                }
+            }
+
             // Overlaid Highlights Canvas (Stored & Scaled purely via normalized coordinates)
             AnnotationOverlayCanvas(
                 annotations = annotations,
                 activeSelection = activeSelection,
                 modifier = Modifier.fillMaxSize()
             )
+
+            if (activeSelection != null) {
+                val bottom = activeSelection.highlightRects.maxOfOrNull { it.bottom } ?: .5f
+                val provider = remember(bottom) {
+                    object : androidx.compose.ui.window.PopupPositionProvider {
+                        override fun calculatePosition(anchorBounds: androidx.compose.ui.unit.IntRect, windowSize: androidx.compose.ui.unit.IntSize,
+                            layoutDirection: androidx.compose.ui.unit.LayoutDirection, popupContentSize: androidx.compose.ui.unit.IntSize): androidx.compose.ui.unit.IntOffset {
+                            val below = anchorBounds.top + (anchorBounds.height * bottom).toInt() + 12
+                            val y = if (below + popupContentSize.height < windowSize.height) below else below - popupContentSize.height - 36
+                            return androidx.compose.ui.unit.IntOffset((windowSize.width - popupContentSize.width) / 2, y.coerceIn(0, (windowSize.height - popupContentSize.height).coerceAtLeast(0)))
+                        }
+                    }
+                }
+                androidx.compose.ui.window.Popup(popupPositionProvider = provider, onDismissRequest = viewModel::clearSelection) {
+                    Box(Modifier.widthIn(max = 420.dp).padding(8.dp)) {
+                        TextSelectionContextBar(activeSelection.text, state.activeHighlightColorHex, viewModel::selectHighlightColor,
+                            { viewModel.createAnnotationFromSelection(AnnotationType.HIGHLIGHT) },
+                            { viewModel.createAnnotationFromSelection(AnnotationType.UNDERLINE) },
+                            { viewModel.createAnnotationFromSelection(AnnotationType.STRIKETHROUGH) },
+                            { viewModel.createAnnotationFromSelection(AnnotationType.NOTE) },
+                            viewModel::copySelectionToClipboard, viewModel::clearSelection)
+                    }
+                }
+            }
 
             // Overlaid Freehand Drawing Canvas (Pen, Highlighter, Eraser)
             DrawingPageCanvas(
@@ -1612,103 +1553,23 @@ fun TextSelectionContextBar(
     onCopy: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = Color(0xFF1E293B),
-        shadowElevation = 12.dp,
-        modifier = Modifier.fillMaxWidth().testTag("contextual_toolbar")
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-            // Top row: Selected text preview + Close button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "\"${selectedText.take(45)}${if (selectedText.length > 45) "..." else ""}\"",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFFE2E8F0),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Clear, contentDescription = "Dismiss", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+    Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 10.dp,
+        modifier = Modifier.fillMaxWidth().testTag("contextual_toolbar")) {
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            HighlightColorPalette.forEach { (name, hex) ->
+                IconButton(onClick = { onColorSelected(hex) }, modifier = Modifier.size(30.dp)) {
+                    Box(Modifier.size(20.dp).clip(CircleShape).background(Color(android.graphics.Color.parseColor(hex)))
+                        .border(if (selectedColorHex.equals(hex, true)) 2.dp else 0.dp, BrandPurple, CircleShape))
+                    if (selectedColorHex.equals(hex, true)) Icon(Icons.Default.Check, "Selected $name", Modifier.size(12.dp), tint = Color(0xFF101326))
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Middle row: 5 Highlight Colors
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "Color:",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF94A3B8)
-                )
-
-                HighlightColorPalette.forEach { (_, hex) ->
-                    val color = Color(android.graphics.Color.parseColor(hex))
-                    val isSelected = selectedColorHex.equals(hex, ignoreCase = true)
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                            .border(
-                                width = if (isSelected) 2.5.dp else 0.dp,
-                                color = if (isSelected) Color.White else Color.Transparent,
-                                shape = CircleShape
-                            )
-                            .clickable { onColorSelected(hex) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF0F172A), modifier = Modifier.size(14.dp))
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Bottom row: Actions: Highlight | Underline | Strikethrough | Add Note | Copy
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ContextBarActionButton(
-                    icon = Icons.Default.FormatColorText,
-                    label = "Highlight",
-                    onClick = onHighlight
-                )
-                ContextBarActionButton(
-                    icon = Icons.Default.FormatUnderlined,
-                    label = "Underline",
-                    onClick = onUnderline
-                )
-                ContextBarActionButton(
-                    icon = Icons.Default.FormatStrikethrough,
-                    label = "Strike",
-                    onClick = onStrikethrough
-                )
-                ContextBarActionButton(
-                    icon = Icons.Default.ChatBubbleOutline,
-                    label = "Note",
-                    onClick = onAddNote
-                )
-                ContextBarActionButton(
-                    icon = Icons.Default.ContentCopy,
-                    label = "Copy",
-                    onClick = onCopy
-                )
-            }
+            ContextBarActionButton(Icons.Default.FormatColorText, "Highlight", onHighlight)
+            ContextBarActionButton(Icons.Default.FormatUnderlined, "Underline", onUnderline)
+            ContextBarActionButton(Icons.Default.FormatStrikethrough, "Strikethrough", onStrikethrough)
+            ContextBarActionButton(Icons.Default.ChatBubbleOutline, "Add note", onAddNote)
+            ContextBarActionButton(Icons.Default.ContentCopy, "Copy", onCopy)
+            IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) { Icon(Icons.Default.Clear, "Dismiss selection", Modifier.size(16.dp), tint = Color(0xFF101326)) }
         }
     }
 }
@@ -1719,16 +1580,8 @@ private fun ContextBarActionButton(
     label: String,
     onClick: () -> Unit
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 6.dp, vertical = 6.dp)
-    ) {
-        Icon(imageVector = icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(16.dp))
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color.White, fontWeight = FontWeight.SemiBold)
+    IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
+        Icon(icon, label, tint = Color(0xFF101326), modifier = Modifier.size(18.dp))
     }
 }
 
@@ -1750,7 +1603,7 @@ fun ExistingAnnotationActionMenu(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFF1E293B),
+        color = Color.White,
         shadowElevation = 12.dp,
         modifier = Modifier.fillMaxWidth().testTag("annotation_action_menu")
     ) {
@@ -1764,7 +1617,7 @@ fun ExistingAnnotationActionMenu(
                     text = "${annotation.type.name} on Page ${annotation.pageIndex + 1}",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = Color(0xFF101326)
                 )
                 IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
                     Icon(Icons.Default.Clear, contentDescription = "Dismiss", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
@@ -1894,7 +1747,7 @@ private fun VerticalToolbarIcon(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = icon.name.substringAfterLast('.'),
             tint = if (isActive) Color.White else Color(0xFF475569),
             modifier = Modifier.size(18.dp)
         )

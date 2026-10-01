@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 data class CollectionsUiState(
+    val allBooks: List<Book> = emptyList(),
     val collections: List<BookCollection> = emptyList(),
     val selectedCollection: BookCollection? = null,
     val collectionBooks: List<Book> = emptyList(),
@@ -45,7 +46,7 @@ class CollectionsViewModel(
     ) { collections, allBooks, selected, isCreateOpen, query ->
         // Calculate book count dynamically
         val collectionsWithCounts = collections.map { col ->
-            val count = allBooks.count { it.collectionId == col.id }
+            val count = allBooks.count { col.id in it.collectionIds }
             col.copy(bookCount = count)
         }
 
@@ -59,12 +60,13 @@ class CollectionsViewModel(
         }
 
         val booksForSelected = if (selected != null) {
-            allBooks.filter { it.collectionId == selected.id }
+            allBooks.filter { selected.id in it.collectionIds }
         } else {
             emptyList()
         }
 
         CollectionsUiState(
+            allBooks = allBooks,
             collections = filteredCollections,
             selectedCollection = selected,
             collectionBooks = booksForSelected,
@@ -108,6 +110,10 @@ class CollectionsViewModel(
             _isCreateDialogOpen.value = false
         }
     }
+
+    fun toggleFavorite(book: Book) { viewModelScope.launch { bookRepository.toggleFavorite(book.id, !book.isFavorite) } }
+    fun removeBook(book: Book) { viewModelScope.launch { bookRepository.deleteBookFromLibrary(book.id) } }
+    fun setCollections(book: Book, ids: List<String>) { viewModelScope.launch { bookRepository.setBookCollections(book.id, ids) } }
 
     fun deleteCollection(collectionId: String) {
         viewModelScope.launch {

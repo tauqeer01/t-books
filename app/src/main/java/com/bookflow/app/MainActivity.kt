@@ -15,10 +15,24 @@ import com.bookflow.app.presentation.navigation.BookFlowNavGraph
 import com.bookflow.app.presentation.navigation.Screen
 
 class MainActivity : ComponentActivity() {
+    var onReaderVolumeKey: ((Boolean) -> Unit)? = null
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        val callback = onReaderVolumeKey
+        if (callback != null && keyCode in listOf(android.view.KeyEvent.KEYCODE_VOLUME_DOWN, android.view.KeyEvent.KEYCODE_VOLUME_UP)) {
+            callback(keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN)
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+    override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        if (onReaderVolumeKey != null && keyCode in listOf(android.view.KeyEvent.KEYCODE_VOLUME_DOWN, android.view.KeyEvent.KEYCODE_VOLUME_UP)) return true
+        return super.onKeyUp(keyCode, event)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        window.isNavigationBarContrastEnforced = false
 
         val incomingPdfUri: Uri? = intent?.data
 

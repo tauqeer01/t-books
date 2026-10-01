@@ -63,6 +63,9 @@ interface AnnotationRepository {
 
 interface PreferencesRepository {
     val preferencesFlow: Flow<UserReadingPreferences>
+    fun preferencesForBook(bookId: String): Flow<UserReadingPreferences>
+    suspend fun savePreferences(preferences: UserReadingPreferences, bookId: String? = null)
+    suspend fun clearBookPreferences(bookId: String)
     suspend fun updateTheme(theme: com.bookflow.app.domain.model.ReaderTheme)
     suspend fun updateScrollMode(mode: com.bookflow.app.domain.model.PageScrollMode)
     suspend fun updateHighResRendering(enabled: Boolean)

@@ -449,7 +449,15 @@ private fun OverviewTabContent(
     book: com.bookflow.app.domain.model.Book,
     state: BookDetailsUiState,
     onReadClick: () -> Unit
-) {
+ ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var filename by remember(book.id) { mutableStateOf(java.io.File(book.filePath).name.ifBlank { "Unavailable" }) }
+    androidx.compose.runtime.LaunchedEffect(book.id) {
+        if (book.uriString != null) filename = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            FileUtils.extractDocumentMetadata(context, android.net.Uri.parse(book.uriString)).fileName
+        }
+    }
+    fun date(timestamp: Long) = if (timestamp <= 0) "Not opened yet" else java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(timestamp))
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
@@ -520,6 +528,12 @@ private fun OverviewTabContent(
                         color = Color(0xFF0F172A)
                     )
 
+                    DetailRow(label = "Title", value = book.title)
+                    DetailRow(label = "Author", value = book.author)
+                    DetailRow(label = "Filename", value = filename)
+                    DetailRow(label = "Date Added", value = date(book.addedTimestamp))
+                    DetailRow(label = "Last Opened", value = date(book.lastReadTimestamp))
+                    DetailRow(label = "Reading Progress", value = "${(book.readingProgress * 100).toInt()}%")
                     DetailRow(label = "Format", value = book.category)
                     DetailRow(label = "Total Pages", value = "${book.pageCount} pages")
                     DetailRow(label = "Current Position", value = "Page ${book.currentPage + 1}")

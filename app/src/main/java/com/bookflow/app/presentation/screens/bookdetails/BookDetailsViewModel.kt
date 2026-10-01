@@ -92,7 +92,7 @@ class BookDetailsViewModel(
         // Find collections this book belongs to
         val belongingCols = if (book != null) {
             allCollections.filter { col ->
-                book.collectionIds.contains(col.id) || book.collectionId == col.id
+                book.collectionIds.contains(col.id)
             }
         } else emptyList()
 

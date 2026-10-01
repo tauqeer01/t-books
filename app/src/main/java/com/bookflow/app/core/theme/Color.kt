@@ -3,7 +3,7 @@ package com.bookflow.app.core.theme
 import androidx.compose.ui.graphics.Color
 
 // Brand Primary & Indigo Violet Palette (Matching BookFlow screenshot branding)
-val BrandPurple = Color(0xFF4F46E5) // Main BookFlow purple/indigo
+val BrandPurple = Color(0xFF5935FF) // Main BookFlow purple/indigo
 val BrandPurpleLight = Color(0xFF6366F1)
 val BrandPurpleSoft = Color(0xFFECEBFA)
 val BrandPurpleDark = Color(0xFF3730A3)
@@ -13,11 +13,11 @@ val AccentCoralLight = BrandPurpleSoft
 val AccentCoralDark = BrandPurpleDark
 
 // Neutral & Backgrounds
-val AppBackground = Color(0xFFF8FAFC)
+val AppBackground = Color(0xFFF8F8FF)
 val AppSurface = Color(0xFFFFFFFF)
 val AppSurfaceVariant = Color(0xFFF1F5F9)
-val AppTextPrimary = Color(0xFF0F172A)
-val AppTextSecondary = Color(0xFF64748B)
+val AppTextPrimary = Color(0xFF101326)
+val AppTextSecondary = Color(0xFF666B85)
 val AppDivider = Color(0xFFE2E8F0)
 
 // Quick Feature Chip Colors (Splash screen)

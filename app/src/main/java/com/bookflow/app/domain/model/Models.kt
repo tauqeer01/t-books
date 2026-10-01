@@ -8,8 +8,9 @@ enum class ReaderTheme(val displayName: String, val bgHex: String, val inkHex: S
 }
 
 enum class PageScrollMode(val displayName: String) {
-    HORIZONTAL_PAGING("Horizontal Flip"),
-    CONTINUOUS_VERTICAL("Continuous Scroll")
+    HORIZONTAL_PAGING("Horizontal"),
+    CONTINUOUS_VERTICAL("Vertical"),
+    SINGLE_PAGE("Single Page")
 }
 
 enum class AnnotationType {
@@ -82,10 +83,24 @@ data class Bookmark(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+enum class ReadingOrientation(val displayName: String) { AUTO("Auto"), PORTRAIT("Portrait"), LANDSCAPE("Landscape") }
+
 data class UserReadingPreferences(
-    val readerTheme: ReaderTheme = ReaderTheme.SEPIA,
-    val scrollMode: PageScrollMode = PageScrollMode.HORIZONTAL_PAGING,
+    val readerTheme: ReaderTheme = ReaderTheme.LIGHT,
+    val scrollMode: PageScrollMode = PageScrollMode.CONTINUOUS_VERTICAL,
     val highResolutionRendering: Boolean = true,
     val keepScreenOn: Boolean = true,
+    val pageSpacing: Int = 12,
+    val brightness: Float = -1f,
+    val orientation: ReadingOrientation = ReadingOrientation.AUTO,
+    val volumeButtonNavigation: Boolean = false,
+    val immersiveReading: Boolean = true,
+    val nightTreatment: Boolean = false,
+    val defaultHighlightColor: String = "#FFE600",
+    val penColor: String = "#5935FF",
+    val penWidth: Float = 3.5f,
+    val stylusOnly: Boolean = false,
+    val libraryGrid: Boolean = true,
+    val librarySort: BookSortOrder = BookSortOrder.RECENTLY_OPENED,
     val defaultEngine: String = "Android Native PdfRenderer"
 )

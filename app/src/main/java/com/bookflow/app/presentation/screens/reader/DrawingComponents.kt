@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -116,6 +118,7 @@ private val StrokeWidthPresets = listOf(
 /**
  * Modern floating Drawing Toolbar (Apple Books / Samsung Notes style)
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DrawingToolbar(
     state: ReaderUiState,
@@ -141,10 +144,10 @@ fun DrawingToolbar(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
             // ROW 1: Tool Selection, Undo/Redo, Stylus Toggle, Done
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // Drawing Tools Group (Pen, Highlighter, Eraser)
                 Row(
@@ -417,13 +420,18 @@ fun DrawingPageCanvas(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(pageIndex, state.isDrawingModeActive, state.drawingTool, state.isStylusOnlyDrawing) {
+            .pointerInput(pageIndex, state.isDrawingModeActive, state.drawingTool, state.isStylusOnlyDrawing, state.drawingColorHex, state.drawingStrokeWidth) {
                 if (!state.isDrawingModeActive) return@pointerInput
 
                 awaitPointerEventScope {
                     while (true) {
                         val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull() ?: continue
+                        if (event.changes.count { it.pressed && it.type == PointerType.Touch } > 1) {
+                            currentPoints.clear()
+                            continue
+                        }
+                        val change = event.changes.firstOrNull { it.type == PointerType.Stylus || it.type == PointerType.Eraser }
+                            ?: event.changes.firstOrNull() ?: continue
 
                         val isStylus = change.type == PointerType.Stylus || change.type == PointerType.Eraser
                         val shouldDraw = isStylus || !state.isStylusOnlyDrawing

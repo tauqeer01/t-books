@@ -59,9 +59,14 @@ enum class ReaderTool {
 
 data class ReaderUiState(
     val book: Book? = null,
+    val preferences: UserReadingPreferences = UserReadingPreferences(),
+    val isDocumentReady: Boolean = false,
+    val isSearching: Boolean = false,
+    val searchError: String? = null,
+    val navigationRequest: Int = 0,
+    val showReadingPreferences: Boolean = false,
     val currentPage: Int = 0,
     val pageCount: Int = 1,
-    val currentPageBitmap: Bitmap? = null,
     val isLoadingPage: Boolean = false,
     val outline: List<PdfOutlineItem> = emptyList(),
     val bookmarks: List<Bookmark> = emptyList(),
@@ -122,6 +127,7 @@ class ReaderViewModel(
     val uiState: StateFlow<ReaderUiState> = _uiState.asStateFlow()
 
     private var pdfEngine: PdfEngine? = null
+    private var searchJob: kotlinx.coroutines.Job? = null
 
     init {
         loadBookAndInitializeEngine()
@@ -160,19 +166,15 @@ class ReaderViewModel(
             val result = engine.openDocument(source)
             if (result is com.bookflow.app.pdf.engine.PdfDocumentResult.Success) {
                 val pageCount = engine.getPageCount()
-                val outline = engine.getTableOfContents()
-
-                // If outline is empty, build default chapters from book structure
-                val effectiveOutline = if (outline.isEmpty()) {
-                    buildDefaultChapters(book, pageCount)
-                } else outline
-
-                _uiState.value = _uiState.value.copy(
-                    pageCount = pageCount,
-                    outline = effectiveOutline
-                )
-
-                renderPage(_uiState.value.currentPage)
+                val page = _uiState.value.currentPage.coerceIn(0, (pageCount - 1).coerceAtLeast(0))
+                _uiState.value = _uiState.value.copy(pageCount = pageCount, currentPage = page, isDocumentReady = true, isLoadingPage = false)
+                refreshPageAnnotationsAndBookmark(page)
+                updateBookProgress(page)
+                try {
+                    val outline = engine.getTableOfContents()
+                    _uiState.value = _uiState.value.copy(outline = outline)
+                } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (_: Exception) { /* Rendering remains available for image-only or unsupported text. */ }
             } else if (result is com.bookflow.app.pdf.engine.PdfDocumentResult.Error) {
                 _uiState.value = _uiState.value.copy(
                     isLoadingPage = false,
@@ -182,26 +184,15 @@ class ReaderViewModel(
         }
     }
 
-    private fun buildDefaultChapters(book: Book, totalPages: Int): List<PdfOutlineItem> {
-        return if (book.id == "book_aircraft_systems") {
-            listOf(
-                PdfOutlineItem("Cover Page", 0, 0),
-                PdfOutlineItem("Table of Contents", 1, 0),
-                PdfOutlineItem("Chapter 1: Primary Flight Controls", 2, 0),
-                PdfOutlineItem("Chapter 2: Triple Redundant Hydraulics", 3, 0),
-                PdfOutlineItem("Chapter 3: Glass Cockpit EFIS Symbology", 4, 0)
-            )
-        } else {
-            (0 until totalPages).map { page ->
-                PdfOutlineItem("Page ${page + 1}", page, 0)
-            }
-        }
-    }
-
     private fun observePreferences() {
         viewModelScope.launch {
-            preferencesRepository.preferencesFlow.collect { prefs ->
+            preferencesRepository.preferencesForBook(bookId).collect { prefs ->
                 _uiState.value = _uiState.value.copy(
+                    preferences = prefs,
+                    activeHighlightColorHex = prefs.defaultHighlightColor,
+                    drawingColorHex = prefs.penColor,
+                    drawingStrokeWidth = prefs.penWidth,
+                    isStylusOnlyDrawing = prefs.stylusOnly,
                     readerTheme = prefs.readerTheme,
                     scrollMode = prefs.scrollMode
                 )
@@ -241,9 +232,11 @@ class ReaderViewModel(
                 .takeLast(20)
             _uiState.value = _uiState.value.copy(
                 currentPage = target,
-                readingHistory = history
+                readingHistory = history,
+                selectedTextSelection = null,
+                activeAnnotationMenu = null,
+                navigationRequest = _uiState.value.navigationRequest + 1
             )
-            renderPage(target)
             updateBookProgress(target)
             refreshPageAnnotationsAndBookmark(target)
         }
@@ -258,22 +251,6 @@ class ReaderViewModel(
     fun previousPage() {
         if (_uiState.value.currentPage > 0) {
             jumpToPage(_uiState.value.currentPage - 1)
-        }
-    }
-
-    private fun renderPage(pageIndex: Int) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoadingPage = true)
-            val engine = pdfEngine ?: return@launch
-            val bitmap = engine.renderPage(
-                pageIndex = pageIndex,
-                scale = 1.0f,
-                quality = RenderQuality.HIGH_DPI
-            )
-            _uiState.value = _uiState.value.copy(
-                currentPageBitmap = bitmap,
-                isLoadingPage = false
-            )
         }
     }
 
@@ -325,14 +302,11 @@ class ReaderViewModel(
     }
 
     fun toggleScrollMode() {
-        val newMode = if (_uiState.value.scrollMode == PageScrollMode.HORIZONTAL_PAGING) {
-            PageScrollMode.CONTINUOUS_VERTICAL
-        } else {
-            PageScrollMode.HORIZONTAL_PAGING
-        }
+        val modes = PageScrollMode.entries
+        val newMode = modes[(modes.indexOf(_uiState.value.scrollMode) + 1) % modes.size]
         _uiState.value = _uiState.value.copy(scrollMode = newMode)
         viewModelScope.launch {
-            preferencesRepository.updateScrollMode(newMode)
+            preferencesRepository.savePreferences(_uiState.value.preferences.copy(scrollMode = newMode), bookId)
         }
     }
 
@@ -368,12 +342,23 @@ class ReaderViewModel(
 
     suspend fun loadPageBitmap(pageIndex: Int): Bitmap? {
         val engine = pdfEngine ?: return null
-        return engine.renderPage(pageIndex, scale = 1.0f, quality = RenderQuality.HIGH_DPI)
+        return engine.renderPage(pageIndex, scale = 1.0f, quality = if (_uiState.value.preferences.highResolutionRendering) RenderQuality.HIGH_DPI else RenderQuality.STANDARD)
     }
 
     suspend fun loadThumbnailBitmap(pageIndex: Int): Bitmap? {
         val engine = pdfEngine ?: return null
         return engine.renderThumbnail(pageIndex)
+    }
+
+    suspend fun loadPageAspectRatio(pageIndex: Int): Float = pdfEngine?.loadPageDimensions(pageIndex)?.aspectRatio ?: .707f
+
+    fun onPageTapped(pageIndex: Int, x: Float, y: Float) {
+        viewModelScope.launch {
+            val target = try { pdfEngine?.internalLinkAt(pageIndex, x, y) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+            if (target != null) jumpToPage(target) else {
+                clearSelection(); closeAnnotationMenu(); toggleControls()
+            }
+        }
     }
 
     fun getPageAspectRatio(pageIndex: Int): Float {
@@ -393,34 +378,38 @@ class ReaderViewModel(
     }
 
     fun setSearchOpen(open: Boolean) {
+        if (!open) { searchJob?.cancel() }
         _uiState.value = _uiState.value.copy(
             isSearchOpen = open,
+            isSearching = false,
             searchQuery = if (!open) "" else _uiState.value.searchQuery,
             searchResults = if (!open) emptyList() else _uiState.value.searchResults
         )
     }
 
     fun onSearchQueryChanged(query: String) {
-        _uiState.value = _uiState.value.copy(
-            searchQuery = query,
-            currentSearchMatchIndex = 0
-        )
-        if (query.trim().isNotEmpty()) {
-            viewModelScope.launch {
+        searchJob?.cancel()
+        _uiState.value = _uiState.value.copy(searchQuery = query, searchResults = emptyList(), currentSearchMatchIndex = 0,
+            activeSearchHighlight = null, isSearchHighlightActive = false, isSearching = query.isNotBlank(), searchError = null)
+        if (query.isBlank()) return
+        searchJob = viewModelScope.launch {
+            kotlinx.coroutines.delay(250)
+            try {
                 val results = pdfEngine?.search(query) ?: emptyList()
-                _uiState.value = _uiState.value.copy(
-                    searchResults = results,
-                    currentSearchMatchIndex = 0
-                )
-            }
-        } else {
-            _uiState.value = _uiState.value.copy(
-                searchResults = emptyList(),
-                activeSearchHighlight = null,
-                isSearchHighlightActive = false
-            )
+                _uiState.value = _uiState.value.copy(searchResults = results, isSearching = false)
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (_: Exception) { _uiState.value = _uiState.value.copy(isSearching = false, searchError = "Text search is unavailable for this document.") }
         }
     }
+
+    fun showReadingPreferences(show: Boolean) { _uiState.value = _uiState.value.copy(showReadingPreferences = show) }
+    fun saveReadingPreferences(prefs: UserReadingPreferences, forBook: Boolean) {
+        viewModelScope.launch {
+            preferencesRepository.savePreferences(prefs, if (forBook) bookId else null)
+            if (!forBook) preferencesRepository.clearBookPreferences(bookId)
+        }
+    }
+    fun useGlobalPreferences() { viewModelScope.launch { preferencesRepository.clearBookPreferences(bookId) } }
 
     fun jumpToSearchResult(result: PdfSearchResult) {
         jumpToPage(result.pageIndex)
@@ -553,7 +542,7 @@ class ReaderViewModel(
     fun onPageLongPressed(pageIndex: Int, normX: Float, normY: Float) {
         viewModelScope.launch {
             val engine = pdfEngine ?: return@launch
-            val selection = engine.selectTextAtPoint(pageIndex, normX, normY)
+            val selection = try { engine.selectTextAtPoint(pageIndex, normX, normY) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
             if (selection != null) {
                 _uiState.value = _uiState.value.copy(
                     selectedTextSelection = selection,
@@ -689,12 +678,12 @@ class ReaderViewModel(
 
     fun setDrawingTool(tool: DrawingTool) {
         val defaultColor = when (tool) {
-            DrawingTool.PEN -> if (_uiState.value.drawingColorHex == "#FFE066") "#4F46E5" else _uiState.value.drawingColorHex
+            DrawingTool.PEN -> _uiState.value.preferences.penColor
             DrawingTool.HIGHLIGHTER -> "#FFE066"
             DrawingTool.ERASER -> _uiState.value.drawingColorHex
         }
         val defaultWidth = when (tool) {
-            DrawingTool.PEN -> 3.5f
+            DrawingTool.PEN -> _uiState.value.preferences.penWidth
             DrawingTool.HIGHLIGHTER -> 14.0f
             DrawingTool.ERASER -> 16.0f
         }
@@ -944,7 +933,8 @@ class ReaderViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        pdfEngine?.close()
+        val engine = pdfEngine
+        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch { engine?.close() }
     }
 
     class Factory(

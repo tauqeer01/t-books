@@ -45,6 +45,13 @@ class PdfiumEngineAdapter(
         endNormalized: PdfRect
     ): PdfTextSelection? = fallbackEngine.selectTextAt(pageIndex, startNormalized, endNormalized)
 
+    override suspend fun loadPageDimensions(pageIndex: Int) = fallbackEngine.loadPageDimensions(pageIndex)
+    override suspend fun internalLinkAt(pageIndex: Int, x: Float, y: Float) = fallbackEngine.internalLinkAt(pageIndex, x, y)
+    override suspend fun documentMetadata() = fallbackEngine.documentMetadata()
+    override suspend fun renderThumbnail(pageIndex: Int) = fallbackEngine.renderThumbnail(pageIndex)
+    override fun evictPage(pageIndex: Int) = fallbackEngine.evictPage(pageIndex)
+    override suspend fun selectTextAtPoint(pageIndex: Int, normX: Float, normY: Float) = fallbackEngine.selectTextAtPoint(pageIndex, normX, normY)
+
     override fun close() {
         fallbackEngine.close()
     }

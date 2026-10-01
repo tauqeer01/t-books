@@ -1,0 +1,525 @@
+Product concept: BookFlow
+A modern PDF reading and annotation app inspired by the simplicity of Apple Books, but designed for Android phones and tablets.
+Core stack
+Platform: Android
+Language: Kotlin
+UI: Jetpack Compose + Material 3
+Architecture: Clean Architecture + MVVM
+DI: Hilt
+Database: Room
+Preferences: DataStore
+Async: Coroutines + Flow
+Navigation: Navigation Compose
+Storage: Android Storage Access Framework
+Images: Coil
+PDF Engine: PDFium-based engine / capable PDF SDK abstraction
+Min Android: Android 10+
+Target: Latest stable Android SDK
+
+Important: create a PdfEngine abstraction. Don't tightly couple the application to one PDF library. Text selection, coordinates, annotations, links, search and rendering requirements may eventually require changing engines.
+
+Phase 1 — Foundation & UI
+Give your agent:
+Build an Android PDF reader application using Kotlin and the latest stable
+Jetpack Compose + Material 3.
+
+Use:
+- Clean Architecture
+- MVVM
+- Hilt
+- Room
+- DataStore
+- Kotlin Coroutines/Flow
+- Navigation Compose
+- Coil
+- Android Storage Access Framework
+
+Create modules/layers:
+
+data/
+domain/
+presentation/
+core/
+pdf/
+
+Create a modern tablet-responsive interface inspired by premium book-reading
+applications, without copying Apple assets or proprietary UI.
+
+Main navigation:
+
+Library
+Recent
+Collections
+Favorites
+Settings
+
+Library screen:
+- Grid/list toggle
+- PDF cover thumbnails
+- Book title
+- Reading percentage
+- Recently opened
+- Search
+- Sort
+- Filter
+- Import PDF FAB
+- Empty state
+
+Support phone and tablet layouts.
+
+Create Room entities:
+
+Book
+Collection
+BookCollectionCrossRef
+ReadingProgress
+Bookmark
+Highlight
+Annotation
+
+Do not implement cloud/backend.
+All data must remain on device.
+
+Complete and test Phase 1 before implementing PDF annotations.
+
+Phase 2 — PDF Import & Library
+Implement proper document management.
+Implement PDF import using Android Storage Access Framework.
+
+Requirements:
+
+- Open PDF from device
+- Import one or multiple PDFs
+- Persist URI permissions where appropriate
+- Extract filename
+- Extract metadata when available
+- Determine page count
+- Generate first-page thumbnail
+- Store book metadata in Room
+- Detect duplicate imports
+- Recently opened
+- Favorites
+- Delete from library without deleting original file
+- Optional explicit delete-file action with confirmation
+- Grid/list library
+- Search books
+- Sort:
+    title
+    recently opened
+    date added
+    reading progress
+
+Create Collections.
+
+A book can belong to multiple collections.
+
+Do not copy large PDFs into internal application storage unnecessarily.
+
+This last point matters. A 1 GB PDF library shouldn't become another 1 GB app-data copy unless the user specifically requests managed copies.
+Phase 3 — Core PDF Reader
+This is the most important phase.
+Create production-quality PDFReaderScreen.
+
+Features:
+
+- High quality page rendering
+- Lazy page loading
+- Vertical continuous scrolling
+- Single page mode
+- Horizontal page navigation
+- Pinch zoom
+- Double-tap zoom
+- Pan while zoomed
+- Current page indicator
+- Jump to page
+- Previous/next page
+- Full-screen reading
+- Show/hide controls by tapping page
+- Restore last reading position
+- Save reading progress automatically
+- Page thumbnails
+- PDF outline/table of contents
+- Internal PDF links where supported
+
+Optimize rendering for large PDFs.
+
+Never render the entire PDF into memory.
+
+Use page caching and release off-screen page resources.
+
+Create PdfEngine interface so the underlying PDF implementation can later
+be replaced without rewriting reader UI/domain logic.
+
+For a 500-page medical or aviation book, lazy rendering and caching are critical.
+Phase 4 — Text Selection & Highlighting
+Now it starts becoming an Apple Books/Xodo alternative.
+Add PDF text interaction.
+
+User must be able to long-press selectable PDF text.
+
+Display contextual toolbar:
+
+Highlight
+Underline
+Strikethrough
+Add Note
+Copy
+
+Highlight colors:
+Yellow
+Green
+Blue
+Pink
+Purple
+
+Persist annotation information independently from UI.
+
+Store:
+- Book ID
+- Page number
+- Selected text
+- Annotation type
+- Color
+- PDF/page coordinates
+- Created date
+- Updated date
+
+Highlights must remain correctly positioned after:
+- Zooming
+- Rotation
+- Different screen sizes
+- Closing/reopening document
+
+Tapping highlighted text should show:
+Edit note
+Change color
+Delete highlight
+
+Do not let the agent implement highlights using screen pixel coordinates. Store coordinates relative to the PDF page coordinate system.
+Phase 5 — Notes, Bookmarks & Annotation Hub
+This can differentiate your app.
+Implement:
+
+Bookmarks
+Text notes
+Highlights
+Underlines
+Strikethroughs
+
+Create BookDetails screen.
+
+Tabs:
+
+Overview
+Bookmarks
+Highlights
+Notes
+
+Show all annotations for a PDF.
+
+Example:
+
+Page 23
+"The electrical potential difference..."
+
+Yellow Highlight
+Note: Review before exam
+
+Clicking an annotation must open the PDF directly at the corresponding
+page and annotation.
+
+Allow:
+- Edit
+- Delete
+- Filter by annotation type
+- Filter by highlight color
+- Search highlighted text/notes
+- Sort by page/date
+
+For students, this screen could become one of the app's strongest features.
+Phase 6 — Pen & Freehand Annotation
+Particularly useful on tablets.
+Add drawing annotation layer.
+
+Tools:
+
+Pen
+Highlighter pen
+Eraser
+Color selector
+Stroke width
+Undo
+Redo
+
+Support stylus input.
+
+Differentiate stylus drawing from finger scrolling where Android APIs/device
+capabilities allow.
+
+Persist strokes using PDF-relative coordinates.
+
+Drawing must remain aligned during zoom, rotation and device changes.
+
+Optimize stroke rendering for low latency.
+
+Add option:
+
+Export annotated copy
+
+This would make a Moto Pad + stylus much more useful.
+Phase 7 — Search & Navigation
+Implement full PDF text search.
+
+Search results must display:
+
+Matched text
+Page number
+Context around result
+
+Click result -> jump to match.
+
+Highlight search result temporarily.
+
+Add:
+
+Page thumbnail navigator
+Page number entry
+Table of contents
+Bookmarks navigation
+Annotation navigation
+Reading history
+
+A useful bottom reader control could be:
+☰      🔍       126 / 540       🔖       ⋮
+
+Keep the UI hidden during normal reading.
+Phase 8 — Reading Experience
+Now polish it into a premium reader.
+Implement reading preferences.
+
+Options:
+
+Vertical continuous
+Horizontal pages
+Single page
+
+Page spacing
+Screen brightness
+Keep screen awake
+Orientation:
+Auto
+Portrait
+Landscape
+
+Remember preferences globally and optionally per book.
+
+Implement immersive reading mode.
+
+Hide Android/navigation UI where appropriate.
+
+Add configurable volume-button page navigation.
+
+Create smooth transitions without unnecessary animations.
+
+For PDFs, don't simply invert everything for "dark mode." Images, diagrams and scanned documents can look terrible. Implement PDF night treatment carefully and make it optional.
+Phase 9 — Library Experience
+Make the home screen feel closer to Apple Books.
+Redesign Library around:
+
+Continue Reading
+
+Recently Opened
+
+My Library
+
+Collections
+
+Favorites
+
+Each book card:
+
+Cover
+Title
+Reading progress
+
+Long press:
+
+Open
+Favorite
+Add to Collection
+Book Information
+Share
+Remove from Library
+
+Book information:
+
+Title
+Author
+Filename
+File size
+Pages
+Date added
+Last opened
+Reading progress
+Number of highlights
+Number of notes
+Number of bookmarks
+
+Tablet UI should take advantage of available width rather than simply stretching the phone UI.
+
+
+Future - phase we will implement later after deploy phase 1-9 on production
+Phase 10 — EPUB
+Only after PDF functionality is stable.
+Add EPUB support without changing existing PDF architecture.
+
+Support:
+
+EPUB2/EPUB3
+Table of contents
+Font size
+Font family
+Line spacing
+Margins
+Themes
+Light
+Sepia
+Dark
+
+Text selection
+Highlight
+Notes
+Bookmarks
+Search
+
+Synchronize annotation concepts between PDF and EPUB using common
+domain models where appropriate.
+
+Then your app becomes a true Books app, rather than a PDF viewer.
+Phase 11 — Backup & Restore
+Still no server required.
+Implement local backup/export.
+
+Backup:
+
+Library metadata
+Collections
+Reading progress
+Highlights
+Notes
+Bookmarks
+Preferences
+
+Do not include original PDF files by default.
+
+Create portable backup format.
+
+Allow:
+
+Export Backup
+Restore Backup
+
+Validate backup version and schema before restoration.
+
+Later you could add Google Drive synchronization.
+Phase 12 — AI Reading Assistant
+I would keep this completely separate from the core reader.
+When text is selected:
+Highlight
+Note
+Copy
+────────────────
+Ask AI
+Explain
+Summarize
+Flashcards
+Quiz
+
+Then support:
+Explain — explain selected text simply.
+Summarize — summarize page/selected pages/chapter.
+Flashcards — convert important concepts into study cards.
+Quiz — generate MCQs from selected pages.
+For your education-related work, the interesting workflow is:
+PDF
+ ↓
+Highlight important content
+ ↓
+Generate Notes
+ ↓
+Generate Flashcards
+ ↓
+Generate MCQs
+ ↓
+Revision
+
+But don't put this into initial development. Get the reader excellent first.
+Phase 13 — Performance
+Tell the agent explicitly:
+Test with:
+
+10-page PDF
+100-page PDF
+500-page PDF
+1000+ page PDF
+Image-heavy PDF
+Scanned PDF
+Text-heavy textbook
+Password-protected PDF
+Corrupted PDF
+Very large PDF
+
+Measure:
+
+Memory consumption
+Page rendering time
+Scroll FPS
+Zoom performance
+Startup time
+Thumbnail generation
+Battery consumption
+
+Never load complete PDF page bitmaps into memory.
+
+Implement bounded LRU page cache.
+
+Cancel rendering jobs when pages leave viewport.
+
+Generate thumbnails asynchronously.
+
+Database operations must never block UI thread.
+
+Phase 14 — Security & Privacy
+One selling point could be:
+Your books stay on your device.
+
+Core reader shouldn't require an account.
+No account required
+No PDF uploads
+Offline-first
+No unnecessary storage permissions
+Use SAF
+Encrypted app preferences where necessary
+No analytics containing document names/content
+AI functionality must require explicit user action
+Never send document content to AI without informing user
+
+Phase 15 — Play Store Release
+Before release:
+Adaptive icon
+Splash screen
+Privacy policy
+Terms
+About
+Open-source licenses
+Crash reporting
+Accessibility testing
+TalkBack labels
+Large-screen testing
+Dark/light app theme
+Android edge-to-edge support
+Proper back navigation
+App bundle release
+ProGuard/R8
+Baseline profiles
+Release signing

@@ -70,6 +70,10 @@ class SettingsViewModel(
         return size
     }
 
+    fun savePreferences(preferences: UserReadingPreferences) {
+        viewModelScope.launch { preferencesRepository.savePreferences(preferences) }
+    }
+
     fun setTheme(theme: ReaderTheme) {
         viewModelScope.launch {
             preferencesRepository.updateTheme(theme)

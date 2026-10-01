@@ -101,12 +101,11 @@ fun BookFlowBottomBar(
 ) {
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding(),
+            .fillMaxWidth(),
         color = Color.White,
         shadowElevation = 8.dp
     ) {
-        Column {
+        Column(Modifier.navigationBarsPadding()) {
             HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
 
             Row(

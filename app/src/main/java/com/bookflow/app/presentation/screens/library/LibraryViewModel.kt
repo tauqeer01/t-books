@@ -11,6 +11,7 @@ import com.bookflow.app.domain.repository.BookRepository
 import com.bookflow.app.domain.repository.CollectionRepository
 import com.bookflow.app.domain.usecase.GetBooksUseCase
 import com.bookflow.app.domain.usecase.GetCollectionsUseCase
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -29,7 +30,7 @@ data class LibraryUiState(
     val continueReadingBook: Book? = null,
     val searchQuery: String = "",
     val selectedCategory: String = "All",
-    val availableCategories: List<String> = listOf("All", "PDF", "EPUB", "Favorites"),
+    val availableCategories: List<String> = listOf("All", "PDF", "Recent", "Favorites"),
     val sortOrder: BookSortOrder = BookSortOrder.RECENTLY_OPENED,
     val viewMode: LibraryViewMode = LibraryViewMode.GRID,
     val isImporting: Boolean = false,
@@ -42,7 +43,8 @@ class LibraryViewModel(
     private val getBooksUseCase: GetBooksUseCase,
     private val getCollectionsUseCase: GetCollectionsUseCase,
     private val bookRepository: BookRepository,
-    private val collectionRepository: CollectionRepository
+    private val collectionRepository: CollectionRepository,
+    private val preferencesRepository: com.bookflow.app.domain.repository.PreferencesRepository
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
@@ -70,7 +72,7 @@ class LibraryViewModel(
         val managingBook = extras[2] as Book?
         val collectionIds = extras[3] as List<String>
 
-        val continueBook = allBooks.maxByOrNull { it.lastReadTimestamp }
+        val continueBook = allBooks.filter { it.readingProgress > 0f && it.readingProgress < 1f }.maxByOrNull { it.lastReadTimestamp }
 
         var filtered = if (query.isNotBlank()) {
             allBooks.filter {
@@ -84,7 +86,8 @@ class LibraryViewModel(
         filtered = when (category) {
             "Favorites" -> filtered.filter { it.isFavorite }
             "PDF" -> filtered.filter { it.category == "PDF" }
-            "EPUB" -> filtered.filter { it.category == "EPUB" }
+            "Reading" -> filtered.filter { it.readingProgress > 0f && it.readingProgress < 1f }
+            "Recent" -> filtered.filter { it.lastReadTimestamp > 0 }
             else -> filtered
         }
 
@@ -114,6 +117,13 @@ class LibraryViewModel(
         initialValue = LibraryUiState()
     )
 
+    init {
+        viewModelScope.launch { preferencesRepository.preferencesFlow.collect { prefs ->
+            _viewMode.value = if (prefs.libraryGrid) LibraryViewMode.GRID else LibraryViewMode.LIST
+            _sortOrder.value = prefs.librarySort
+        } }
+    }
+
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
     }
@@ -124,10 +134,12 @@ class LibraryViewModel(
 
     fun onSortOrderChanged(sortOrder: BookSortOrder) {
         _sortOrder.value = sortOrder
+        viewModelScope.launch { preferencesRepository.savePreferences(preferencesRepository.preferencesFlow.first().copy(librarySort = sortOrder)) }
     }
 
     fun toggleViewMode() {
         _viewMode.value = if (_viewMode.value == LibraryViewMode.GRID) LibraryViewMode.LIST else LibraryViewMode.GRID
+        viewModelScope.launch { preferencesRepository.savePreferences(preferencesRepository.preferencesFlow.first().copy(libraryGrid = _viewMode.value == LibraryViewMode.GRID)) }
     }
 
     fun toggleFavorite(book: Book, isFavorite: Boolean) {
@@ -187,9 +199,7 @@ class LibraryViewModel(
     fun openManageCollectionsDialog(book: Book) {
         _bookToManageCollections.value = book
         viewModelScope.launch {
-            bookRepository.getCollectionIdsForBook(book.id).collect { ids ->
-                _selectedBookCollectionIds.value = ids
-            }
+            _selectedBookCollectionIds.value = bookRepository.getCollectionIdsForBook(book.id).first()
         }
     }
 
@@ -216,6 +226,13 @@ class LibraryViewModel(
         }
     }
 
+    fun setCollections(book: Book, ids: List<String>) {
+        viewModelScope.launch {
+            bookRepository.setBookCollections(book.id, ids)
+            closeManageCollectionsDialog()
+        }
+    }
+
     fun clearImportMessage() {
         _importMessage.value = null
     }
@@ -224,11 +241,12 @@ class LibraryViewModel(
         private val getBooksUseCase: GetBooksUseCase,
         private val getCollectionsUseCase: GetCollectionsUseCase,
         private val bookRepository: BookRepository,
-        private val collectionRepository: CollectionRepository
+        private val collectionRepository: CollectionRepository,
+        private val preferencesRepository: com.bookflow.app.domain.repository.PreferencesRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return LibraryViewModel(getBooksUseCase, getCollectionsUseCase, bookRepository, collectionRepository) as T
+            return LibraryViewModel(getBooksUseCase, getCollectionsUseCase, bookRepository, collectionRepository, preferencesRepository) as T
         }
     }
 }

@@ -28,7 +28,7 @@ class CollectionRepositoryImpl(
     }
 
     override suspend fun deleteCollection(id: String) = withContext(Dispatchers.IO) {
-        collectionDao.deleteCollectionById(id)
+        collectionDao.removeCollection(id)
     }
 
     override suspend fun preloadDefaultCollections() = withContext(Dispatchers.IO) {

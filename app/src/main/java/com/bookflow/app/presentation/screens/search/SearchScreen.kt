@@ -79,9 +79,9 @@ fun SearchScreen(
     val recentSearches = listOf("Aircraft Systems", "Turbofan", "Hydraulics", "Power Plant", "Avionics")
 
     // Match books
-    val matchedBooks = remember(state.myLibraryBooks, state.searchQuery) {
+    val matchedBooks = remember(state.allBooks, state.searchQuery) {
         if (state.searchQuery.isBlank()) emptyList()
-        else state.myLibraryBooks.filter {
+        else state.allBooks.filter {
             it.title.contains(state.searchQuery, ignoreCase = true) ||
             it.author.contains(state.searchQuery, ignoreCase = true)
         }
@@ -109,14 +109,14 @@ fun SearchScreen(
     }
 
     // Reading history (Books previously opened, sorted by last read date)
-    val readingHistoryBooks = remember(state.myLibraryBooks) {
-        state.myLibraryBooks.sortedByDescending { it.lastReadTimestamp }
+    val readingHistoryBooks = remember(state.allBooks) {
+        state.allBooks.filter { it.lastReadTimestamp > 0 }.sortedByDescending { it.lastReadTimestamp }
     }
 
     Scaffold(
         modifier = modifier
             .fillMaxSize()
-            .statusBarsPadding(),
+,
         containerColor = Color(0xFFF8FAFC)
     ) { paddingValues ->
         Column(
@@ -129,13 +129,13 @@ fun SearchScreen(
                 Text(
                     text = "Search & Navigation",
                     style = MaterialTheme.typography.displayMedium,
-                    fontFamily = FontFamily.Serif,
+
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF0F172A),
                     fontSize = 26.sp
                 )
                 Text(
-                    text = "Full-text search across books, highlights, and notes",
+                    text = "Search book titles, highlights, and notes",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF64748B)
                 )
@@ -364,7 +364,7 @@ fun SearchScreen(
                             )
                         }
                         items(matchedHighlights, key = { "ann_${it.id}" }) { ann ->
-                            val book = state.myLibraryBooks.find { it.id == ann.bookId }
+                            val book = state.allBooks.find { it.id == ann.bookId }
                             SearchHighlightResultCard(
                                 annotation = ann,
                                 bookTitle = book?.title ?: "Document",
@@ -385,7 +385,7 @@ fun SearchScreen(
                             )
                         }
                         items(matchedNotes, key = { "note_${it.id}" }) { ann ->
-                            val book = state.myLibraryBooks.find { it.id == ann.bookId }
+                            val book = state.allBooks.find { it.id == ann.bookId }
                             SearchNoteResultCard(
                                 annotation = ann,
                                 bookTitle = book?.title ?: "Document",

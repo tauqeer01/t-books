@@ -27,6 +27,9 @@ interface PdfEngine {
      * Gets dimensions for a specific page.
      */
     fun getPageDimensions(pageIndex: Int): PdfPageDimensions
+    suspend fun loadPageDimensions(pageIndex: Int): PdfPageDimensions = getPageDimensions(pageIndex)
+    suspend fun internalLinkAt(pageIndex: Int, x: Float, y: Float): Int? = null
+    suspend fun documentMetadata(): Pair<String?, String?> = null to null
 
     /**
      * Renders a high-resolution Bitmap for the requested page.
