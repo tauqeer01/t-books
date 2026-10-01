@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">BookFlow</string>
+    <string name="app_tagline">Your Reading Companion</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_library">Library</string>
+    <string name="nav_collections">Collections</string>
+    <string name="nav_search">Search</string>
+    <string name="nav_settings">Settings</string>
+</resources>

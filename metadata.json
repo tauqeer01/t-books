@@ -1,0 +1,8 @@
+{
+  "name": "BookFlow",
+  "description": "A modern PDF reading and annotation app inspired by the simplicity of Apple Books, designed for Android phones and tablets.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

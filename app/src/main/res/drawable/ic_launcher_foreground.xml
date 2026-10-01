@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.55"
+        android:scaleY="0.55"
+        android:translateX="24.3"
+        android:translateY="24.3">
+        <!-- Open book left page -->
+        <path
+            android:fillColor="#E06D53"
+            android:pathData="M18,34 C28,34 38,30 48,26 L48,84 C38,88 28,92 18,92 C14,92 12,90 12,86 L12,40 C12,36 14,34 18,34 Z" />
+        <!-- Open book right page -->
+        <path
+            android:fillColor="#D85C42"
+            android:pathData="M90,34 C80,34 70,30 60,26 L60,84 C70,88 80,92 90,92 C94,92 96,90 96,86 L96,40 C96,36 94,34 90,34 Z" />
+        <!-- Center spine bookmark ribbon -->
+        <path
+            android:fillColor="#3B4252"
+            android:pathData="M51,20 L57,20 L57,60 L54,56 L51,60 Z" />
+    </group>
+</vector>
