@@ -121,7 +121,7 @@ fun BookFlowBottomBar(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
+                            .weight(1f)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
@@ -130,32 +130,25 @@ fun BookFlowBottomBar(
                                     onNavigate(tab.route)
                                 }
                             }
-                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                            .padding(vertical = 4.dp)
                             .testTag(tab.testTag)
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(if (isSelected) BrandPurpleSoft else Color.Transparent)
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (isSelected) tab.filledIcon else tab.outlinedIcon,
-                                contentDescription = stringResource(tab.labelRes),
-                                tint = if (isSelected) BrandPurple else Color(0xFF64748B),
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = if (isSelected) tab.filledIcon else tab.outlinedIcon,
+                            contentDescription = stringResource(tab.labelRes),
+                            tint = if (isSelected) BrandPurple else Color(0xFF475569),
+                            modifier = Modifier.size(24.dp)
+                        )
 
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text = stringResource(tab.labelRes),
                             style = MaterialTheme.typography.labelSmall,
-                            fontSize = 11.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) BrandPurple else Color(0xFF64748B)
+                            fontSize = 11.5.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                            color = if (isSelected) BrandPurple else Color(0xFF334155),
+                            maxLines = 1
                         )
                     }
                 }
