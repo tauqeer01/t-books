@@ -19,7 +19,7 @@ class BaselineProfileGenerator {
     val rule = BaselineProfileRule()
 
     @Test
-    fun startupHomeAndReader() = rule.collect(packageName = "com.bookflow.app", includeInStartupProfile = true) {
+    fun startupHomeAndReader() = rule.collect(packageName = "com.alhadaftech.bookflow", includeInStartupProfile = true) {
         pressHome()
         startActivityAndWait()
 

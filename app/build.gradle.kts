@@ -21,7 +21,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.bookflow.app"
+        // Play Store app ID: permanent once the first bundle is uploaded. (namespace above is only the Kotlin/R package.)
+        applicationId = "com.alhadaftech.bookflow"
         minSdk = 29
         targetSdk = 36
         versionCode = 1
