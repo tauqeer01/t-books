@@ -88,7 +88,7 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
             item { SectionHeader("Continue Reading") { onLibrary("Reading") } }
             item {
                 if (state.continueReadingBooks.isEmpty()) EmptyShelf("Open a PDF to start your next chapter.")
-                else LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                else LazyRow(state = rememberShelfState(state.continueReadingBooks.first().id), contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(state.continueReadingBooks, key = { it.id }) { book ->
                         CompactBookCard(book, { onBookClick(book.id, book.currentPage) }, { actions = book }, width = 112.dp, showProgress = true)
                     }
@@ -97,7 +97,7 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
             item { SectionHeader("Recently Opened") { onLibrary("Recent") } }
             item {
                 if (state.recentlyOpenedBooks.isEmpty()) EmptyShelf("Your recently opened books will appear here.")
-                else LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                else LazyRow(state = rememberShelfState(state.recentlyOpenedBooks.first().id), contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(state.recentlyOpenedBooks.take(12), key = { it.id }) { book ->
                         CompactBookCard(book, { onBookClick(book.id, book.currentPage) }, { actions = book }, width = CompactCoverWidth)
                     }
@@ -129,6 +129,17 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
 }
 
 private val CompactCoverWidth = 92.dp
+
+/**
+ * Shelf scroll state that returns to the start when a different book moves to the front (e.g. the one just read).
+ * Without this, keyed lazy rows stay anchored to the previous first book and the newest one is hidden off-screen.
+ */
+@Composable
+private fun rememberShelfState(firstBookId: String): androidx.compose.foundation.lazy.LazyListState {
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(firstBookId) { listState.scrollToItem(0) }
+    return listState
+}
 private const val CoverAspectRatio = 0.7f
 
 private fun greeting(): String = when (java.time.LocalTime.now().hour) {

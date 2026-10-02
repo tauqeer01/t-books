@@ -25,8 +25,8 @@ Everything needed to publish **BookFlow 1.0.0 (version code 1)**, package `com.b
 | Short description (78/80) | Read, highlight and annotate PDFs. Private, offline, with daily reading goals. |
 | App icon | `docs/play-store/icon-512.png` (512×512) |
 | Feature graphic | `docs/play-store/feature-graphic-1024x500.png` (1024×500) |
-| Phone screenshots | 2–8 required (1080×1920 or larger, 9:16). Suggested: Home, reader with highlights, annotation tool strip, Book mode page curl, Today's Reading goal, dark mode |
-| Tablet screenshots | 7" and 10" recommended for large-screen visibility (app supports tablets with a navigation rail) |
+| Phone screenshots | `docs/play-store/screenshots/phone/01…08-*.png` (8 images, 1080×1920, 9:16), upload in numbered order |
+| Tablet screenshots | `docs/play-store/screenshots/tablet/01…04-*.png` (4 images, 2560×1600, 16:10), upload to both **7-inch** and **10-inch** tablet slots |
 | Category | Books & Reference |
 | Contact email | aht.apps@alhadaftech.com |
 | Privacy policy URL | Host `docs/legal/privacy-policy.html` publicly (e.g. GitHub Pages) and paste the URL |
@@ -126,5 +126,4 @@ Notes for reviewers / your own records:
 ## 8. Open items
 
 - [ ] **App baseline profile**: the `:baselineprofile` module is set up, but generation on the Android 16 emulator failed with Macrobenchmark 1.3.4 ("Unable to confirm activity launch completion"). Next step: upgrade `baselineprofile` to 1.4.x in `gradle/libs.versions.toml`, then `./gradlew :app:generateReleaseBaselineProfile` with a device connected (note: the run uninstalls the app afterwards). Library profiles (Compose etc.) are already included in the bundle.
-- [ ] Capture store screenshots (phone, plus 7"/10" tablet).
 - [ ] Host `docs/legal/privacy-policy.html` and `terms-of-use.html` and add the URL in Play Console.
