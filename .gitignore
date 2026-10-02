@@ -29,3 +29,10 @@ out/
 .gradle/
 .kotlin/
 local.properties
+
+# Release signing (never commit; back these up somewhere safe)
+keystore.properties
+keystore/
+*.jks
+*.keystore
+!debug.keystore
