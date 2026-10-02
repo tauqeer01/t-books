@@ -35,6 +35,10 @@ internal class PdfTextIndex(private val context: Context) {
 
     private fun doc(): PDDocument {
         document?.let { return it }
+        // Heavy I/O: intentionally NOT inside synchronized(lock) to avoid blocking
+        // other callers. The double-check pattern below is safe because PDDocument
+        // assignment is an atomic reference write, and duplicate parses are harmless
+        // (the loser is simply closed).
         PDFBoxResourceLoader.init(context.applicationContext)
         val input = when (val s = checkNotNull(source)) {
             is PdfSource.FileSource -> FileInputStream(s.file)
@@ -48,7 +52,13 @@ internal class PdfTextIndex(private val context: Context) {
         try {
             val parser = PDFParser(access)
             parser.parse()
-            return parser.pdDocument.also { document = it }
+            val parsed = parser.pdDocument
+            synchronized(lock) {
+                // Double-check: another thread may have parsed while we were working
+                document?.let { access.close(); return it }
+                document = parsed
+                return parsed
+            }
         } catch (e: Exception) { access.close(); throw e }
     }
 

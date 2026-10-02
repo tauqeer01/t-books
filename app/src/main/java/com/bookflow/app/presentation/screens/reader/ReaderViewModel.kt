@@ -934,7 +934,9 @@ class ReaderViewModel(
     override fun onCleared() {
         super.onCleared()
         val engine = pdfEngine
-        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch { engine?.close() }
+        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+            runCatching { engine?.close() }
+        }
     }
 
     class Factory(

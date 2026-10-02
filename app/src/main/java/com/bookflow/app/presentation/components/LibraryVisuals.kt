@@ -27,7 +27,20 @@ import com.bookflow.app.domain.model.*
 import java.io.File
 
 fun shareBook(context: Context, book: Book) {
-    val uri = book.uriString?.let(Uri::parse) ?: FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", File(book.filePath))
+    val uri = try {
+        book.uriString?.takeIf { it.isNotBlank() }?.let(Uri::parse)
+            ?: book.filePath.takeIf { it.isNotBlank() }?.let { path ->
+                val file = File(path)
+                if (file.exists()) FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                else null
+            }
+    } catch (_: Exception) { null }
+
+    if (uri == null) {
+        android.widget.Toast.makeText(context, "Unable to share: file not found", android.widget.Toast.LENGTH_SHORT).show()
+        return
+    }
+
     val intent = Intent(Intent.ACTION_SEND).apply {
         type = "application/pdf"
         putExtra(Intent.EXTRA_STREAM, uri)

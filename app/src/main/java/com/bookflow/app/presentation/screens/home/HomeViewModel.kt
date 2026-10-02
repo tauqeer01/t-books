@@ -83,9 +83,14 @@ class HomeViewModel(
         if (pill == "PDF") library = library.filter { it.category == "PDF" }
         if (pill == "Recent") library = library.filter { it.lastReadTimestamp > 0 }
         if (query.isNotBlank()) {
+            // Pre-compute annotation content map to avoid O(n²) scan
+            val annotationTextByBook = allAnnotations.groupBy(
+                keySelector = { it.bookId },
+                valueTransform = { "${it.selectedText} ${it.noteContent}" }
+            )
             library = library.filter {
                 it.title.contains(query, ignoreCase = true) || it.author.contains(query, ignoreCase = true) ||
-                    allAnnotations.any { annotation -> annotation.bookId == it.id && (annotation.selectedText.contains(query, true) || annotation.noteContent.contains(query, true)) }
+                    annotationTextByBook[it.id]?.any { text -> text.contains(query, true) } == true
             }
         }
 

@@ -54,28 +54,6 @@ fun BookFlowNavGraph(
         Screen.Settings.route
     )
 
-    // Shared HomeViewModel across Home and Search for synchronized state
-    val homeViewModel: HomeViewModel = viewModel(
-        factory = HomeViewModel.Factory(
-            context = context,
-            getBooksUseCase = container.getBooksUseCase,
-            getCollectionsUseCase = container.getCollectionsUseCase,
-            saveBookUseCase = container.saveBookUseCase,
-            bookRepository = container.bookRepository,
-            annotationRepository = container.annotationRepository,
-            pdfEngineFactory = container.pdfEngineFactory
-        )
-    )
-
-                    val libraryViewModel: LibraryViewModel = viewModel(
-                        factory = LibraryViewModel.Factory(
-                            getBooksUseCase = container.getBooksUseCase,
-                            getCollectionsUseCase = container.getCollectionsUseCase,
-                            bookRepository = container.bookRepository,
-                            collectionRepository = container.collectionRepository,
-                            preferencesRepository = container.preferencesRepository
-                        )
-                    )
     Scaffold(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
@@ -102,6 +80,29 @@ fun BookFlowNavGraph(
                 .padding(innerPadding)
                 .then(if (showBottomBar) Modifier.statusBarsPadding() else Modifier)
         ) {
+            // Scoped ViewModels: created once per NavGraph composition, stable across recompositions
+            val homeViewModel: HomeViewModel = viewModel(
+                factory = HomeViewModel.Factory(
+                    context = context,
+                    getBooksUseCase = container.getBooksUseCase,
+                    getCollectionsUseCase = container.getCollectionsUseCase,
+                    saveBookUseCase = container.saveBookUseCase,
+                    bookRepository = container.bookRepository,
+                    annotationRepository = container.annotationRepository,
+                    pdfEngineFactory = container.pdfEngineFactory
+                )
+            )
+
+            val libraryViewModel: LibraryViewModel = viewModel(
+                factory = LibraryViewModel.Factory(
+                    getBooksUseCase = container.getBooksUseCase,
+                    getCollectionsUseCase = container.getCollectionsUseCase,
+                    bookRepository = container.bookRepository,
+                    collectionRepository = container.collectionRepository,
+                    preferencesRepository = container.preferencesRepository
+                )
+            )
+
             NavHost(
                 navController = navController,
                 startDestination = Screen.Splash.route
