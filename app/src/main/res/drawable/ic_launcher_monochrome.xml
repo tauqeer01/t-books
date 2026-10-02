@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 13+ themed icon: the book silhouette, tinted by the system. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.5"
+        android:scaleY="0.5"
+        android:translateX="29"
+        android:translateY="30">
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M47,30 C35,12 17,10 9,12 L9,75 C25,75 37,80 47,91 Z
+            M53,30 C65,12 83,10 91,12 L91,75 C75,75 63,80 53,91 Z
+            M2,23 L5,23 L5,79 C27,79 34,85 44,95 C25,85 12,85 2,87 Z
+            M98,23 L95,23 L95,79 C73,79 66,85 56,95 C75,85 88,85 98,87 Z" />
+    </group>
+</vector>

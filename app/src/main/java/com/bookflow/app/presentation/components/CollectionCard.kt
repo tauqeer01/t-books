@@ -94,7 +94,7 @@ fun CollectionCard(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = Color(0xFF1E293B),
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -111,7 +111,7 @@ fun CollectionCard(
                             text = "${collection.bookCount} ${if (collection.bookCount == 1) "book" else "books"}",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF1E293B),
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 11.sp
                         )
                     }
@@ -123,7 +123,7 @@ fun CollectionCard(
                         Icon(
                             imageVector = Icons.Default.DeleteOutline,
                             contentDescription = "Delete Collection",
-                            tint = Color(0xFF64748B),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -137,7 +137,7 @@ fun CollectionCard(
                     text = collection.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A),
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -145,7 +145,7 @@ fun CollectionCard(
                 Text(
                     text = collection.description,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF475569),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )

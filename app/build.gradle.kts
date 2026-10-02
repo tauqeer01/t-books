@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.aboutlibraries)
+    alias(libs.plugins.baselineprofile)
 }
 
 // Upload-key credentials live in a git-ignored keystore.properties at the project root.
@@ -77,6 +78,14 @@ ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
+baselineProfile {
+    // Regenerate deliberately on a device: ./gradlew :app:generateReleaseBaselineProfile
+    // The result is committed to src/release/generated/baselineProfiles, so normal builds never need a device.
+    automaticGenerationDuringBuild = false
+    saveInSrc = true
+    dexLayoutOptimization = true
+}
+
 aboutLibraries {
     // Bundle license metadata so the licenses screen works offline
     registerAndroidTasks = true
@@ -107,6 +116,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.profileinstaller)
+    "baselineProfile"(project(":baselineprofile"))
     implementation(libs.aboutlibraries.compose.m3)
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     testImplementation("junit:junit:4.13.2")

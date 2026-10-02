@@ -120,7 +120,7 @@ fun SearchScreen(
         modifier = modifier.fillMaxSize(),
         topBar = { BookFlowTopBar(title = "Search", subtitle = "Book titles, highlights and notes") },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = Color(0xFFF8FAFC)
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -134,7 +134,7 @@ fun SearchScreen(
                 value = state.searchQuery,
                 onValueChange = homeViewModel::onSearchQueryChanged,
                 placeholder = {
-                    Text("Search text in books, highlights, notes...", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF94A3B8))
+                    Text("Search text in books, highlights, notes...", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 },
                 leadingIcon = {
                     Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = BrandPurple)
@@ -142,7 +142,7 @@ fun SearchScreen(
                 trailingIcon = {
                     if (state.searchQuery.isNotEmpty()) {
                         IconButton(onClick = { homeViewModel.onSearchQueryChanged("") }) {
-                            Icon(imageVector = Icons.Default.Clear, contentDescription = "Clear", tint = Color(0xFF94A3B8))
+                            Icon(imageVector = Icons.Default.Clear, contentDescription = "Clear", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 },
@@ -150,9 +150,9 @@ fun SearchScreen(
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = BrandPurple,
-                    unfocusedBorderColor = Color(0xFFE2E8F0),
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -199,14 +199,14 @@ fun SearchScreen(
                                 text = "Popular Searches",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF334155)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 items(recentSearches) { term ->
                                     Surface(
                                         shape = RoundedCornerShape(12.dp),
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.surface,
                                         shadowElevation = 1.dp,
                                         modifier = Modifier
                                             .clickable { homeViewModel.onSearchQueryChanged(term) }
@@ -226,7 +226,7 @@ fun SearchScreen(
                                                 text = term,
                                                 style = MaterialTheme.typography.bodySmall,
                                                 fontWeight = FontWeight.Medium,
-                                                color = Color(0xFF334155)
+                                                color = MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                     }
@@ -255,13 +255,13 @@ fun SearchScreen(
                                         text = "Reading History",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF0F172A)
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                 }
                                 Text(
                                     text = bookCountLabel(readingHistoryBooks.size),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF64748B)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Spacer(modifier = Modifier.height(10.dp))
@@ -299,7 +299,7 @@ fun SearchScreen(
                                     Icon(
                                         imageVector = Icons.Default.Search,
                                         contentDescription = null,
-                                        tint = Color(0xFFCBD5E1),
+                                        tint = MaterialTheme.colorScheme.outline,
                                         modifier = Modifier.size(48.dp)
                                     )
                                     Spacer(modifier = Modifier.height(12.dp))
@@ -307,13 +307,13 @@ fun SearchScreen(
                                         text = "No matches found for \"${state.searchQuery}\"",
                                         style = MaterialTheme.typography.bodyMedium,
                                         fontWeight = FontWeight.Medium,
-                                        color = Color(0xFF64748B)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = "Try searching for chapters, topics, or words in your highlights",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFF94A3B8)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                             }
@@ -327,7 +327,7 @@ fun SearchScreen(
                                 text = "Books (${matchedBooks.size})",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0F172A)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         items(matchedBooks, key = { "book_${it.id}" }) { book ->
@@ -348,7 +348,7 @@ fun SearchScreen(
                                 text = "Highlights & Quotes (${matchedHighlights.size})",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0F172A)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         items(matchedHighlights, key = { "ann_${it.id}" }) { ann ->
@@ -369,7 +369,7 @@ fun SearchScreen(
                                 text = "Notes (${matchedNotes.size})",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0F172A)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         items(matchedNotes, key = { "note_${it.id}" }) { ann ->
@@ -399,7 +399,7 @@ private fun ReadingHistoryCard(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 1.dp,
         modifier = modifier
             .fillMaxWidth()
@@ -440,14 +440,14 @@ private fun ReadingHistoryCard(
                     text = book.title,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A),
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = book.author,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF64748B),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -462,7 +462,7 @@ private fun ReadingHistoryCard(
                     Text(
                         text = "Page ${book.currentPage + 1} of ${book.pageCount}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF64748B),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 10.sp
                     )
                 }
@@ -497,7 +497,7 @@ private fun SearchHighlightResultCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -518,14 +518,14 @@ private fun SearchHighlightResultCard(
                         text = bookTitle,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A),
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFEEF2FF)
+                    color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Text(
                         text = "Page ${annotation.pageIndex + 1}",
@@ -542,7 +542,7 @@ private fun SearchHighlightResultCard(
             Text(
                 text = "\"${annotation.selectedText}\"",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF334155),
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis
             )
@@ -551,7 +551,7 @@ private fun SearchHighlightResultCard(
                 Spacer(modifier = Modifier.height(6.dp))
                 Surface(
                     shape = RoundedCornerShape(6.dp),
-                    color = Color(0xFFF8FAFC),
+                    color = MaterialTheme.colorScheme.background,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -568,7 +568,7 @@ private fun SearchHighlightResultCard(
                         Text(
                             text = annotation.noteContent,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF475569),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 11.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -591,7 +591,7 @@ private fun SearchNoteResultCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
@@ -612,14 +612,14 @@ private fun SearchNoteResultCard(
                         text = bookTitle,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A),
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFEEF2FF)
+                    color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Text(
                         text = "Page ${annotation.pageIndex + 1}",
@@ -637,7 +637,7 @@ private fun SearchNoteResultCard(
                 text = annotation.noteContent,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF0F172A)
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             if (annotation.selectedText.isNotBlank()) {
@@ -645,7 +645,7 @@ private fun SearchNoteResultCard(
                 Text(
                     text = "Ref: \"${annotation.selectedText}\"",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF64748B),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )

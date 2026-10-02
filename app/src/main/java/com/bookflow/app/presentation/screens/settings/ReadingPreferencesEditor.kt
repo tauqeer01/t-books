@@ -1,5 +1,6 @@
 package com.bookflow.app.presentation.screens.settings
 
+import com.bookflow.app.presentation.components.ColorSwatch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -53,7 +54,7 @@ fun ReadingPreferencesEditor(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Cancel", color = Color(0xFF64748B))
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     ) {
@@ -66,7 +67,7 @@ fun ReadingPreferencesEditor(
                         "Page Scrolling Mode",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF64748B)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     PageScrollMode.entries.forEach { mode ->
                         val subtitle = when (mode) {
@@ -89,7 +90,7 @@ fun ReadingPreferencesEditor(
                         "Color Theme",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF64748B)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     ReaderTheme.entries.forEach { theme ->
                         val (title, subtitle) = when (theme) {
@@ -120,7 +121,7 @@ fun ReadingPreferencesEditor(
                         "Page Spacing: ${prefs.pageSpacing} dp",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF0F172A)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Slider(
                         value = prefs.pageSpacing.toFloat(),
@@ -130,7 +131,7 @@ fun ReadingPreferencesEditor(
                         colors = SliderDefaults.colors(
                             thumbColor = BrandPurple,
                             activeTrackColor = BrandPurple,
-                            inactiveTrackColor = Color(0xFFE2E8F0)
+                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                         )
                     )
 
@@ -147,7 +148,7 @@ fun ReadingPreferencesEditor(
                         "Screen Orientation",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF64748B)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     ReadingOrientation.entries.forEach { orientation ->
                         SelectionCard(
@@ -193,7 +194,7 @@ fun ReadingPreferencesEditor(
                             "In-App Brightness: ${(prefs.brightness * 100).toInt()}%",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF0F172A)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Slider(
                             value = prefs.brightness,
@@ -202,7 +203,7 @@ fun ReadingPreferencesEditor(
                             colors = SliderDefaults.colors(
                                 thumbColor = BrandPurple,
                                 activeTrackColor = BrandPurple,
-                                inactiveTrackColor = Color(0xFFE2E8F0)
+                                inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                             )
                         )
                     }
@@ -213,7 +214,7 @@ fun ReadingPreferencesEditor(
                         "Default Highlight Palette",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF64748B)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     val swatches = listOf(
                         "Yellow" to "#FFE600",
@@ -227,7 +228,7 @@ fun ReadingPreferencesEditor(
                         Surface(
                             onClick = { prefs = prefs.copy(defaultHighlightColor = hex) },
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isPicked) Color(0xFFF1F5F9) else Color.Transparent,
+                            color = if (isPicked) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
                             border = if (isPicked) androidx.compose.foundation.BorderStroke(1.5.dp, BrandPurple) else null,
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -248,7 +249,7 @@ fun ReadingPreferencesEditor(
                                     text = name,
                                     fontSize = 14.sp,
                                     fontWeight = if (isPicked) FontWeight.Bold else FontWeight.Medium,
-                                    color = Color(0xFF0F172A),
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.weight(1f)
                                 )
                                 if (isPicked) {
@@ -269,7 +270,7 @@ fun ReadingPreferencesEditor(
                         "Pen Stroke Width: ${"%.1f".format(prefs.penWidth)} dp",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF0F172A)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Slider(
                         value = prefs.penWidth,
@@ -278,7 +279,7 @@ fun ReadingPreferencesEditor(
                         colors = SliderDefaults.colors(
                             thumbColor = BrandPurple,
                             activeTrackColor = BrandPurple,
-                            inactiveTrackColor = Color(0xFFE2E8F0)
+                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                         )
                     )
 
@@ -293,7 +294,7 @@ fun ReadingPreferencesEditor(
                         "Pen Color",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF64748B)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     val penColors = listOf(
                         "Purple" to "#5935FF",
@@ -305,29 +306,8 @@ fun ReadingPreferencesEditor(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceAround
                     ) {
-                        penColors.forEach { (_, hex) ->
-                            val isPicked = prefs.penColor.equals(hex, true)
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(android.graphics.Color.parseColor(hex)))
-                                    .clickable { prefs = prefs.copy(penColor = hex) }
-                                    .then(
-                                        if (isPicked) Modifier.border(3.dp, Color(0xFFCBD5E1), CircleShape)
-                                        else Modifier
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isPicked) {
-                                    Icon(
-                                        imageVector = Icons.Default.Check,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                            }
+                        penColors.forEach { (name, hex) ->
+                            ColorSwatch(hex, selected = prefs.penColor.equals(hex, true), onClick = { prefs = prefs.copy(penColor = hex) }, name = name, size = 38.dp)
                         }
                     }
                 }
@@ -344,7 +324,7 @@ fun ReadingPreferencesEditor(
                         "Default Sort Order",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF64748B)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     BookSortOrder.entries.forEach { sort ->
                         SelectionCard(
@@ -374,10 +354,10 @@ private fun SelectionCard(
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(14.dp),
-        color = if (selected) Color(0xFFF1F5F9) else Color.White,
+        color = if (selected) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surface,
         border = androidx.compose.foundation.BorderStroke(
             width = if (selected) 1.5.dp else 1.dp,
-            color = if (selected) BrandPurple else Color(0xFFE2E8F0)
+            color = if (selected) BrandPurple else MaterialTheme.colorScheme.outlineVariant
         ),
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -392,12 +372,12 @@ private fun SelectionCard(
                     text = title,
                     fontSize = 14.sp,
                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                    color = if (selected) Color(0xFF0F172A) else Color(0xFF334155)
+                    color = if (selected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = subtitle,
                     fontSize = 12.sp,
-                    color = Color(0xFF64748B),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 15.sp
                 )
             }
@@ -430,12 +410,12 @@ private fun PreferenceSwitchRow(
                 text = title,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF0F172A)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = subtitle,
                 fontSize = 12.sp,
-                color = Color(0xFF64748B),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 15.sp
             )
         }

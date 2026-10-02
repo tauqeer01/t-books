@@ -17,6 +17,7 @@ import com.bookflow.app.domain.model.AnnotationType
 import com.bookflow.app.domain.model.Book
 import com.bookflow.app.domain.repository.BatchImportSummary
 import com.bookflow.app.domain.repository.BookRepository
+import com.bookflow.app.domain.repository.DuplicateBookException
 import com.bookflow.app.pdf.engine.PdfEngineFactory
 import com.bookflow.app.pdf.engine.PdfSource
 import com.bookflow.app.pdf.engine.RenderQuality
@@ -85,11 +86,13 @@ class BookRepositoryImpl(
     override suspend fun importPdf(uri: Uri): Result<Book> = withContext(Dispatchers.IO) {
         try {
             // 1. Persist URI permission so the app can access it across restarts without copying the file!
-            try {
+            val persisted = try {
                 val takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                 context.contentResolver.takePersistableUriPermission(uri, takeFlags)
+                true
             } catch (_: SecurityException) {
-                // Ignore if permission cannot be persisted (e.g. temporary third party intent)
+                // Temporary grant (e.g. "Open with" from a file manager): copied into app storage below
+                false
             }
 
             // 2. Extract Document Metadata
@@ -99,20 +102,24 @@ class BookRepositoryImpl(
             // 3. Detect duplicate imports
             val existingByUri = bookDao.getBookByUri(uriStr)
             if (existingByUri != null) {
-                return@withContext Result.failure(IllegalStateException("Book \"${existingByUri.title}\" is already in your library."))
+                return@withContext Result.failure(DuplicateBookException(existingByUri.id, "Book \"${existingByUri.title}\" is already in your library."))
             }
 
             val existingByNameAndSize = bookDao.findDuplicate(metadata.fileName.removeSuffix(".pdf"), metadata.fileSizeBytes)
             if (existingByNameAndSize != null && metadata.fileSizeBytes > 0) {
-                return@withContext Result.failure(IllegalStateException("Duplicate document \"${metadata.fileName}\" detected."))
+                return@withContext Result.failure(DuplicateBookException(existingByNameAndSize.id, "Duplicate document \"${metadata.fileName}\" detected."))
             }
 
             val bookId = UUID.randomUUID().toString()
+
+            // A temporary grant ends with this process, so keep a private copy for later sessions
+            val localCopy = if (!persisted && uri.scheme != "file") copyIntoLibrary(uri, bookId) else null
+            val readUri = localCopy?.let { Uri.fromFile(it) } ?: uri
             val bookTitle = metadata.fileName.removeSuffix(".pdf").replace("_", " ").replace("-", " ")
 
             // 4. Inspect PDF without copying to local disk
             val engine = pdfEngineFactory.createEngine()
-            val source = PdfSource.UriSource(uri, context)
+            val source = if (localCopy != null) PdfSource.FileSource(localCopy) else PdfSource.UriSource(readUri, context)
             val openResult = engine.openDocument(source)
             if (openResult is com.bookflow.app.pdf.engine.PdfDocumentResult.Error) {
                 engine.close()
@@ -135,8 +142,9 @@ class BookRepositoryImpl(
                 id = bookId,
                 title = pdfMetadata.first?.takeIf { it.isNotBlank() } ?: bookTitle,
                 author = pdfMetadata.second?.takeIf { it.isNotBlank() } ?: "Unknown author",
-                filePath = "", // Kept empty because we read in-place from SAF URI
-                uriString = uriStr,
+                // SAF imports read in place from the persisted URI; temporary grants read the private copy
+                filePath = localCopy?.absolutePath ?: "",
+                uriString = if (localCopy != null) null else uriStr,
                 fileSizeBytes = metadata.fileSizeBytes,
                 pageCount = pageCount,
                 currentPage = 0,
@@ -155,6 +163,17 @@ class BookRepositoryImpl(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    /** Copies a PDF into the app's private books folder (the folder FileProvider shares from). */
+    private fun copyIntoLibrary(uri: Uri, bookId: String): java.io.File {
+        val dir = java.io.File(context.filesDir, "books").apply { mkdirs() }
+        val target = java.io.File(dir, "$bookId.pdf")
+        context.contentResolver.openInputStream(uri).use { input ->
+            requireNotNull(input) { "Unable to read the selected PDF" }
+            target.outputStream().use { output -> input.copyTo(output) }
+        }
+        return target
     }
 
     override suspend fun importMultiplePdfs(uris: List<Uri>): BatchImportSummary = withContext(Dispatchers.IO) {
@@ -191,6 +210,10 @@ class BookRepositoryImpl(
         val entity = bookDao.getBookByIdDirect(bookId)
         if (entity != null) {
             FileUtils.deleteThumbnail(entity.thumbnailPath)
+            // Private copies (from "Open with") belong to BookFlow; the user's original file is untouched
+            entity.filePath.takeIf { it.isNotBlank() }?.let(::File)
+                ?.takeIf { it.parentFile == File(context.filesDir, "books") }
+                ?.delete()
             bookDao.deleteBookById(bookId)
             bookDao.clearCollectionsForBook(bookId)
             annotationDao.deleteAnnotationsForBook(bookId)

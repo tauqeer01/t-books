@@ -1,5 +1,6 @@
 package com.bookflow.app.presentation.screens.reader
 
+import com.bookflow.app.presentation.components.ColorSwatch
 import android.content.Context
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -145,9 +146,9 @@ private val HighlighterWidthPresets = listOf(8.0f to "Thin", 14.0f to "Regular",
 private val ShapeTools = listOf(DrawingTool.LINE, DrawingTool.ARROW, DrawingTool.RECTANGLE, DrawingTool.ELLIPSE)
 private val TextMarkupTools = listOf(DrawingTool.TEXT_HIGHLIGHT, DrawingTool.TEXT_UNDERLINE, DrawingTool.TEXT_STRIKETHROUGH)
 
-private val RailInk = Color(0xFF334155)
-private val RailSelectedBg = Color(0xFFEDE9FE)
-private val RailDividerColor = Color(0xFFE2E8F0)
+private val RailInk: Color @Composable get() = MaterialTheme.colorScheme.onSurface
+private val RailSelectedBg: Color @Composable get() = MaterialTheme.colorScheme.primaryContainer
+private val RailDividerColor: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
 
 private enum class RailFlyout { TEXT, SHAPES, COLOR, WIDTH }
 
@@ -245,9 +246,9 @@ fun AnnotationToolRail(
             } else {
                 Surface(
                     shape = RoundedCornerShape(26.dp),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 10.dp,
-                    border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
                     modifier = Modifier.testTag("drawing_toolbar")
                 ) {
                     Column(
@@ -362,19 +363,20 @@ private fun RailButton(
             imageVector = icon,
             contentDescription = label,
             tint = when {
-                !enabled -> Color(0xFFCBD5E1)
+                !enabled -> MaterialTheme.colorScheme.outline
                 isSelected -> BrandPurple
                 else -> RailInk
             },
             modifier = Modifier.size(20.dp)
         )
         if (hasFlyout) {
+            val notchColor = if (isSelected) BrandPurple else MaterialTheme.colorScheme.onSurfaceVariant
             // Small corner notch hints that this button opens more options
             Canvas(Modifier.align(Alignment.BottomStart).padding(5.dp).size(5.dp)) {
                 val path = androidx.compose.ui.graphics.Path().apply {
                     moveTo(0f, 0f); lineTo(0f, size.height); lineTo(size.width, size.height); close()
                 }
-                drawPath(path, if (isSelected) BrandPurple else Color(0xFF94A3B8))
+                drawPath(path, notchColor)
             }
         }
     }
@@ -421,10 +423,10 @@ private fun RailFlyoutCard(
     val isHighlighter = state.drawingTool.usesHighlighterPalette
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 10.dp,
-        border = BorderStroke(1.dp, Color(0xFFF1F5F9)),
-        modifier = Modifier.width(184.dp).testTag("drawing_flyout")
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
+        modifier = Modifier.width(220.dp).testTag("drawing_flyout")
     ) {
         Column(Modifier.padding(14.dp)) {
             Text(
@@ -436,7 +438,7 @@ private fun RailFlyoutCard(
                 },
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF64748B)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(10.dp))
             when (flyout) {
@@ -455,35 +457,14 @@ private fun RailFlyoutCard(
                         ) {
                             Icon(shape.icon(), contentDescription = null, tint = if (selected) BrandPurple else RailInk, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(10.dp))
-                            Text(shape.title, fontSize = 13.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, color = Color(0xFF0F172A))
+                            Text(shape.title, fontSize = 13.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
-                RailFlyout.COLOR -> FlowRow(
-                    maxItemsInEachRow = 4,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+                // 48dp touch targets: four per row fill the card width
+                RailFlyout.COLOR -> FlowRow(maxItemsInEachRow = 4) {
                     (if (isHighlighter) HighlighterColorPalette else PenColorPalette).forEach { hex ->
-                        val selected = state.drawingColorHex.equals(hex, ignoreCase = true)
-                        Box(
-                            modifier = Modifier
-                                .size(30.dp)
-                                .clip(CircleShape)
-                                .background(parseHex(hex))
-                                .border(if (selected) 2.5.dp else 1.dp, if (selected) Color(0xFF0F172A) else Color(0x22000000), CircleShape)
-                                .clickable { onColor(hex) },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (selected) {
-                                Icon(
-                                    Icons.Default.Check,
-                                    contentDescription = "Selected color",
-                                    tint = if (isHighlighter) Color(0xFF0F172A) else Color.White,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                            }
-                        }
+                        ColorSwatch(hex, selected = state.drawingColorHex.equals(hex, ignoreCase = true), onClick = { onColor(hex) }, size = 30.dp)
                     }
                 }
                 RailFlyout.WIDTH -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -509,7 +490,7 @@ private fun RailFlyoutCard(
                                 )
                             }
                             Spacer(Modifier.width(12.dp))
-                            Text(label, fontSize = 13.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, color = Color(0xFF0F172A))
+                            Text(label, fontSize = 13.sp, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal, color = MaterialTheme.colorScheme.onSurface)
                         }
                     }
                 }
@@ -834,7 +815,7 @@ fun ExportAnnotatedPdfDialog(
                 enabled = !state.isExportingPdf,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(if (state.exportedPdfFile != null) "Done" else "Cancel", color = Color(0xFF64748B))
+                Text(if (state.exportedPdfFile != null) "Done" else "Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     ) {
@@ -843,7 +824,7 @@ fun ExportAnnotatedPdfDialog(
                 Text(
                     text = "Rendering annotations, highlights & drawings into a standalone PDF document...",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF475569)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(14.dp))
 
@@ -858,19 +839,19 @@ fun ExportAnnotatedPdfDialog(
                 Text(
                     text = "Page $current of $total",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF64748B)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else if (state.exportedPdfFile != null) {
                 val file = state.exportedPdfFile!!
                 Text(
                     text = "Your annotated copy is ready with all highlights, underlines, notes, and freehand pen drawings baked in!",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF1E293B)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFF1F5F9),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(10.dp)) {
@@ -878,13 +859,13 @@ fun ExportAnnotatedPdfDialog(
                             text = file.name,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 12.sp,
-                            color = Color(0xFF0F172A)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = FileUtils.formatFileSize(file.length()),
                             fontSize = 11.sp,
-                            color = Color(0xFF64748B)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

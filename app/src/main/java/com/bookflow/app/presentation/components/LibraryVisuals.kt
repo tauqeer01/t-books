@@ -134,7 +134,7 @@ fun BookActionsDialog(
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = if (isDestructive) MaterialTheme.colorScheme.error else Color(0xFF475569),
+                            tint = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(22.dp)
                         )
                         Spacer(Modifier.width(16.dp))
@@ -142,7 +142,7 @@ fun BookActionsDialog(
                             text = label,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Medium,
-                            color = if (isDestructive) MaterialTheme.colorScheme.error else Color(0xFF0F172A)
+                            color = if (isDestructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -181,7 +181,7 @@ fun BookCollectionsDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Cancel", color = Color(0xFF64748B))
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     ) {
@@ -190,7 +190,7 @@ fun BookCollectionsDialog(
                 Text(
                     text = "No collections found. Create a collection in the Collections tab first.",
                     fontSize = 13.5.sp,
-                    color = Color(0xFF64748B),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 12.dp)
                 )
             } else {
@@ -217,7 +217,7 @@ fun BookCollectionsDialog(
                             text = collection.name,
                             fontSize = 14.5.sp,
                             fontWeight = FontWeight.Medium,
-                            color = Color(0xFF0F172A)
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }

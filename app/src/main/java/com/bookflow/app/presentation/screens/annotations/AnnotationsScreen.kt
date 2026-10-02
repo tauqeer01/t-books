@@ -209,7 +209,7 @@ fun AnnotationsScreen(
                             .background(color)
                             .border(
                                 width = if (isSelected) 3.dp else 1.dp,
-                                color = if (isSelected) Color(0xFF1E293B) else Color.Transparent,
+                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else Color.Transparent,
                                 shape = CircleShape
                             )
                             .clickable {

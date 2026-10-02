@@ -1,5 +1,7 @@
 package com.bookflow.app.presentation.screens.settings
 
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.foundation.selection.selectable
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -36,6 +38,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel,
     onCollections: () -> Unit = {},
     onLibrary: () -> Unit = {},
+    onOpenLegal: (com.bookflow.app.presentation.screens.legal.LegalDocument) -> Unit = {},
+    onOpenLicenses: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -45,6 +49,9 @@ fun SettingsScreen(
     var editorSection by remember { mutableStateOf<String?>(null) }
     var showPrivacyDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
+    val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
     var showStorageDialog by remember { mutableStateOf(false) }
 
     var searchQuery by remember { mutableStateOf("") }
@@ -74,7 +81,7 @@ fun SettingsScreen(
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = Color(0xFFF8F9FE),
+        containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
@@ -86,6 +93,7 @@ fun SettingsScreen(
             val wide = maxWidth > 700.dp
             val horizontalPadding = if (wide) 64.dp else 18.dp
 
+            val scheme = MaterialTheme.colorScheme
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 16.dp),
@@ -96,15 +104,15 @@ fun SettingsScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search settings...", fontSize = 14.sp, color = Color(0xFF94A3B8)) },
+                        placeholder = { Text("Search settings...", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(14.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
                             focusedBorderColor = BrandPurple,
-                            unfocusedBorderColor = Color(0xFFE2E8F0)
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
                         ),
                         leadingIcon = {
                             Icon(Icons.Default.Search, null, tint = BrandPurple, modifier = Modifier.size(20.dp))
@@ -117,9 +125,9 @@ fun SettingsScreen(
                     item {
                         Surface(
                             shape = RoundedCornerShape(18.dp),
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.surface,
                             shadowElevation = 0.5.dp,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable { showAboutDialog = true }
@@ -140,19 +148,19 @@ fun SettingsScreen(
                                         text = "BookFlow",
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF0F172A)
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
-                                        text = "Version 1.0.0\nYour Reading Companion",
+                                        text = "Version ${com.bookflow.app.BuildConfig.VERSION_NAME}\nYour Reading Companion",
                                         fontSize = 12.5.sp,
                                         lineHeight = 16.sp,
-                                        color = Color(0xFF64748B)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 Icon(
                                     imageVector = Icons.Default.ChevronRight,
                                     contentDescription = null,
-                                    tint = Color(0xFF94A3B8),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(20.dp)
                                 )
                             }
@@ -175,11 +183,20 @@ fun SettingsScreen(
                                 onClick = { editorSection = "Reading Mode" }
                             ),
                             SettingRowData(
+                                icon = Icons.Default.DarkMode,
+                                iconTint = Color(0xFF6366F1),
+                                iconBg = Color(0xFFE0E7FF),
+                                title = "App Theme",
+                                subtitle = "Light or dark app appearance",
+                                value = appTheme.displayName,
+                                onClick = { showThemeDialog = true }
+                            ),
+                            SettingRowData(
                                 icon = Icons.Default.LightMode,
                                 iconTint = Color(0xFF10B981),
                                 iconBg = Color(0xFFD1FAE5),
-                                title = "Appearance",
-                                subtitle = "Light, Dark, Sepia, Night Dimming",
+                                title = "Page Theme",
+                                subtitle = "Reader page colors: Light, Dark, Sepia, Mint",
                                 value = prefs.readerTheme.displayName,
                                 onClick = { editorSection = "Appearance" }
                             ),
@@ -241,7 +258,7 @@ fun SettingsScreen(
                             SettingRowData(
                                 icon = Icons.Default.Layers,
                                 iconTint = Color(0xFF6366F1),
-                                iconBg = Color(0xFFEEF2FF),
+                                iconBg = scheme.primaryContainer,
                                 title = "Library View",
                                 subtitle = "Grid/List view, sort order",
                                 value = if (prefs.libraryGrid) "Grid" else "List",
@@ -280,9 +297,41 @@ fun SettingsScreen(
                                 iconTint = Color(0xFF7C3AED),
                                 iconBg = Color(0xFFEDE9FE),
                                 title = "About BookFlow",
-                                subtitle = "Version, open source libraries",
-                                value = "v1.0.0",
+                                subtitle = "Version and app information",
+                                value = "v${com.bookflow.app.BuildConfig.VERSION_NAME}",
                                 onClick = { showAboutDialog = true }
+                            ),
+                            SettingRowData(
+                                icon = Icons.Default.Lock,
+                                iconTint = Color(0xFF2563EB),
+                                iconBg = Color(0xFFDBEAFE),
+                                title = "Privacy policy",
+                                subtitle = "How BookFlow handles your data",
+                                onClick = { onOpenLegal(com.bookflow.app.presentation.screens.legal.LegalDocument.PRIVACY) }
+                            ),
+                            SettingRowData(
+                                icon = Icons.Default.Description,
+                                iconTint = scheme.onSurfaceVariant,
+                                iconBg = scheme.surfaceVariant,
+                                title = "Terms of use",
+                                subtitle = "Rules for using BookFlow",
+                                onClick = { onOpenLegal(com.bookflow.app.presentation.screens.legal.LegalDocument.TERMS) }
+                            ),
+                            SettingRowData(
+                                icon = Icons.Default.Code,
+                                iconTint = Color(0xFF0891B2),
+                                iconBg = Color(0xFFCFFAFE),
+                                title = "Open-source licenses",
+                                subtitle = "Libraries that BookFlow is built with",
+                                onClick = onOpenLicenses
+                            ),
+                            SettingRowData(
+                                icon = Icons.Default.BugReport,
+                                iconTint = Color(0xFFD97706),
+                                iconBg = Color(0xFFFEF3C7),
+                                title = "Report a problem",
+                                subtitle = "Share a crash report or describe an issue",
+                                onClick = { showReportDialog = true }
                             ),
                             SettingRowData(
                                 icon = Icons.Default.Share,
@@ -295,7 +344,7 @@ fun SettingsScreen(
                                         type = "text/plain"
                                         putExtra(
                                             Intent.EXTRA_TEXT,
-                                            "BookFlow — A fast, private, and smooth PDF reading companion for Android!"
+                                            "BookFlow — a fast, private PDF reader for Android: https://play.google.com/store/apps/details?id=${context.packageName}"
                                         )
                                     }
                                     context.startActivity(Intent.createChooser(shareIntent, "Share BookFlow"))
@@ -320,15 +369,15 @@ fun SettingsScreen(
                                     text = group.title,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF1E293B),
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
                                 )
 
                                 Surface(
                                     shape = RoundedCornerShape(18.dp),
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.surface,
                                     shadowElevation = 0.5.dp,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF1F5F9)),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Column(modifier = Modifier.fillMaxWidth()) {
@@ -337,7 +386,7 @@ fun SettingsScreen(
                                             if (index < filteredItems.lastIndex) {
                                                 HorizontalDivider(
                                                     modifier = Modifier.padding(start = 68.dp, end = 16.dp),
-                                                    color = Color(0xFFF1F5F9),
+                                                    color = MaterialTheme.colorScheme.surfaceVariant,
                                                     thickness = 1.dp
                                                 )
                                             }
@@ -423,12 +472,90 @@ fun SettingsScreen(
         }
     }
 
+    if (showThemeDialog) {
+        BookFlowBottomSheet(
+            onDismissRequest = { showThemeDialog = false },
+            title = "App Theme",
+            subtitle = "Reader pages keep their own Page Theme"
+        ) {
+            Column(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                com.bookflow.app.domain.model.AppThemeMode.entries.forEach { mode ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .selectable(
+                                selected = appTheme == mode,
+                                role = androidx.compose.ui.semantics.Role.RadioButton,
+                                onClick = { viewModel.setAppTheme(mode); showThemeDialog = false }
+                            )
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = appTheme == mode, onClick = null, colors = RadioButtonDefaults.colors(selectedColor = BrandPurple))
+                        Spacer(Modifier.width(12.dp))
+                        Text(mode.displayName, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+                    }
+                }
+            }
+        }
+    }
+
+    // Report a problem: share the newest on-device crash log (nothing is sent automatically)
+    if (showReportDialog) {
+        val crashReport = remember { com.bookflow.app.core.util.CrashLog.latestReport(context) }
+        BookFlowBottomSheet(
+            onDismissRequest = { showReportDialog = false },
+            title = "Report a problem",
+            subtitle = if (crashReport != null) "A crash report is saved on this device" else "No crashes recorded",
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val body = buildString {
+                            appendLine("Describe what happened:")
+                            appendLine()
+                            appendLine()
+                            appendLine("— BookFlow ${com.bookflow.app.BuildConfig.VERSION_NAME} (${com.bookflow.app.BuildConfig.VERSION_CODE}), " +
+                                "Android ${android.os.Build.VERSION.RELEASE}, ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
+                            crashReport?.let { appendLine(); append(it) }
+                        }
+                        val intent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_SUBJECT, "BookFlow problem report")
+                            putExtra(Intent.EXTRA_TEXT, body)
+                        }
+                        context.startActivity(Intent.createChooser(intent, "Send report"))
+                        showReportDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
+                    shape = RoundedCornerShape(12.dp)
+                ) { Text("Share report", fontWeight = FontWeight.SemiBold) }
+            },
+            dismissButton = if (crashReport != null) {
+                {
+                    TextButton(onClick = { com.bookflow.app.core.util.CrashLog.clear(context); showReportDialog = false }) {
+                        Text("Delete crash logs")
+                    }
+                }
+            } else null
+        ) {
+            Text(
+                "Your report opens in the app you choose (for example email), so you can review and edit it before " +
+                    "sending. It includes the app version and your device model" +
+                    (if (crashReport != null) ", plus technical details of the last crash." else "."),
+                fontSize = 13.5.sp,
+                lineHeight = 19.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
     // About Bottom Sheet
     if (showAboutDialog) {
         BookFlowBottomSheet(
             onDismissRequest = { showAboutDialog = false },
             title = "BookFlow",
-            subtitle = "Version 1.0.0 (Build 1) • Your Reading Companion",
+            subtitle = "Version ${com.bookflow.app.BuildConfig.VERSION_NAME} (Build ${com.bookflow.app.BuildConfig.VERSION_CODE}) • Your Reading Companion",
             titleIcon = { BookFlowEmblem(Modifier.size(40.dp)) },
             confirmButton = {
                 Button(
@@ -444,26 +571,13 @@ fun SettingsScreen(
                 Text(
                     "BookFlow is a modern, high-performance Android PDF reader built for smooth document reading, text selection, annotation, and organization.",
                     fontSize = 13.5.sp,
-                    color = Color(0xFF334155),
+                    color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 19.sp
                 )
-                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
-                Text(
-                    "Open Source Components:",
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF0F172A)
-                )
-                Text(
-                    "• Jetpack Compose & AndroidX (Apache 2.0)\n" +
-                            "• PDFBox Android (Apache 2.0)\n" +
-                            "• Coil Image Loader (Apache 2.0)\n" +
-                            "• Kotlin Coroutines & Flow (Apache 2.0)\n" +
-                            "• Room & DataStore (Apache 2.0)",
-                    fontSize = 12.sp,
-                    color = Color(0xFF64748B),
-                    lineHeight = 18.sp
-                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
+                TextButton(onClick = { showAboutDialog = false; onOpenLicenses() }) {
+                    Text("View open-source licenses", color = BrandPurple, fontWeight = FontWeight.SemiBold)
+                }
             }
         }
     }
@@ -522,12 +636,12 @@ private fun SettingRow(item: SettingRowData) {
                     text = item.title,
                     fontSize = 14.5.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF0F172A)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = item.subtitle,
                     fontSize = 12.sp,
-                    color = Color(0xFF64748B),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 15.sp
                 )
             }
@@ -558,7 +672,7 @@ private fun SettingRow(item: SettingRowData) {
                     text = item.value,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
-                    color = Color(0xFF64748B),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(end = 4.dp)
                 )
             }
@@ -566,7 +680,7 @@ private fun SettingRow(item: SettingRowData) {
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
-                tint = Color(0xFF94A3B8),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(19.dp)
             )
         }
@@ -587,12 +701,12 @@ private fun PrivacyBulletPoint(title: String, description: String) {
                 text = title,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 13.sp,
-                color = Color(0xFF0F172A)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = description,
                 fontSize = 12.sp,
-                color = Color(0xFF64748B),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 16.sp
             )
         }

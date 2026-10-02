@@ -70,6 +70,8 @@ interface PreferencesRepository {
     suspend fun updateScrollMode(mode: com.bookflow.app.domain.model.PageScrollMode)
     suspend fun updateHighResRendering(enabled: Boolean)
     suspend fun updateKeepScreenOn(enabled: Boolean)
+    val appThemeFlow: Flow<com.bookflow.app.domain.model.AppThemeMode>
+    suspend fun setAppTheme(mode: com.bookflow.app.domain.model.AppThemeMode)
 }
 
 /** Time spent reading per day and the daily reading goal. */
@@ -81,3 +83,6 @@ interface ReadingStatsRepository {
 
     suspend fun setDailyGoal(minutes: Int)
 }
+
+/** The PDF is already in the library; [existingBookId] identifies that copy. */
+class DuplicateBookException(val existingBookId: String, message: String) : IllegalStateException(message)

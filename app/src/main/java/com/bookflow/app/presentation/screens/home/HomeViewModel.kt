@@ -42,8 +42,14 @@ class HomeViewModel(
     private val bookRepository: BookRepository,
     private val annotationRepository: com.bookflow.app.domain.repository.AnnotationRepository,
     private val pdfEngineFactory: PdfEngineFactory,
-    private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository
+    private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository,
+    private val preferencesRepository: com.bookflow.app.domain.repository.PreferencesRepository
 ) : ViewModel() {
+
+    fun setAppTheme(mode: com.bookflow.app.domain.model.AppThemeMode) {
+        viewModelScope.launch { preferencesRepository.setAppTheme(mode) }
+    }
+
 
     /** Today's reading time against the daily goal, for the Home ring. */
     val readingStats: StateFlow<com.bookflow.app.domain.model.ReadingStats> = readingStatsRepository.stats
@@ -139,11 +145,12 @@ class HomeViewModel(
         private val bookRepository: BookRepository,
         private val annotationRepository: com.bookflow.app.domain.repository.AnnotationRepository,
         private val pdfEngineFactory: PdfEngineFactory,
-        private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository
+        private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository,
+        private val preferencesRepository: com.bookflow.app.domain.repository.PreferencesRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return HomeViewModel(context, getBooksUseCase, getCollectionsUseCase, saveBookUseCase, bookRepository, annotationRepository, pdfEngineFactory, readingStatsRepository) as T
+            return HomeViewModel(context, getBooksUseCase, getCollectionsUseCase, saveBookUseCase, bookRepository, annotationRepository, pdfEngineFactory, readingStatsRepository, preferencesRepository) as T
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.bookflow.app.presentation.screens.bookdetails
 
+import com.bookflow.app.presentation.components.ColorSwatch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -149,7 +150,7 @@ fun BookDetailsScreen(
                 }
             }
         },
-        modifier = modifier.fillMaxSize().background(Color(0xFFF8FAFC))
+        modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) { paddingValues ->
         if (state.isLoading || state.book == null) {
             Box(
@@ -165,11 +166,11 @@ fun BookDetailsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .background(Color(0xFFF8FAFC))
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 // --- HERO CARD ---
                 Surface(
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 1.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -206,14 +207,14 @@ fun BookDetailsScreen(
                                     text = book.title,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0F172A),
+                                    color = MaterialTheme.colorScheme.onSurface,
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = book.author,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF64748B)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
 
@@ -225,7 +226,7 @@ fun BookDetailsScreen(
                                     LinearProgressIndicator(
                                         progress = { book.readingProgress },
                                         color = BrandPurple,
-                                        trackColor = Color(0xFFE2E8F0),
+                                        trackColor = MaterialTheme.colorScheme.outlineVariant,
                                         modifier = Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp))
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -240,7 +241,7 @@ fun BookDetailsScreen(
                                 Text(
                                     text = "Page ${book.currentPage + 1} of ${book.pageCount}",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF64748B),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     fontSize = 11.sp
                                 )
                             }
@@ -254,7 +255,7 @@ fun BookDetailsScreen(
                                     val colColor = try {
                                         Color(android.graphics.Color.parseColor(col.pastelColorHex))
                                     } catch (_: Exception) {
-                                        Color(0xFFEEF2FF)
+                                        MaterialTheme.colorScheme.primaryContainer
                                     }
                                     Box(
                                         modifier = Modifier
@@ -265,7 +266,7 @@ fun BookDetailsScreen(
                                         Text(
                                             text = col.name,
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = Color(0xFF1E293B),
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             fontWeight = FontWeight.SemiBold
                                         )
                                     }
@@ -278,7 +279,7 @@ fun BookDetailsScreen(
                 // --- 4 TABS (Overview, Bookmarks, Highlights, Notes) ---
                 TabRow(
                     selectedTabIndex = state.selectedTab,
-                    containerColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.surface,
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[state.selectedTab]),
@@ -386,7 +387,7 @@ fun BookDetailsScreen(
                     onClick = viewModel::cancelEditingNote,
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Cancel", color = Color(0xFF64748B))
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         ) {
@@ -395,7 +396,7 @@ fun BookDetailsScreen(
                     Text(
                         text = "\"${ann.selectedText.take(120)}...\"",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -446,7 +447,7 @@ private fun OverviewTabContent(
                 text = "Study Hub Summary",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F172A)
+                color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -493,7 +494,7 @@ private fun OverviewTabContent(
         // Document Details Card
         item {
             Card(
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
@@ -503,7 +504,7 @@ private fun OverviewTabContent(
                         text = "Document Properties",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     DetailRow(label = "Title", value = book.title)
@@ -553,10 +554,10 @@ private fun BookmarksTabContent(
     if (bookmarks.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.BookmarkBorder, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(48.dp))
+                Icon(Icons.Default.BookmarkBorder, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(48.dp))
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("No bookmarks saved yet", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF64748B))
-                Text("Tap the bookmark icon while reading to save pages", style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8))
+                Text("No bookmarks saved yet", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Tap the bookmark icon while reading to save pages", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     } else {
@@ -567,7 +568,7 @@ private fun BookmarksTabContent(
         ) {
             items(bookmarks, key = { it.id }) { bm ->
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth().clickable { onBookmarkClick(bm) }
@@ -581,7 +582,7 @@ private fun BookmarksTabContent(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFEEF2FF))
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
                                     .padding(horizontal = 10.dp, vertical = 6.dp)
                             ) {
                                 Text(
@@ -597,18 +598,18 @@ private fun BookmarksTabContent(
                                     text = if (bm.label.isNotBlank()) bm.label else "Saved Bookmark",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF0F172A)
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "Tap to jump directly to page",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Color(0xFF64748B)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
                         IconButton(onClick = { onDeleteBookmark(bm) }) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Color(0xFF94A3B8))
+                            Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -636,7 +637,7 @@ private fun HighlightsTabContent(
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Search & Sort Bar
-        Surface(color = Color.White, shadowElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
@@ -728,7 +729,7 @@ private fun HighlightsTabContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Color:", style = MaterialTheme.typography.labelSmall, color = Color(0xFF64748B))
+                    Text("Color:", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
                     DetailColorPalette.forEach { (name, hex) ->
                         val isSelected = state.filterColorHex.equals(hex, ignoreCase = true)
@@ -740,24 +741,7 @@ private fun HighlightsTabContent(
                                 modifier = Modifier.height(28.dp)
                             )
                         } else {
-                            val c = Color(android.graphics.Color.parseColor(hex))
-                            Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clip(CircleShape)
-                                    .background(c)
-                                    .border(
-                                        width = if (isSelected) 2.dp else 0.dp,
-                                        color = if (isSelected) Color(0xFF0F172A) else Color.Transparent,
-                                        shape = CircleShape
-                                    )
-                                    .clickable { onSelectColor(if (isSelected) null else hex) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isSelected) {
-                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF0F172A), modifier = Modifier.size(12.dp))
-                                }
-                            }
+                            ColorSwatch(hex, selected = isSelected, onClick = { onSelectColor(if (isSelected) null else hex) }, size = 20.dp)
                         }
                     }
                 }
@@ -769,7 +753,7 @@ private fun HighlightsTabContent(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = "No annotations match the current filters.",
-                    color = Color(0xFF64748B),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -805,7 +789,7 @@ private fun NotesTabContent(
     onDeleteNote: (BookAnnotation) -> Unit
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        Surface(color = Color.White, shadowElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
+        Surface(color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp, modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = onSearchChange,
@@ -821,10 +805,10 @@ private fun NotesTabContent(
         if (notes.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Default.NoteAlt, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(48.dp))
+                    Icon(Icons.Default.NoteAlt, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(48.dp))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("No notes found", style = MaterialTheme.typography.bodyMedium, color = Color(0xFF64748B))
-                    Text("Add notes by long-pressing text in the reader", style = MaterialTheme.typography.bodySmall, color = Color(0xFF94A3B8))
+                    Text("No notes found", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Add notes by long-pressing text in the reader", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else {
@@ -876,7 +860,7 @@ private fun AnnotationHubItemCard(
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         shape = RoundedCornerShape(12.dp),
         modifier = Modifier
@@ -896,7 +880,7 @@ private fun AnnotationHubItemCard(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFFEEF2FF))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
@@ -922,17 +906,17 @@ private fun AnnotationHubItemCard(
                     Text(
                         text = typeLabel,
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF64748B),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
 
                 Row {
                     IconButton(onClick = onEditNote, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = "Edit Note", tint = Color(0xFF64748B), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Note", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
-                        Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.DeleteOutline, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -949,7 +933,7 @@ private fun AnnotationHubItemCard(
                         text = "\"${annotation.selectedText}\"",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF0F172A),
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)
                     )
                 }
@@ -962,7 +946,7 @@ private fun AnnotationHubItemCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFF1F5F9))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.Top
                 ) {
@@ -977,7 +961,7 @@ private fun AnnotationHubItemCard(
                         text = "Note: ${annotation.noteContent}",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.Medium,
-                        color = Color(0xFF1E293B)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -1000,7 +984,7 @@ private fun MetricCard(
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Text(text = count, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = iconColor)
-            Text(text = title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = Color(0xFF1E293B))
+            Text(text = title, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
@@ -1012,7 +996,7 @@ private fun DetailRow(label: String, value: String) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
-        Text(text = value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = Color(0xFF0F172A))
+        Text(text = label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(text = value, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
     }
 }

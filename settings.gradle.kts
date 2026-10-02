@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "BookFlow"
 include(":app")
+include(":baselineprofile")

@@ -74,11 +74,12 @@ fun BookCoverCard(
     var menuExpanded by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
-    val coverColor = remember(book.coverColorHex) {
+    val fallbackCover = MaterialTheme.colorScheme.onSurface
+    val coverColor = remember(book.coverColorHex, fallbackCover) {
         try {
             Color(android.graphics.Color.parseColor(book.coverColorHex))
         } catch (_: Exception) {
-            Color(0xFF0F172A)
+            fallbackCover
         }
     }
 
@@ -92,7 +93,7 @@ fun BookCoverCard(
             .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
             .testTag("book_card_${book.id}"),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
@@ -107,7 +108,7 @@ fun BookCoverCard(
                             listOf(
                                 coverColor,
                                 coverColor.copy(alpha = 0.85f),
-                                Color(0xFF0F172A)
+                                MaterialTheme.colorScheme.onSurface
                             )
                         )
                     )
@@ -205,14 +206,14 @@ fun BookCoverCard(
                         text = book.title,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF0F172A),
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${book.pageCount} pages",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF64748B),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 11.sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -227,7 +228,7 @@ fun BookCoverCard(
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = "Options",
-                            tint = Color(0xFF94A3B8),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -288,7 +289,7 @@ fun BookCoverCard(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = null,
-                                    tint = Color(0xFF64748B)
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         )
@@ -324,13 +325,13 @@ fun BookCoverCard(
                         .height(4.dp)
                         .clip(RoundedCornerShape(2.dp)),
                     color = BrandPurple,
-                    trackColor = Color(0xFFE2E8F0)
+                    trackColor = MaterialTheme.colorScheme.outlineVariant
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = "${(book.readingProgress * 100).toInt()}%",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF64748B),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )

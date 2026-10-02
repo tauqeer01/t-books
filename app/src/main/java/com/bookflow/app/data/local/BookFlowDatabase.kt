@@ -22,8 +22,10 @@ import com.bookflow.app.data.local.entity.CollectionEntity
         AnnotationEntity::class,
         BookmarkEntity::class
     ],
+    // Version 3 is the first Play Store release schema (exported to app/schemas).
+    // Any future change must bump the version and add a Migration to MIGRATIONS.
     version = 3,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class BookFlowDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao
@@ -35,13 +37,20 @@ abstract class BookFlowDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: BookFlowDatabase? = null
 
+        /** Schema migrations, oldest first. Empty until the schema changes after the first release. */
+        private val MIGRATIONS = arrayOf<androidx.room.migration.Migration>()
+
         fun getInstance(context: Context): BookFlowDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     BookFlowDatabase::class.java,
                     "bookflow_database.db"
-                ).fallbackToDestructiveMigration().build()
+                )
+                    .addMigrations(*MIGRATIONS)
+                    // Never wipe user libraries and annotations on upgrade; only an app downgrade may reset
+                    .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
+                    .build()
                 INSTANCE = instance
                 instance
             }

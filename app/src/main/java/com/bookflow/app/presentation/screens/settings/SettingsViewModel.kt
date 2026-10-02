@@ -29,6 +29,14 @@ class SettingsViewModel(
     private val bookRepository: BookRepository
 ) : ViewModel() {
 
+    /** App-wide light/dark appearance. */
+    val appTheme: StateFlow<com.bookflow.app.domain.model.AppThemeMode> = preferencesRepository.appThemeFlow
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), com.bookflow.app.domain.model.AppThemeMode.SYSTEM)
+
+    fun setAppTheme(mode: com.bookflow.app.domain.model.AppThemeMode) {
+        viewModelScope.launch { preferencesRepository.setAppTheme(mode) }
+    }
+
     private val _cacheSize = MutableStateFlow(0L)
     private val _feedbackMessage = MutableStateFlow<String?>(null)
 

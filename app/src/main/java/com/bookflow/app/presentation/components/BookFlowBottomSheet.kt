@@ -73,10 +73,10 @@ fun BookFlowBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-        containerColor = Color.White,
+        containerColor = MaterialTheme.colorScheme.surface,
         dragHandle = {
             BottomSheetDefaults.DragHandle(
-                color = Color(0xFFCBD5E1),
+                color = MaterialTheme.colorScheme.outline,
                 width = 38.dp,
                 height = 4.dp
             )
@@ -107,14 +107,14 @@ fun BookFlowBottomSheet(
                                 text = title,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0F172A)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         if (subtitle != null) {
                             Text(
                                 text = subtitle,
                                 fontSize = 12.5.sp,
-                                color = Color(0xFF64748B),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 lineHeight = 16.sp
                             )
                         }
@@ -127,13 +127,13 @@ fun BookFlowBottomSheet(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Close",
-                                tint = Color(0xFF94A3B8),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
                     }
                 }
-                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
             }
 
             // Body Area
@@ -152,7 +152,7 @@ fun BookFlowBottomSheet(
 
             // Optional Action Buttons Footer
             if (confirmButton != null || dismissButton != null) {
-                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -229,14 +229,14 @@ fun BookFlowConfirmationSheet(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(dismissText, color = Color(0xFF64748B))
+                Text(dismissText, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     ) {
         Text(
             text = message,
             fontSize = 14.sp,
-            color = Color(0xFF475569),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             lineHeight = 20.sp,
             modifier = Modifier.padding(vertical = 8.dp)
         )

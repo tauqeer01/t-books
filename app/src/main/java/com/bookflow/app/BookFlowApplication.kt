@@ -23,6 +23,7 @@ class BookFlowApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.bookflow.app.core.util.CrashLog.install(this)
         container = AppContainer(this)
 
         // Preload sample books and collections in the background

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Only the folders BookFlow actually shares from: library PDF copies and annotated exports. -->
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
-    <cache-path name="shared_docs" path="." />
-    <files-path name="user_docs" path="." />
+    <files-path name="user_docs" path="books/" />
+    <cache-path name="shared_docs" path="exports/" />
 </paths>

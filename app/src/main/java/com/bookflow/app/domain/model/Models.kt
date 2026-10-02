@@ -84,6 +84,9 @@ data class Bookmark(
     val createdAt: Long = System.currentTimeMillis()
 )
 
+/** App-wide light/dark appearance (reader page colors are set separately by [ReaderTheme]). */
+enum class AppThemeMode(val displayName: String) { SYSTEM("System default"), LIGHT("Light"), DARK("Dark") }
+
 enum class ReadingOrientation(val displayName: String) { AUTO("Auto"), PORTRAIT("Portrait"), LANDSCAPE("Landscape") }
 
 data class UserReadingPreferences(

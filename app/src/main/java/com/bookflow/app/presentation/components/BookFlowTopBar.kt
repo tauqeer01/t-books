@@ -29,6 +29,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -98,6 +100,7 @@ fun BookFlowTopBar(
                 Column(
                     modifier = Modifier
                         .weight(1f)
+                        .semantics(mergeDescendants = true) { heading() }
                         .then(
                             if (onTitleClick != null) Modifier
                                 .clip(RoundedCornerShape(8.dp))
@@ -132,7 +135,7 @@ fun BookFlowTopBar(
                 }
                 actions()
             }
-            if (showDivider) HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outline)
+            if (showDivider) HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }

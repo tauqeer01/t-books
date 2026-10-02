@@ -15,6 +15,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
+import com.bookflow.app.domain.model.AppThemeMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -31,7 +36,7 @@ import com.bookflow.app.domain.model.Book
 import com.bookflow.app.presentation.components.*
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onNavigateToCollections: () -> Unit, onLibrary: (String) -> Unit, onBookInformation: (String) -> Unit, onSettings: () -> Unit, modifier: Modifier = Modifier) {
+fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onNavigateToCollections: () -> Unit, onLibrary: (String) -> Unit, onBookInformation: (String) -> Unit, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val readingStats by viewModel.readingStats.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -59,7 +64,13 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
                 },
                 actions = {
                     ReadingGoalBadge(readingStats, onClick = { showReadingGoal = true })
-                    BookFlowTopBarAction(Icons.Default.AccountCircle, "Preferences", onSettings, tint = BrandPurple)
+                    // Quick light/dark switch; the full System/Light/Dark choice lives in Settings › App Theme
+                    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+                    BookFlowTopBarAction(
+                        icon = if (isDark) Icons.Default.LightMode else Icons.Default.DarkMode,
+                        contentDescription = if (isDark) "Switch to light mode" else "Switch to dark mode",
+                        onClick = { viewModel.setAppTheme(if (isDark) AppThemeMode.LIGHT else AppThemeMode.DARK) }
+                    )
                 }
             )
         },
@@ -221,8 +232,8 @@ private fun EmptyShelf(text: String) { Text(text, Modifier.padding(horizontal = 
 @Composable
 private fun SectionHeader(title: String, onSeeAll: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.5).sp)
-        TextButton(onClick = onSeeAll, contentPadding = PaddingValues(0.dp), modifier = Modifier.height(32.dp)) { Text("See All", fontSize = 12.sp); Icon(Icons.Default.ChevronRight, null, Modifier.size(16.dp)) }
+        Text(title, Modifier.weight(1f).semantics { heading() }, fontSize = 18.sp, fontWeight = FontWeight.Bold, letterSpacing = (-.5).sp)
+        TextButton(onClick = onSeeAll, contentPadding = PaddingValues(horizontal = 8.dp), modifier = Modifier.semantics { contentDescription = "See all $title" }) { Text("See All", fontSize = 12.sp); Icon(Icons.Default.ChevronRight, null, Modifier.size(16.dp)) }
     }
 }
 

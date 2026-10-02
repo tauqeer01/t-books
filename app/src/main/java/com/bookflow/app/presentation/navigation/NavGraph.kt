@@ -1,11 +1,15 @@
 package com.bookflow.app.presentation.navigation
 
+import com.bookflow.app.presentation.components.BookFlowNavigationRail
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -31,16 +35,31 @@ import com.bookflow.app.presentation.screens.reader.ReaderViewModel
 import com.bookflow.app.presentation.screens.search.SearchScreen
 import com.bookflow.app.presentation.screens.settings.SettingsScreen
 import com.bookflow.app.presentation.screens.settings.SettingsViewModel
-import com.bookflow.app.presentation.screens.splash.SplashScreen
 
 @Composable
 fun BookFlowNavGraph(
     navController: NavHostController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    pendingPdfUri: android.net.Uri? = null,
+    onPendingPdfHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as BookFlowApplication
     val container = app.container
+
+    // "Open with BookFlow": import the PDF (or find the copy already in the library) and open it
+    LaunchedEffect(pendingPdfUri) {
+        val uri = pendingPdfUri ?: return@LaunchedEffect
+        val result = container.bookRepository.importPdf(uri)
+        val bookId = result.getOrNull()?.id
+            ?: (result.exceptionOrNull() as? com.bookflow.app.domain.repository.DuplicateBookException)?.existingBookId
+        if (bookId != null) {
+            navController.navigate(Screen.Reader.createRoute(bookId)) { launchSingleTop = true }
+        } else {
+            android.widget.Toast.makeText(context, "Couldn't open this PDF", android.widget.Toast.LENGTH_LONG).show()
+        }
+        onPendingPdfHandled()
+    }
 
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -54,42 +73,46 @@ fun BookFlowNavGraph(
         Screen.Settings.route
     )
 
+    // Tablets, foldables and landscape get a side rail instead of a stretched bottom bar
+    val useNavigationRail = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
+    val navigateToTab: (String) -> Unit = { route ->
+        if (route == Screen.Home.route) {
+            val popped = navController.popBackStack(Screen.Home.route, inclusive = false)
+            if (!popped) {
+                navController.navigate(Screen.Home.route) {
+                    popUpTo(navController.graph.id) { inclusive = false }
+                    launchSingleTop = true
+                }
+            }
+        } else {
+            navController.navigate(route) {
+                popUpTo(Screen.Home.route) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            if (showBottomBar) {
+            if (showBottomBar && !useNavigationRail) {
                 BookFlowBottomBar(
                     currentRoute = currentRoute,
-                    onNavigate = { route ->
-                        if (route == Screen.Home.route) {
-                            val popped = navController.popBackStack(Screen.Home.route, inclusive = false)
-                            if (!popped) {
-                                navController.navigate(Screen.Home.route) {
-                                    popUpTo(navController.graph.id) {
-                                        inclusive = false
-                                    }
-                                    launchSingleTop = true
-                                }
-                            }
-                        } else {
-                            navController.navigate(route) {
-                                popUpTo(Screen.Home.route) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        }
-                    }
+                    onNavigate = navigateToTab
                 )
             }
         }
     ) { innerPadding ->
+        Row(Modifier.fillMaxSize().padding(innerPadding)) {
+        if (showBottomBar && useNavigationRail) {
+            BookFlowNavigationRail(currentRoute = currentRoute, onNavigate = navigateToTab)
+        }
         Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
+                .weight(1f)
+                .fillMaxHeight()
         ) {
             // Scoped ViewModels: created once per NavGraph composition, stable across recompositions
             val homeViewModel: HomeViewModel = viewModel(
@@ -101,7 +124,8 @@ fun BookFlowNavGraph(
                     bookRepository = container.bookRepository,
                     annotationRepository = container.annotationRepository,
                     pdfEngineFactory = container.pdfEngineFactory,
-                    readingStatsRepository = container.readingStatsRepository
+                    readingStatsRepository = container.readingStatsRepository,
+                    preferencesRepository = container.preferencesRepository
                 )
             )
 
@@ -117,19 +141,8 @@ fun BookFlowNavGraph(
 
             NavHost(
                 navController = navController,
-                startDestination = Screen.Splash.route
+                startDestination = Screen.Home.route
             ) {
-                // Splash Screen
-                composable(Screen.Splash.route) {
-                    SplashScreen(
-                        onSplashFinished = {
-                            navController.navigate(Screen.Home.route) {
-                                popUpTo(Screen.Splash.route) { inclusive = true }
-                            }
-                        }
-                    )
-                }
-
                 // 1. Home Tab (Dashboard from Screenshot)
                 composable(Screen.Home.route) {
                     HomeScreen(
@@ -141,8 +154,7 @@ fun BookFlowNavGraph(
                             navController.navigate(Screen.Collections.route)
                         },
                         onLibrary = { filter -> libraryViewModel.onCategorySelected(filter); navController.navigate(Screen.Library.route) },
-                        onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
-                        onSettings = { navController.navigate(Screen.Settings.route) }
+                        onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) }
                     )
                 }
 
@@ -197,7 +209,24 @@ fun BookFlowNavGraph(
                             bookRepository = container.bookRepository
                         )
                     )
-                    SettingsScreen(viewModel = settingsViewModel, onCollections = { navController.navigate(Screen.Collections.route) }, onLibrary = { navController.navigate(Screen.Library.route) })
+                    SettingsScreen(
+                        viewModel = settingsViewModel,
+                        onCollections = { navController.navigate(Screen.Collections.route) },
+                        onLibrary = { navController.navigate(Screen.Library.route) },
+                        onOpenLegal = { navController.navigate(Screen.Legal.createRoute(it.route)) },
+                        onOpenLicenses = { navController.navigate(Screen.Licenses.route) }
+                    )
+                }
+
+                composable(Screen.Legal.route, arguments = listOf(navArgument("doc") { type = NavType.StringType })) { entry ->
+                    com.bookflow.app.presentation.screens.legal.LegalDocumentScreen(
+                        document = com.bookflow.app.presentation.screens.legal.LegalDocument.fromRoute(entry.arguments?.getString("doc")),
+                        onBack = { navController.popBackStack() }
+                    )
+                }
+
+                composable(Screen.Licenses.route) {
+                    com.bookflow.app.presentation.screens.legal.OpenSourceLicensesScreen(onBack = { navController.popBackStack() })
                 }
 
                 // PDF Reader Screen (Matching Aircraft Systems Screenshot)
@@ -262,6 +291,7 @@ fun BookFlowNavGraph(
                     )
                 }
             }
+        }
         }
     }
 }

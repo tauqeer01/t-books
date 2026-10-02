@@ -25,7 +25,9 @@ private val LightColorScheme = lightColorScheme(
     onSurface = AppTextPrimary,
     surfaceVariant = AppSurfaceVariant,
     onSurfaceVariant = AppTextSecondary,
-    outline = AppDivider
+    // outline: borders and disabled icons; outlineVariant: hairline dividers
+    outline = Color(0xFFCBD5E1),
+    outlineVariant = AppDivider
 )
 
 private val DarkColorScheme = darkColorScheme(
@@ -35,18 +37,24 @@ private val DarkColorScheme = darkColorScheme(
     onPrimaryContainer = Color(0xFFC7D2FE),
     secondary = Color(0xFF94A3B8),
     onSecondary = Color.Black,
-    background = Color(0xFF0F172A),
-    onBackground = Color(0xFFF8FAFC),
-    surface = Color(0xFF1E293B),
-    onSurface = Color(0xFFF8FAFC),
-    surfaceVariant = Color(0xFF334155),
-    onSurfaceVariant = Color(0xFF94A3B8),
-    outline = Color(0xFF334155)
+    background = Color(0xFF0B1120),
+    onBackground = Color(0xFFF1F5F9),
+    surface = Color(0xFF151E2E),
+    onSurface = Color(0xFFF1F5F9),
+    surfaceVariant = Color(0xFF243044),
+    onSurfaceVariant = Color(0xFFA3B1C6),
+    outline = Color(0xFF475569),
+    outlineVariant = Color(0xFF2A3547),
+    surfaceContainerLow = Color(0xFF151E2E),
+    surfaceContainer = Color(0xFF1A2436),
+    surfaceContainerHigh = Color(0xFF1E293B),
+    inverseSurface = Color(0xFFF1F5F9),
+    inverseOnSurface = Color(0xFF0F172A)
 )
 
 @Composable
 fun BookFlowTheme(
-    darkTheme: Boolean = false, // Default to light mode matching screenshots
+    darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme

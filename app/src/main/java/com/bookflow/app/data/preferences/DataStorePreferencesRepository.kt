@@ -68,4 +68,6 @@ class DataStorePreferencesRepository(private val context: Context) : Preferences
     override suspend fun updateScrollMode(mode: PageScrollMode) { context.dataStore.edit { it[stringPreferencesKey("scroll_mode")] = mode.name } }
     override suspend fun updateHighResRendering(enabled: Boolean) { context.dataStore.edit { it[booleanPreferencesKey("high_res_rendering")] = enabled } }
     override suspend fun updateKeepScreenOn(enabled: Boolean) { context.dataStore.edit { it[booleanPreferencesKey("keep_screen_on")] = enabled } }
+    override val appThemeFlow: Flow<AppThemeMode> = data.map { enum(it[stringPreferencesKey("app_theme")], AppThemeMode.SYSTEM) }
+    override suspend fun setAppTheme(mode: AppThemeMode) { context.dataStore.edit { it[stringPreferencesKey("app_theme")] = mode.name } }
 }

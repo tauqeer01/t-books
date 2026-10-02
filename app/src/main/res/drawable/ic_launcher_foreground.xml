@@ -1,25 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- BookFlow open book (same artwork as BookFlowEmblem), drawn inside the adaptive icon safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <group
-        android:scaleX="0.55"
-        android:scaleY="0.55"
-        android:translateX="24.3"
-        android:translateY="24.3">
-        <!-- Open book left page -->
-        <path
-            android:fillColor="#E06D53"
-            android:pathData="M18,34 C28,34 38,30 48,26 L48,84 C38,88 28,92 18,92 C14,92 12,90 12,86 L12,40 C12,36 14,34 18,34 Z" />
-        <!-- Open book right page -->
-        <path
-            android:fillColor="#D85C42"
-            android:pathData="M90,34 C80,34 70,30 60,26 L60,84 C70,88 80,92 90,92 C94,92 96,90 96,86 L96,40 C96,36 94,34 90,34 Z" />
-        <!-- Center spine bookmark ribbon -->
-        <path
-            android:fillColor="#3B4252"
-            android:pathData="M51,20 L57,20 L57,60 L54,56 L51,60 Z" />
+        android:scaleX="0.5"
+        android:scaleY="0.5"
+        android:translateX="29"
+        android:translateY="30">
+        <path android:pathData="M47,30 C35,12 17,10 9,12 L9,75 C25,75 37,80 47,91 Z
+            M53,30 C65,12 83,10 91,12 L91,75 C75,75 63,80 53,91 Z
+            M2,23 L5,23 L5,79 C27,79 34,85 44,95 C25,85 12,85 2,87 Z
+            M98,23 L95,23 L95,79 C73,79 66,85 56,95 C75,85 88,85 98,87 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="50"
+                    android:startY="10"
+                    android:endX="50"
+                    android:endY="95">
+                    <item android:offset="0" android:color="#FF9955FF" />
+                    <item android:offset="0.5" android:color="#FF5935FF" />
+                    <item android:offset="1" android:color="#FF1326CC" />
+                </gradient>
+            </aapt:attr>
+        </path>
     </group>
 </vector>

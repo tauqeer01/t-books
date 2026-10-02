@@ -166,7 +166,7 @@ fun CreateCollectionDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Cancel", color = Color(0xFF64748B))
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     ) {
@@ -207,7 +207,7 @@ fun CreateCollectionDialog(
                 text = "Pastel Color Theme",
                 fontSize = 13.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF475569)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -216,20 +216,8 @@ fun CreateCollectionDialog(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                pastelColors.forEach { hex ->
-                    val isSelected = selectedColorHex == hex
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(CircleShape)
-                            .background(Color(android.graphics.Color.parseColor(hex)))
-                            .border(
-                                width = if (isSelected) 3.dp else 1.dp,
-                                color = if (isSelected) Color(0xFF1E293B) else Color(0xFFCBD5E1),
-                                shape = CircleShape
-                            )
-                            .clickable { selectedColorHex = hex }
-                    )
+                pastelColors.forEachIndexed { index, hex ->
+                    ColorSwatch(hex, selected = selectedColorHex == hex, onClick = { selectedColorHex = hex }, name = "Collection color ${index + 1}", size = 38.dp)
                 }
             }
         }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ backup and device transfer. Keep the library database (books, collections,
+     highlights, notes, bookmarks) and settings; skip PDF copies and thumbnails, which can exceed
+     the 25MB Auto Backup quota and are re-created on import. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="." />
+        <include domain="file" path="datastore/" />
+        <include domain="sharedpref" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="." />
+        <include domain="file" path="datastore/" />
+        <include domain="sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

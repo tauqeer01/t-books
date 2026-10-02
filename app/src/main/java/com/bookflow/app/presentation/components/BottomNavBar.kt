@@ -1,5 +1,10 @@
 package com.bookflow.app.presentation.components
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -102,11 +107,11 @@ fun BookFlowBottomBar(
     Surface(
         modifier = modifier
             .fillMaxWidth(),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 8.dp
     ) {
         Column(Modifier.navigationBarsPadding()) {
-            HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
 
             Row(
                 modifier = Modifier
@@ -118,25 +123,30 @@ fun BookFlowBottomBar(
                 NavTabs.forEach { tab ->
                     val isSelected = currentRoute == tab.route
 
+                    val label = stringResource(tab.labelRes)
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .weight(1f)
-                            .clickable(
+                            .selectable(
+                                selected = isSelected,
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = null
+                                indication = null,
+                                role = Role.Tab
                             ) {
                                 if (!isSelected) {
                                     onNavigate(tab.route)
                                 }
                             }
+                            // One announcement per tab ("Library, tab, selected") instead of icon + text twice
+                            .clearAndSetSemantics { contentDescription = label }
                             .padding(vertical = 4.dp)
                             .testTag(tab.testTag)
                     ) {
                         Icon(
                             imageVector = if (isSelected) tab.filledIcon else tab.outlinedIcon,
                             contentDescription = stringResource(tab.labelRes),
-                            tint = if (isSelected) BrandPurple else Color(0xFF475569),
+                            tint = if (isSelected) BrandPurple else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
 
@@ -147,12 +157,50 @@ fun BookFlowBottomBar(
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 11.5.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                            color = if (isSelected) BrandPurple else Color(0xFF334155),
+                            color = if (isSelected) BrandPurple else MaterialTheme.colorScheme.onSurface,
                             maxLines = 1
                         )
                     }
                 }
             }
         }
+    }
+}
+
+/**
+ * Side navigation for wide windows (tablets, foldables, landscape), replacing the bottom bar at >= 600dp.
+ */
+@Composable
+fun BookFlowNavigationRail(
+    currentRoute: String?,
+    onNavigate: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.NavigationRail(
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface,
+        header = { BookFlowEmblem(Modifier.padding(vertical = 12.dp).size(40.dp)) }
+    ) {
+        Spacer(Modifier.weight(1f))
+        NavTabs.forEach { tab ->
+            val isSelected = currentRoute == tab.route
+            val label = stringResource(tab.labelRes)
+            androidx.compose.material3.NavigationRailItem(
+                selected = isSelected,
+                onClick = { if (!isSelected) onNavigate(tab.route) },
+                icon = { Icon(if (isSelected) tab.filledIcon else tab.outlinedIcon, contentDescription = null) },
+                label = { Text(label, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
+                colors = androidx.compose.material3.NavigationRailItemDefaults.colors(
+                    selectedIconColor = BrandPurple,
+                    selectedTextColor = BrandPurple,
+                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                ),
+                modifier = Modifier
+                    .padding(vertical = 4.dp)
+                    .semantics { contentDescription = label }
+                    .testTag(tab.testTag)
+            )
+        }
+        Spacer(Modifier.weight(1f))
     }
 }

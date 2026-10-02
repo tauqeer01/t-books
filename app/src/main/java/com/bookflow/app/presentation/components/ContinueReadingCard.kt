@@ -86,7 +86,7 @@ fun ContinueReadingCard(
                             listOf(
                                 coverColor,
                                 coverColor.copy(alpha = 0.85f),
-                                Color(0xFF1E293B)
+                                MaterialTheme.colorScheme.onSurface
                             )
                         )
                     )

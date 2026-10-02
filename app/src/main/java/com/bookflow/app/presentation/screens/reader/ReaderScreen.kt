@@ -1,5 +1,6 @@
 package com.bookflow.app.presentation.screens.reader
 
+import com.bookflow.app.presentation.components.ColorSwatch
 import android.graphics.Bitmap
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -262,7 +263,7 @@ fun ReaderScreen(
                     onClick = { viewModel.showReadingPreferences(false) },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Cancel", color = Color(0xFF64748B))
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         ) {
@@ -270,24 +271,24 @@ fun ReaderScreen(
                 Surface(
                     onClick = { scope = true },
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFF1F5F9),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(Modifier.padding(14.dp)) {
-                        Text("Customize for This Book", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
-                        Text("Overrides apply only while reading this PDF", fontSize = 12.sp, color = Color(0xFF64748B))
+                        Text("Customize for This Book", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Overrides apply only while reading this PDF", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
                 Surface(
                     onClick = { scope = false },
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFFF1F5F9),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(Modifier.padding(14.dp)) {
-                        Text("Change Global Defaults", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
-                        Text("Applies to all books in your library", fontSize = 12.sp, color = Color(0xFF64748B))
+                        Text("Change Global Defaults", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.onSurface)
+                        Text("Applies to all books in your library", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -575,7 +576,7 @@ fun ReaderScreen(
             ) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 10.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -594,21 +595,21 @@ fun ReaderScreen(
                                             onClick = { viewModel.onSearchQueryChanged("") },
                                             modifier = Modifier.size(32.dp)
                                         ) {
-                                            Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(16.dp), tint = Color(0xFF64748B))
+                                            Icon(Icons.Default.Clear, contentDescription = "Clear", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                     }
                                     IconButton(
                                         onClick = { viewModel.setSearchOpen(false) },
                                         modifier = Modifier.size(32.dp)
                                     ) {
-                                        Icon(Icons.Default.Clear, contentDescription = "Close Search", tint = Color(0xFF1E293B), modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.Clear, contentDescription = "Close Search", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
                                     }
                                 }
                             },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = BrandPurple,
-                                unfocusedBorderColor = Color(0xFFCBD5E1)
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline
                             ),
                             modifier = Modifier.fillMaxWidth().testTag("pdf_search_input")
                         )
@@ -621,7 +622,7 @@ fun ReaderScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFF1F5F9))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
                                     .padding(horizontal = 10.dp, vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
@@ -637,13 +638,13 @@ fun ReaderScreen(
                                         onClick = viewModel::previousSearchResult,
                                         modifier = Modifier.size(28.dp).testTag("search_prev_match")
                                     ) {
-                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Previous Match", tint = Color(0xFF334155))
+                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Previous Match", tint = MaterialTheme.colorScheme.onSurface)
                                     }
                                     IconButton(
                                         onClick = viewModel::nextSearchResult,
                                         modifier = Modifier.size(28.dp).testTag("search_next_match")
                                     ) {
-                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Next Match", tint = Color(0xFF334155))
+                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Next Match", tint = MaterialTheme.colorScheme.onSurface)
                                     }
                                 }
                             }
@@ -665,7 +666,7 @@ fun ReaderScreen(
                                                 viewModel.jumpToSearchResult(result)
                                             },
                                         colors = CardDefaults.cardColors(
-                                            containerColor = if (isCurrentMatch) Color(0xFFEEF2FF) else Color(0xFFF8FAFC)
+                                            containerColor = if (isCurrentMatch) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background
                                         ),
                                         shape = RoundedCornerShape(8.dp)
                                     ) {
@@ -678,12 +679,12 @@ fun ReaderScreen(
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Surface(
                                                         shape = RoundedCornerShape(6.dp),
-                                                        color = if (isCurrentMatch) BrandPurple else Color(0xFFE2E8F0)
+                                                        color = if (isCurrentMatch) BrandPurple else MaterialTheme.colorScheme.outlineVariant
                                                     ) {
                                                         Text(
                                                             text = "Page ${result.pageIndex + 1}",
                                                             style = MaterialTheme.typography.labelSmall,
-                                                            color = if (isCurrentMatch) Color.White else Color(0xFF334155),
+                                                            color = if (isCurrentMatch) Color.White else MaterialTheme.colorScheme.onSurface,
                                                             fontWeight = FontWeight.Bold,
                                                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                                         )
@@ -693,7 +694,7 @@ fun ReaderScreen(
                                                         text = "\"${result.matchedText}\"",
                                                         style = MaterialTheme.typography.bodySmall,
                                                         fontWeight = FontWeight.Bold,
-                                                        color = Color(0xFF0F172A)
+                                                        color = MaterialTheme.colorScheme.onSurface
                                                     )
                                                 }
                                                 if (isCurrentMatch) {
@@ -712,7 +713,7 @@ fun ReaderScreen(
                                             Text(
                                                 text = result.snippet,
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = Color(0xFF475569),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                 fontSize = 12.sp,
                                                 maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis
@@ -731,7 +732,7 @@ fun ReaderScreen(
                             Text(
                                 text = "No matches found for \"${state.searchQuery}\"",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF64748B),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp)
                             )
                         }
@@ -773,7 +774,7 @@ fun ReaderScreen(
                     Column(Modifier.fillMaxWidth().padding(20.dp)) {
                         Text("Reader options", style = MaterialTheme.typography.titleLarge)
                         Spacer(Modifier.height(14.dp))
-                        Text("Reading mode", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF64748B))
+                        Text("Reading mode", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(Modifier.height(8.dp))
                         ReadingModeSelector(selected = state.scrollMode, onSelect = viewModel::setScrollMode)
                         Spacer(Modifier.height(8.dp))
@@ -821,7 +822,7 @@ fun ReaderScreen(
                             onClick = viewModel::closeGoToPageDialog,
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Cancel", color = Color(0xFF64748B))
+                            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 ) {
@@ -898,7 +899,7 @@ fun ReaderScreen(
                             onClick = viewModel::cancelEditingNote,
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Cancel", color = Color(0xFF64748B))
+                            Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 ) {
@@ -907,7 +908,7 @@ fun ReaderScreen(
                             Text(
                                 text = "\"${ann.selectedText.take(120)}...\"",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF64748B),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
@@ -954,7 +955,7 @@ fun ReaderScreen(
                             Text(
                                 text = "${state.pageCount} pages",
                                 style = MaterialTheme.typography.labelMedium,
-                                color = Color(0xFF64748B)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 
@@ -988,10 +989,10 @@ fun ReaderScreen(
                                             .clip(RoundedCornerShape(8.dp))
                                             .border(
                                                 width = if (isCurrent) 3.dp else 1.dp,
-                                                color = if (isCurrent) BrandPurple else Color(0xFFE2E8F0),
+                                                color = if (isCurrent) BrandPurple else MaterialTheme.colorScheme.outlineVariant,
                                                 shape = RoundedCornerShape(8.dp)
                                             )
-                                            .background(Color(0xFFF8FAFC)),
+                                            .background(MaterialTheme.colorScheme.background),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         MiniPageThumbnail(
@@ -1017,7 +1018,7 @@ fun ReaderScreen(
                                         text = "Page ${pIndex + 1}",
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isCurrent) BrandPurple else Color(0xFF334155),
+                                        color = if (isCurrent) BrandPurple else MaterialTheme.colorScheme.onSurface,
                                         fontSize = 11.sp
                                     )
                                 }
@@ -1074,7 +1075,7 @@ fun ReaderScreen(
                             0 -> {
                                 if (state.outline.isEmpty()) {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("No outline available for this document.", color = Color(0xFF64748B))
+                                        Text("No outline available for this document.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 } else {
                                     LazyColumn(
@@ -1099,7 +1100,7 @@ fun ReaderScreen(
                                                     text = item.title,
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     fontWeight = FontWeight.Medium,
-                                                    color = Color(0xFF0F172A),
+                                                    color = MaterialTheme.colorScheme.onSurface,
                                                     modifier = Modifier.weight(1f)
                                                 )
                                                 Text(
@@ -1116,7 +1117,7 @@ fun ReaderScreen(
                             1 -> {
                                 if (state.bookmarks.isEmpty()) {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("No bookmarks yet. Tap the bookmark icon to save pages.", color = Color(0xFF64748B))
+                                        Text("No bookmarks yet. Tap the bookmark icon to save pages.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 } else {
                                     LazyColumn(
@@ -1144,15 +1145,15 @@ fun ReaderScreen(
                                                         Text(
                                                             text = "Page ${bm.pageIndex + 1}",
                                                             fontWeight = FontWeight.Bold,
-                                                            color = Color(0xFF0F172A)
+                                                            color = MaterialTheme.colorScheme.onSurface
                                                         )
                                                         if (bm.label.isNotBlank()) {
-                                                            Text(text = bm.label, style = MaterialTheme.typography.bodySmall, color = Color(0xFF64748B))
+                                                            Text(text = bm.label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                                         }
                                                     }
                                                 }
                                                 IconButton(onClick = { viewModel.toggleBookmark() }) {
-                                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFF94A3B8))
+                                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                                                 }
                                             }
                                         }
@@ -1162,7 +1163,7 @@ fun ReaderScreen(
                             2 -> {
                                 if (state.allBookAnnotations.isEmpty()) {
                                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Text("No highlights or notes yet. Long-press text to annotate.", color = Color(0xFF64748B))
+                                        Text("No highlights or notes yet. Long-press text to annotate.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 } else {
                                     LazyColumn(
@@ -1184,7 +1185,7 @@ fun ReaderScreen(
                                                         viewModel.jumpToPage(ann.pageIndex)
                                                         viewModel.setDrawerOpen(false)
                                                     },
-                                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
+                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background)
                                             ) {
                                                 Column(modifier = Modifier.padding(12.dp)) {
                                                     Row(
@@ -1212,14 +1213,14 @@ fun ReaderScreen(
                                                                 onClick = { viewModel.startEditingNote(ann) },
                                                                 modifier = Modifier.size(24.dp)
                                                             ) {
-                                                                Icon(Icons.Default.Edit, contentDescription = "Edit Note", tint = Color(0xFF64748B), modifier = Modifier.size(16.dp))
+                                                                Icon(Icons.Default.Edit, contentDescription = "Edit Note", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                                                             }
                                                             Spacer(modifier = Modifier.width(4.dp))
                                                             IconButton(
                                                                 onClick = { viewModel.deleteAnnotation(ann.id) },
                                                                 modifier = Modifier.size(24.dp)
                                                             ) {
-                                                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                                                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                                                             }
                                                         }
                                                     }
@@ -1228,7 +1229,7 @@ fun ReaderScreen(
                                                         Text(
                                                             text = "\"${ann.selectedText}\"",
                                                             style = MaterialTheme.typography.bodyMedium,
-                                                            color = Color(0xFF0F172A),
+                                                            color = MaterialTheme.colorScheme.onSurface,
                                                             maxLines = 3,
                                                             overflow = TextOverflow.Ellipsis
                                                         )
@@ -1236,14 +1237,14 @@ fun ReaderScreen(
                                                     if (ann.noteContent.isNotBlank()) {
                                                         Spacer(modifier = Modifier.height(6.dp))
                                                         Surface(
-                                                            color = Color.White,
+                                                            color = MaterialTheme.colorScheme.surface,
                                                             shape = RoundedCornerShape(6.dp),
                                                             modifier = Modifier.fillMaxWidth()
                                                         ) {
                                                             Text(
                                                                 text = "Note: ${ann.noteContent}",
                                                                 style = MaterialTheme.typography.bodySmall,
-                                                                color = Color(0xFF334155),
+                                                                color = MaterialTheme.colorScheme.onSurface,
                                                                 modifier = Modifier.padding(8.dp)
                                                             )
                                                         }
@@ -1411,7 +1412,7 @@ fun PdfPageItem(
                     Text(
                         text = "Page ${pageIndex + 1}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF94A3B8)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -1496,23 +1497,19 @@ fun TextSelectionContextBar(
     onCopy: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    Surface(shape = RoundedCornerShape(16.dp), color = Color.White, shadowElevation = 10.dp,
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 10.dp,
         modifier = Modifier.fillMaxWidth().testTag("contextual_toolbar")) {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(2.dp)) {
             HighlightColorPalette.forEach { (name, hex) ->
-                IconButton(onClick = { onColorSelected(hex) }, modifier = Modifier.size(30.dp)) {
-                    Box(Modifier.size(20.dp).clip(CircleShape).background(Color(android.graphics.Color.parseColor(hex)))
-                        .border(if (selectedColorHex.equals(hex, true)) 2.dp else 0.dp, BrandPurple, CircleShape))
-                    if (selectedColorHex.equals(hex, true)) Icon(Icons.Default.Check, "Selected $name", Modifier.size(12.dp), tint = Color(0xFF101326))
-                }
+                ColorSwatch(hex, selected = selectedColorHex.equals(hex, true), onClick = { onColorSelected(hex) }, name = name, size = 20.dp)
             }
             ContextBarActionButton(Icons.Default.FormatColorText, "Highlight", onHighlight)
             ContextBarActionButton(Icons.Default.FormatUnderlined, "Underline", onUnderline)
             ContextBarActionButton(Icons.Default.FormatStrikethrough, "Strikethrough", onStrikethrough)
             ContextBarActionButton(Icons.Default.ChatBubbleOutline, "Add note", onAddNote)
             ContextBarActionButton(Icons.Default.ContentCopy, "Copy", onCopy)
-            IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) { Icon(Icons.Default.Clear, "Dismiss selection", Modifier.size(16.dp), tint = Color(0xFF101326)) }
+            IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) { Icon(Icons.Default.Clear, "Dismiss selection", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface) }
         }
     }
 }
@@ -1524,7 +1521,7 @@ private fun ContextBarActionButton(
     onClick: () -> Unit
 ) {
     IconButton(onClick = onClick, modifier = Modifier.size(32.dp)) {
-        Icon(icon, label, tint = Color(0xFF101326), modifier = Modifier.size(18.dp))
+        Icon(icon, label, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -1546,7 +1543,7 @@ fun ExistingAnnotationActionMenu(
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 12.dp,
         modifier = Modifier.fillMaxWidth().testTag("annotation_action_menu")
     ) {
@@ -1560,10 +1557,10 @@ fun ExistingAnnotationActionMenu(
                     text = "${annotation.type.name} on Page ${annotation.pageIndex + 1}",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF101326)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
-                    Icon(Icons.Default.Clear, contentDescription = "Dismiss", tint = Color(0xFF94A3B8), modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Clear, contentDescription = "Dismiss", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
                 }
             }
 
@@ -1572,7 +1569,7 @@ fun ExistingAnnotationActionMenu(
                 Text(
                     text = "Note: ${annotation.noteContent}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFFCBD5E1),
+                    color = MaterialTheme.colorScheme.outline,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -1589,29 +1586,11 @@ fun ExistingAnnotationActionMenu(
                 Text(
                     text = "Change Color:",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color(0xFF94A3B8)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                HighlightColorPalette.forEach { (_, hex) ->
-                    val color = Color(android.graphics.Color.parseColor(hex))
-                    val isSelected = annotation.colorHex.equals(hex, ignoreCase = true)
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                            .border(
-                                width = if (isSelected) 2.5.dp else 0.dp,
-                                color = if (isSelected) Color.White else Color.Transparent,
-                                shape = CircleShape
-                            )
-                            .clickable { onColorChange(hex) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isSelected) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = Color(0xFF0F172A), modifier = Modifier.size(14.dp))
-                        }
-                    }
+                HighlightColorPalette.forEach { (name, hex) ->
+                    ColorSwatch(hex, selected = annotation.colorHex.equals(hex, ignoreCase = true), onClick = { onColorChange(hex) }, name = name, size = 24.dp)
                 }
             }
 
@@ -1624,7 +1603,7 @@ fun ExistingAnnotationActionMenu(
             ) {
                 Button(
                     onClick = onEditNote,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF334155))
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onSurface)
                 ) {
                     Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
@@ -1668,7 +1647,7 @@ private fun MiniPageThumbnail(
         Text(
             text = "${pageIndex + 1}",
             style = MaterialTheme.typography.labelSmall,
-            color = Color(0xFF64748B),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.SemiBold
         )
     }
@@ -1695,8 +1674,8 @@ private fun ReaderHeader(
         subtitle = "Page ${state.currentPage + 1} of ${state.pageCount}",
         onBack = onBackClick,
         onTitleClick = onPageLabelClick,
-        containerColor = Color.White,
-        contentColor = Color(0xFF0F172A),
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
         backTestTag = "reader_back_button",
         modifier = Modifier.testTag("reader_header")
     ) {
@@ -1742,7 +1721,7 @@ private fun PageNavigator(
     ) {
         Surface(
             shape = RoundedCornerShape(50),
-            color = Color.White.copy(alpha = 0.97f),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
             shadowElevation = 6.dp,
             border = BorderStroke(0.5.dp, Color(0x14000000)),
             modifier = Modifier.fillMaxWidth().height(44.dp)
@@ -1774,7 +1753,7 @@ private fun PageNavigator(
                 Surface(
                     onClick = viewModel::openGoToPageDialog,
                     shape = RoundedCornerShape(50),
-                    color = Color(0xFFF1F5F9),
+                    color = MaterialTheme.colorScheme.surfaceVariant,
                     modifier = Modifier
                         .padding(end = 2.dp)
                         .semantics { contentDescription = "Go to page" }
@@ -1783,7 +1762,7 @@ private fun PageNavigator(
                         text = "${shownPage + 1} / ${state.pageCount}",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF0F172A),
+                        color = MaterialTheme.colorScheme.onSurface,
                         style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
                     )
@@ -1810,7 +1789,7 @@ private fun PageNavigator(
             val chapter = state.outline.lastOrNull { it.pageIndex <= scrubPage }?.title
             Surface(
                 shape = RoundedCornerShape(14.dp),
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 10.dp,
                 modifier = Modifier.width(PreviewBubbleWidth)
             ) {
@@ -1822,16 +1801,16 @@ private fun PageNavigator(
                         modifier = Modifier
                             .size(width = 64.dp, height = 86.dp)
                             .clip(RoundedCornerShape(6.dp))
-                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(6.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(6.dp))
                             .background(Color.White),
                         contentAlignment = Alignment.Center
                     ) {
                         MiniPageThumbnail(scrubPage, viewModel)
                     }
                     Spacer(Modifier.height(6.dp))
-                    Text("Page ${scrubPage + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    Text("Page ${scrubPage + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
                     if (chapter != null) {
-                        Text(chapter, fontSize = 10.sp, color = Color(0xFF64748B), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(chapter, fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -1845,7 +1824,7 @@ private val ScrubberThumbInset = 10.dp
 @Composable
 private fun PageBarIcon(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
     IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(36.dp)) {
-        Icon(icon, contentDescription = label, tint = if (enabled) Color(0xFF334155) else Color(0xFFCBD5E1), modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = label, tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -1866,6 +1845,7 @@ private fun PageScrubber(
 ) {
     val thumbRadius by androidx.compose.animation.core.animateDpAsState(if (isScrubbing) 9.dp else 7.dp, label = "thumb")
     val fraction = if (maxPage == 0) 0f else page / maxPage.toFloat()
+    val trackColor = MaterialTheme.colorScheme.outlineVariant
     Canvas(
         modifier = modifier
             .height(32.dp)
@@ -1898,7 +1878,7 @@ private fun PageScrubber(
         val end = size.width - inset
         val thumbX = start + fraction * (end - start)
         val track = 4.dp.toPx()
-        drawLine(Color(0xFFE2E8F0), Offset(start, cy), Offset(end, cy), strokeWidth = track, cap = StrokeCap.Round)
+        drawLine(trackColor, Offset(start, cy), Offset(end, cy), strokeWidth = track, cap = StrokeCap.Round)
         drawLine(BrandPurple, Offset(start, cy), Offset(thumbX, cy), strokeWidth = track, cap = StrokeCap.Round)
         if (maxPage > 0) {
             bookmarkedPages.forEach { bm ->
@@ -1925,7 +1905,7 @@ private fun ReadingModeSelector(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFF1F5F9))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -1939,7 +1919,7 @@ private fun ReadingModeSelector(
             Surface(
                 onClick = { onSelect(mode) },
                 shape = RoundedCornerShape(12.dp),
-                color = if (isSelected) Color.White else Color.Transparent,
+                color = if (isSelected) MaterialTheme.colorScheme.surface else Color.Transparent,
                 shadowElevation = if (isSelected) 2.dp else 0.dp,
                 modifier = Modifier.weight(1f).testTag("reading_mode_${mode.name.lowercase()}")
             ) {
@@ -1947,13 +1927,13 @@ private fun ReadingModeSelector(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.padding(vertical = 8.dp)
                 ) {
-                    Icon(icon, contentDescription = null, tint = if (isSelected) BrandPurple else Color(0xFF64748B), modifier = Modifier.size(20.dp))
+                    Icon(icon, contentDescription = null, tint = if (isSelected) BrandPurple else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.height(2.dp))
                     Text(
                         label,
                         fontSize = 11.sp,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSelected) Color(0xFF0F172A) else Color(0xFF64748B)
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
