@@ -84,6 +84,8 @@ data class ReaderUiState(
     val readerTheme: ReaderTheme = ReaderTheme.SEPIA,
     val scrollMode: PageScrollMode = PageScrollMode.HORIZONTAL_PAGING,
     val isPageNavigatorVisible: Boolean = false,
+    /** Header, page bar and pen button; hidden = full-screen reading. */
+    val isChromeVisible: Boolean = true,
     val isDrawerOpen: Boolean = false,
     val activeDrawerTab: Int = 0, // 0: Outline, 1: Bookmarks, 2: Annotations
     val isSearchOpen: Boolean = false,
@@ -297,10 +299,15 @@ class ReaderViewModel(
         }
     }
 
-    fun togglePageNavigator() {
-        _uiState.value = _uiState.value.copy(
-            isPageNavigatorVisible = !_uiState.value.isPageNavigatorVisible && !_uiState.value.isDrawingModeActive
-        )
+    /**
+     * Page tap: hides all reader chrome for full-screen reading, or brings back the header together with
+     * the page bar.
+     */
+    fun toggleChrome() {
+        val s = _uiState.value
+        if (s.isDrawingModeActive) return
+        val show = !s.isChromeVisible
+        _uiState.value = s.copy(isChromeVisible = show, isPageNavigatorVisible = show)
     }
 
     fun setPageNavigatorVisible(visible: Boolean) {
@@ -373,7 +380,7 @@ class ReaderViewModel(
                 target != null -> jumpToPage(target)
                 paged && x < EDGE_TAP_ZONE -> { clearSelection(); closeAnnotationMenu(); previousPage() }
                 paged && x > 1f - EDGE_TAP_ZONE -> { clearSelection(); closeAnnotationMenu(); nextPage() }
-                else -> { clearSelection(); closeAnnotationMenu(); togglePageNavigator() }
+                else -> { clearSelection(); closeAnnotationMenu(); toggleChrome() }
             }
         }
     }
@@ -487,8 +494,8 @@ class ReaderViewModel(
                 createHighlightAt(normX, normY, AnnotationType.UNDERLINE)
             }
             else -> {
-                // In pan mode, single tap toggles the page navigator
-                togglePageNavigator()
+                // In pan mode, single tap toggles full-screen reading
+                toggleChrome()
             }
         }
     }
@@ -700,6 +707,7 @@ class ReaderViewModel(
         _uiState.value = _uiState.value.copy(
             isDrawingModeActive = active,
             isPageNavigatorVisible = if (active) false else _uiState.value.isPageNavigatorVisible,
+            isChromeVisible = if (active) true else _uiState.value.isChromeVisible,
             activeAnnotationMenu = null,
             selectedTextSelection = null
         )

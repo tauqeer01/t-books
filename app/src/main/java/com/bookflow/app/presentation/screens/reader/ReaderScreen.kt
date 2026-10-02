@@ -127,6 +127,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import com.bookflow.app.presentation.components.BookFlowBottomSheet
+import com.bookflow.app.presentation.components.BookFlowTopBar
+import com.bookflow.app.presentation.components.BookFlowTopBarAction
+import com.bookflow.app.presentation.components.BookFlowTopBarDefaults
 import com.bookflow.app.presentation.screens.settings.ReadingPreferencesEditor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -192,6 +195,12 @@ fun ReaderScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     ReaderWindowEffects(state, viewModel)
+
+    // Room for the header; collapses smoothly in full-screen mode
+    val headerInset by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (state.isChromeVisible) ReaderHeaderHeight else 0.dp,
+        label = "header_inset"
+    )
 
     // Zoom and pan state
     var scale by remember { mutableFloatStateOf(1f) }
@@ -292,7 +301,12 @@ fun ReaderScreen(
             SnackbarHost(
                 snackbarHostState,
                 Modifier.navigationBarsPadding().padding(
-                    bottom = if (state.isPageNavigatorVisible) 80.dp else 12.dp
+                    // Above the page bar and the bottom-right pen button
+                    bottom = when {
+                        state.isPageNavigatorVisible && state.isChromeVisible -> 144.dp
+                        state.isChromeVisible -> 84.dp
+                        else -> 12.dp
+                    }
                 )
             )
         },
@@ -369,7 +383,7 @@ fun ReaderScreen(
                         LazyColumn(
                             state = listState,
                             contentPadding = PaddingValues(
-                                top = ReaderHeaderHeight + 12.dp,
+                                top = headerInset + 12.dp,
                                 bottom = 24.dp,
                                 start = 12.dp,
                                 end = 12.dp
@@ -405,7 +419,7 @@ fun ReaderScreen(
                             onPageChange = viewModel::onPageScrolled,
                             swipeEnabled = scale <= 1.05f && (!state.isDrawingModeActive || state.drawingTool == DrawingTool.HAND),
                             pageAspectRatio = viewModel::getPageAspectRatio,
-                            modifier = Modifier.padding(top = ReaderHeaderHeight + 8.dp, bottom = 16.dp, start = 12.dp, end = 12.dp)
+                            modifier = Modifier.padding(top = headerInset + 8.dp, bottom = 16.dp, start = 12.dp, end = 12.dp)
                         ) { pageIndex ->
                             PdfPageItem(
                                 pageIndex = pageIndex,
@@ -450,7 +464,7 @@ fun ReaderScreen(
                             pageSpacing = state.preferences.pageSpacing.dp,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(
-                                top = ReaderHeaderHeight + 8.dp,
+                                top = headerInset + 8.dp,
                                 bottom = 16.dp,
                                 start = 12.dp,
                                 end = 12.dp
@@ -510,9 +524,9 @@ fun ReaderScreen(
                 }
             }
 
-            // --- TOP APP BAR (stays on screen; hidden only while a text selection popup is open) ---
+            // --- TOP APP BAR (hidden in full-screen mode and while a text selection popup is open) ---
             AnimatedVisibility(
-                visible = state.selectedTextSelection == null,
+                visible = state.isChromeVisible && state.selectedTextSelection == null,
                 enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
                 modifier = Modifier.align(Alignment.TopCenter)
@@ -536,7 +550,7 @@ fun ReaderScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(top = ReaderHeaderHeight, start = 12.dp, end = 12.dp)
+                    .padding(top = headerInset + 6.dp, start = 12.dp, end = 12.dp)
             ) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
@@ -704,23 +718,28 @@ fun ReaderScreen(
                 }
             }
 
-            // --- RIGHT ANNOTATION RAIL (pen button that expands into a vertical tool strip) ---
+            // --- ANNOTATION RAIL (bottom-right pen button that expands upward into a vertical tool strip) ---
+            // Anchored bottom-end so it never covers the tap-to-turn page edges; lifts above the page bar
+            val railBottom by androidx.compose.animation.core.animateDpAsState(
+                targetValue = if (state.isPageNavigatorVisible && state.isChromeVisible && !state.isDrawingModeActive) 80.dp else 20.dp,
+                label = "rail_bottom"
+            )
             AnimatedVisibility(
-                visible = state.isDocumentReady && state.selectedTextSelection == null,
+                visible = state.isDocumentReady && state.selectedTextSelection == null && (state.isChromeVisible || state.isDrawingModeActive),
                 enter = fadeIn(),
                 exit = fadeOut(),
                 modifier = Modifier
-                    .align(Alignment.CenterEnd)
+                    .align(Alignment.BottomEnd)
                     .statusBarsPadding()
                     .navigationBarsPadding()
-                    .padding(top = ReaderHeaderHeight + 8.dp, bottom = 16.dp, end = 12.dp)
+                    .padding(top = headerInset + 8.dp, bottom = railBottom, end = 16.dp)
             ) {
                 AnnotationToolRail(state = state, viewModel = viewModel)
             }
 
             // --- PAGE NAVIGATOR (opens when the page is tapped) ---
             AnimatedVisibility(
-                visible = state.isDocumentReady && state.isPageNavigatorVisible && state.selectedTextSelection == null && !state.isDrawingModeActive,
+                visible = state.isDocumentReady && state.isChromeVisible && state.isPageNavigatorVisible && state.selectedTextSelection == null && !state.isDrawingModeActive,
                 enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut(),
                 modifier = Modifier.align(Alignment.BottomCenter)
@@ -1634,10 +1653,11 @@ private fun MiniPageThumbnail(
     }
 }
 
-private val ReaderHeaderHeight = 56.dp
+private val ReaderHeaderHeight = BookFlowTopBarDefaults.Height
 
 /**
- * Persistent reader header: back, title with tappable page indicator (opens Go to page), and reading tools.
+ * Reader header on the shared [BookFlowTopBar]: back, title with tappable page indicator (opens Go to page),
+ * and reading tools.
  */
 @Composable
 private fun ReaderHeader(
@@ -1649,68 +1669,26 @@ private fun ReaderHeader(
     onBookmarkClick: () -> Unit,
     onMoreClick: () -> Unit
 ) {
-    Surface(
-        color = Color.White.copy(alpha = 0.97f),
-        shadowElevation = 3.dp,
-        modifier = Modifier.fillMaxWidth().testTag("reader_header")
+    BookFlowTopBar(
+        title = state.book?.title ?: "PDF Reader",
+        subtitle = "Page ${state.currentPage + 1} of ${state.pageCount}",
+        onBack = onBackClick,
+        onTitleClick = onPageLabelClick,
+        containerColor = Color.White,
+        contentColor = Color(0xFF0F172A),
+        backTestTag = "reader_back_button",
+        modifier = Modifier.testTag("reader_header")
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .height(ReaderHeaderHeight)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBackClick, modifier = Modifier.testTag("reader_back_button")) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A))
-            }
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable(onClickLabel = "Go to page", onClick = onPageLabelClick)
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-            ) {
-                Text(
-                    text = state.book?.title ?: "PDF Reader",
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A),
-                    fontSize = 15.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "Page ${state.currentPage + 1} of ${state.pageCount}",
-                    color = Color(0xFF64748B),
-                    fontSize = 11.sp,
-                    maxLines = 1
-                )
-            }
-            HeaderAction(Icons.AutoMirrored.Filled.ViewList, "Contents", "reader_contents_button", onClick = onContentsClick)
-            HeaderAction(Icons.Default.Search, "Search", "reader_search_button", isActive = state.isSearchOpen, onClick = onSearchClick)
-            HeaderAction(
-                icon = if (state.isCurrentPageBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                label = "Bookmark",
-                testTag = "reader_bookmark_toggle",
-                isActive = state.isCurrentPageBookmarked,
-                onClick = onBookmarkClick
-            )
-            HeaderAction(Icons.Default.MoreVert, "Reader options", "reader_more_button", onClick = onMoreClick)
-        }
-    }
-}
-
-@Composable
-private fun HeaderAction(
-    icon: ImageVector,
-    label: String,
-    testTag: String,
-    isActive: Boolean = false,
-    onClick: () -> Unit
-) {
-    IconButton(onClick = onClick, modifier = Modifier.size(42.dp).testTag(testTag)) {
-        Icon(icon, contentDescription = label, tint = if (isActive) BrandPurple else Color(0xFF334155), modifier = Modifier.size(22.dp))
+        BookFlowTopBarAction(Icons.AutoMirrored.Filled.ViewList, "Contents", onContentsClick, Modifier.testTag("reader_contents_button"))
+        BookFlowTopBarAction(Icons.Default.Search, "Search", onSearchClick, Modifier.testTag("reader_search_button"), selected = state.isSearchOpen)
+        BookFlowTopBarAction(
+            icon = if (state.isCurrentPageBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+            contentDescription = "Bookmark",
+            onClick = onBookmarkClick,
+            modifier = Modifier.testTag("reader_bookmark_toggle"),
+            selected = state.isCurrentPageBookmarked
+        )
+        BookFlowTopBarAction(Icons.Default.MoreVert, "Reader options", onMoreClick, Modifier.testTag("reader_more_button"))
     }
 }
 

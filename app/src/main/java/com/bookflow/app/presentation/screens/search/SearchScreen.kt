@@ -65,6 +65,8 @@ import com.bookflow.app.domain.model.AnnotationType
 import com.bookflow.app.domain.model.Book
 import com.bookflow.app.domain.model.BookAnnotation
 import com.bookflow.app.presentation.components.BookCoverCard
+import com.bookflow.app.presentation.components.BookFlowTopBar
+import androidx.compose.foundation.layout.WindowInsets
 import com.bookflow.app.presentation.screens.home.HomeViewModel
 
 @Composable
@@ -114,9 +116,9 @@ fun SearchScreen(
     }
 
     Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-,
+        modifier = modifier.fillMaxSize(),
+        topBar = { BookFlowTopBar(title = "Search", subtitle = "Book titles, highlights and notes") },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = Color(0xFFF8FAFC)
     ) { paddingValues ->
         Column(
@@ -124,22 +126,7 @@ fun SearchScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Header
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
-                Text(
-                    text = "Search & Navigation",
-                    style = MaterialTheme.typography.displayMedium,
-
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A),
-                    fontSize = 26.sp
-                )
-                Text(
-                    text = "Search book titles, highlights, and notes",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF64748B)
-                )
-            }
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Search Bar
             OutlinedTextField(

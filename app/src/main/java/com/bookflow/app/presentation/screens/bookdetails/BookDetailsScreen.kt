@@ -79,6 +79,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import com.bookflow.app.presentation.components.BookFlowTopBar
+import com.bookflow.app.presentation.components.BookFlowTopBarAction
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -121,57 +123,28 @@ fun BookDetailsScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Surface(
-                color = Color.White,
-                shadowElevation = 2.dp,
-                modifier = Modifier.fillMaxWidth().statusBarsPadding()
+            BookFlowTopBar(
+                title = "Study Hub & Details",
+                onBack = onBackClick,
+                backTestTag = "details_back_button"
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = onBackClick, modifier = Modifier.testTag("details_back_button")) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color(0xFF0F172A)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Study Hub & Details",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF0F172A)
-                        )
-                    }
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = viewModel::toggleFavorite) {
-                            Icon(
-                                imageVector = if (state.book?.isFavorite == true) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Favorite",
-                                tint = if (state.book?.isFavorite == true) Color(0xFFEF4444) else Color(0xFF64748B)
-                            )
-                        }
-
-                        state.book?.let { b ->
-                            Button(
-                                onClick = { onNavigateToReader(b.id, b.currentPage) },
-                                colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
-                                shape = RoundedCornerShape(20.dp),
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                                modifier = Modifier.padding(end = 6.dp).testTag("details_open_reader_button")
-                            ) {
-                                Icon(Icons.Default.AutoStories, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Read", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
+                BookFlowTopBarAction(
+                    icon = if (state.book?.isFavorite == true) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "Favorite",
+                    onClick = viewModel::toggleFavorite,
+                    tint = if (state.book?.isFavorite == true) Color(0xFFEF4444) else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                state.book?.let { b ->
+                    Button(
+                        onClick = { onNavigateToReader(b.id, b.currentPage) },
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+                        modifier = Modifier.padding(start = 4.dp, end = 8.dp).testTag("details_open_reader_button")
+                    ) {
+                        Icon(Icons.Default.AutoStories, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Read", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
@@ -464,7 +437,7 @@ private fun OverviewTabContent(
     }
     fun date(timestamp: Long) = if (timestamp <= 0) "Not opened yet" else java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(timestamp))
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp).testTag("details_overview_list"),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         // Study Annotation Summary Grid

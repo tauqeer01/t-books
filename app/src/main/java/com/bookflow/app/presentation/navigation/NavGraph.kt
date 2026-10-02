@@ -90,7 +90,6 @@ fun BookFlowNavGraph(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .then(if (showBottomBar) Modifier.statusBarsPadding() else Modifier)
         ) {
             // Scoped ViewModels: created once per NavGraph composition, stable across recompositions
             val homeViewModel: HomeViewModel = viewModel(

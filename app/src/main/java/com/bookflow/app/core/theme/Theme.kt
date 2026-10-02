@@ -56,7 +56,8 @@ fun BookFlowTheme(
         SideEffect {
             val window = (view.context as? Activity)?.window
             if (window != null) {
-                window.statusBarColor = colorScheme.background.toArgb()
+                // Edge-to-edge: screen headers (BookFlowTopBar) paint their own color behind the status bar
+                window.statusBarColor = Color.Transparent.toArgb()
                 window.navigationBarColor = colorScheme.surface.toArgb()
                 WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
                 WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme

@@ -48,7 +48,7 @@ fun ReaderWindowEffects(state: ReaderUiState, viewModel: ReaderViewModel) {
         if (activity.requestedOrientation != orientation) activity.requestedOrientation = orientation
         val controller = WindowCompat.getInsetsController(activity.window, view)
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        if (preferences.immersiveReading && !state.isPageNavigatorVisible) controller.hide(WindowInsetsCompat.Type.systemBars())
+        if (preferences.immersiveReading && !state.isChromeVisible) controller.hide(WindowInsetsCompat.Type.systemBars())
         else controller.show(WindowInsetsCompat.Type.systemBars())
         activity.onReaderVolumeKey = if (preferences.volumeButtonNavigation && !state.isSearchOpen && !state.showReadingPreferences && !state.isGoToPageDialogOpen && state.isDocumentReady) {
             { next -> if (next) viewModel.nextPage() else viewModel.previousPage() }

@@ -119,7 +119,8 @@ class ReaderUiRegressionTest {
         compose.onNodeWithText("UI Regression PDF").assertExists()
         compose.onNodeWithContentDescription("Options for UI Regression PDF").performClick()
         compose.onNodeWithText("Book Information").performClick()
-        compose.onNodeWithText("Document Properties").performScrollTo()
+        // Lazy items below the fold aren't composed yet, so scroll the list rather than the node
+        compose.onNodeWithTag("details_overview_list").performScrollToNode(hasText("Document Properties"))
         compose.onNodeWithText("Filename").assertExists()
     }
 
@@ -233,9 +234,33 @@ class ReaderUiRegressionTest {
         compose.waitUntil(5_000) { compose.onAllNodesWithText("Page 2 of 3").fetchSemanticsNodes().isNotEmpty() }
     }
 
-    /** The page navigator (scrubber, prev/next, go to page) is hidden until the page is tapped. */
+    /**
+     * The page bar is hidden on open. A page tap toggles full-screen reading, and leaving full screen brings back
+     * the header together with the page bar, so it may take two taps.
+     */
     private fun openPageNavigator() {
-        compose.onAllNodesWithContentDescription("PDF Page", substring = true).onFirst().performClick()
+        fun shown(tag: String) = compose.onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
+        fun tapPage() = compose.onAllNodesWithContentDescription("PDF Page", substring = true).onFirst().performClick()
+        if (shown("page_navigator")) return
+        if (shown("reader_header")) {
+            // First tap enters full screen; the tap is handled asynchronously, so wait for it to land
+            tapPage()
+            compose.waitUntil(5_000) { !shown("reader_header") }
+        }
+        tapPage()
+        compose.waitUntil(5_000) { shown("page_navigator") }
+    }
+
+    @Test fun pageTapTogglesFullScreenReading() {
+        compose.onNodeWithContentDescription("Library").performClick()
+        compose.onNodeWithText("UI Regression PDF").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("PDF Page 1").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("reader_header").assertExists()
+        compose.onNodeWithContentDescription("PDF Page 1").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("reader_header").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithContentDescription("Annotate").assertDoesNotExist()
+        compose.onNodeWithContentDescription("PDF Page 1").performClick()
         compose.waitUntil(5_000) { compose.onAllNodesWithTag("page_navigator").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("reader_header").assertExists()
     }
 }

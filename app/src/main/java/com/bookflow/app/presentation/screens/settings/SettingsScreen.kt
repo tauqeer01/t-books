@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bookflow.app.core.theme.BrandPurple
 import com.bookflow.app.presentation.components.BookFlowBottomSheet
+import com.bookflow.app.presentation.components.BookFlowTopBar
+import com.bookflow.app.presentation.components.BookFlowTopBarAction
 import com.bookflow.app.presentation.components.BookFlowConfirmationSheet
 import com.bookflow.app.presentation.components.BookFlowEmblem
 import java.util.Locale
@@ -58,8 +60,22 @@ fun SettingsScreen(
     }
 
     Scaffold(
+        topBar = {
+            BookFlowTopBar(title = "Settings", subtitle = "Customize your reading experience") {
+                BookFlowTopBarAction(
+                    icon = if (isSearching) Icons.Default.Close else Icons.Default.Search,
+                    contentDescription = "Search settings",
+                    selected = isSearching,
+                    onClick = {
+                        isSearching = !isSearching
+                        if (!isSearching) searchQuery = ""
+                    }
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color(0xFFF8F9FE),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         BoxWithConstraints(
@@ -75,69 +91,25 @@ fun SettingsScreen(
                 contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Header
-                item {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Settings",
-                                    fontSize = 28.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = (-0.8).sp,
-                                    color = Color(0xFF0F172A)
-                                )
-                                Text(
-                                    text = "Customize your reading experience",
-                                    fontSize = 14.sp,
-                                    color = Color(0xFF64748B)
-                                )
-                            }
-
-                            IconButton(
-                                onClick = {
-                                    isSearching = !isSearching
-                                    if (!isSearching) searchQuery = ""
-                                },
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(Color.White, CircleShape)
-                                    .border(1.dp, Color(0xFFE2E8F0), CircleShape)
-                            ) {
-                                Icon(
-                                    imageVector = if (isSearching) Icons.Default.Close else Icons.Default.Search,
-                                    contentDescription = "Search settings",
-                                    tint = if (isSearching) BrandPurple else Color(0xFF475569),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
+                // Settings search (toggled from the header)
+                if (isSearching) item {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Search settings...", fontSize = 14.sp, color = Color(0xFF94A3B8)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White,
+                            focusedBorderColor = BrandPurple,
+                            unfocusedBorderColor = Color(0xFFE2E8F0)
+                        ),
+                        leadingIcon = {
+                            Icon(Icons.Default.Search, null, tint = BrandPurple, modifier = Modifier.size(20.dp))
                         }
-
-                        if (isSearching) {
-                            Spacer(Modifier.height(12.dp))
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                placeholder = { Text("Search settings...", fontSize = 14.sp, color = Color(0xFF94A3B8)) },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                shape = RoundedCornerShape(14.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedContainerColor = Color.White,
-                                    unfocusedContainerColor = Color.White,
-                                    focusedBorderColor = BrandPurple,
-                                    unfocusedBorderColor = Color(0xFFE2E8F0)
-                                ),
-                                leadingIcon = {
-                                    Icon(Icons.Default.Search, null, tint = BrandPurple, modifier = Modifier.size(20.dp))
-                                }
-                            )
-                        }
-                    }
+                    )
                 }
 
                 // App Profile Card

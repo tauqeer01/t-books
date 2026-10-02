@@ -37,22 +37,30 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
     var managing by remember { mutableStateOf<Book?>(null) }
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { if (it.isNotEmpty()) viewModel.importMultiplePdfs(it) }
     LaunchedEffect(state.toastMessage) { state.toastMessage?.let { snackbar.showSnackbar(it); viewModel.clearToast() } }
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }, containerColor = MaterialTheme.colorScheme.background, modifier = modifier) { padding ->
+    Scaffold(
+        topBar = {
+            BookFlowTopBar(
+                title = "BookFlow",
+                subtitle = "Your Reading Companion",
+                titleContent = {
+                    Text(buildAnnotatedString { append("Book"); withStyle(SpanStyle(color = BrandPurple)) { append("Flow") } }, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
+                },
+                actions = {
+                    BookFlowTopBarAction(Icons.Default.Search, "Search", onNavigateToSearch)
+                    BookFlowTopBarAction(Icons.Default.History, "Reading history", { onLibrary("Recent") })
+                    BookFlowTopBarAction(Icons.Default.AccountCircle, "Preferences", onSettings, tint = BrandPurple)
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbar) },
+        containerColor = MaterialTheme.colorScheme.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        modifier = modifier
+    ) { padding ->
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val cardWidth = ((maxWidth - 56.dp) / 3).coerceIn(108.dp, 190.dp)
             val smallWidth = ((maxWidth - 70.dp) / 4).coerceIn(88.dp, 155.dp)
             LazyColumn(contentPadding = PaddingValues(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                item {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(buildAnnotatedString { append("Book"); withStyle(SpanStyle(color = BrandPurple)) { append("Flow") } }, fontSize = 27.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp)
-                            Text("Your Reading Companion", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                        IconButton(onClick = onNavigateToSearch) { Icon(Icons.Default.Search, "Search") }
-                        IconButton(onClick = { onLibrary("Recent") }) { Icon(Icons.Default.History, "Reading history") }
-                        FilledTonalIconButton(onClick = onSettings, shape = CircleShape) { Icon(Icons.Default.AccountCircle, "Preferences", tint = BrandPurple) }
-                    }
-                }
                 item {
                     OutlinedTextField(state.searchQuery, viewModel::onSearchQueryChanged, placeholder = { Text("Search your books, notes, highlights…", fontSize = 12.sp) }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true, shape = CircleShape, colors = OutlinedTextFieldDefaults.colors(unfocusedBorderColor = Color.Transparent, focusedBorderColor = BrandPurple, unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant), modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
                 }

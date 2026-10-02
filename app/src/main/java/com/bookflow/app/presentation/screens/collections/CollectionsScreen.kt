@@ -36,64 +36,68 @@ fun CollectionsScreen(viewModel: CollectionsViewModel, onBookClick: (String, Int
     var managing by remember { mutableStateOf<Book?>(null) }
     val context = LocalContext.current
     BackHandler(state.selectedCollection != null) { viewModel.selectCollection(null) }
-    BoxWithConstraints(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        val columns = if (maxWidth >= 1000.dp) 4 else if (maxWidth >= 700.dp) 3 else 2
-        LazyVerticalGrid(columns = GridCells.Fixed(columns), contentPadding = PaddingValues(20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        if (state.selectedCollection != null) IconButton(onClick = { viewModel.selectCollection(null) }) { Icon(Icons.Default.ArrowBack, "Back to collections") }
-                        Text(state.selectedCollection?.name ?: "Collections", Modifier.weight(1f), fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
-                        IconButton(onClick = { searching = !searching }) { Icon(Icons.Default.Search, "Search collections") }
-                    }
-                    Text(state.selectedCollection?.description ?: "Organize your books with collections", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (searching) OutlinedTextField(state.searchQuery, viewModel::onSearchQueryChanged, placeholder = { Text("Search collections") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                    if (state.selectedCollection == null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        Button(onClick = viewModel::openCreateDialog, shape = RoundedCornerShape(12.dp)) { Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Text("New Collection", fontSize = 12.sp) }
-                    }
-                }
-            }
-            if (state.selectedCollection != null) {
-                if (state.collectionBooks.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) { Text("This collection is empty. Long-press a book in your library to add it.", Modifier.padding(vertical = 32.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                items(state.collectionBooks, key = { it.id }) { book -> DashboardBookCard(book, { onBookClick(book.id, book.currentPage) }, { actions = book }, detailed = true) }
-            } else {
-                val collections = if (descending) state.collections.sortedByDescending { it.name.lowercase() } else state.collections.sortedBy { it.name.lowercase() }
-                if (collections.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) { Text("Create a collection to organize your PDFs.", Modifier.padding(vertical = 32.dp)) }
-                items(collections, key = { "quick_${it.id}" }) { collection ->
-                    val tint = Color(android.graphics.Color.parseColor(collection.pastelColorHex))
-                    Surface(onClick = { viewModel.selectCollection(collection) }, shape = RoundedCornerShape(12.dp), color = tint) {
-                        Row(Modifier.padding(8.dp).heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(collectionIcon(collection.iconName), null, tint = collectionTint(collection.iconName), modifier = Modifier.size(28.dp))
-                            Column(Modifier.weight(1f).padding(start = 8.dp)) {
-                                Text(collection.name, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF101326))
-                                Text("${collection.bookCount} books", fontSize = 11.sp, lineHeight = 14.sp, color = Color(0xFF666B85))
-                            }
-                            IconButton(onClick = { delete = collection }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.MoreVert, "Manage ${collection.name}", Modifier.size(18.dp), tint = Color(0xFF101326)) }
+    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        BookFlowTopBar(
+            title = state.selectedCollection?.name ?: "Collections",
+            subtitle = state.selectedCollection?.description?.takeIf { it.isNotBlank() } ?: "Organize your books with collections",
+            onBack = if (state.selectedCollection != null) ({ viewModel.selectCollection(null) }) else null,
+            backContentDescription = "Back to collections"
+        ) {
+            BookFlowTopBarAction(Icons.Default.Search, "Search collections", { searching = !searching }, selected = searching)
+        }
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val columns = if (maxWidth >= 1000.dp) 4 else if (maxWidth >= 700.dp) 3 else 2
+            LazyVerticalGrid(columns = GridCells.Fixed(columns), contentPadding = PaddingValues(20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    Column {
+                        if (searching) OutlinedTextField(state.searchQuery, viewModel::onSearchQueryChanged, placeholder = { Text("Search collections") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        if (state.selectedCollection == null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            Button(onClick = viewModel::openCreateDialog, shape = RoundedCornerShape(12.dp)) { Icon(Icons.Default.Add, null, Modifier.size(18.dp)); Text("New Collection", fontSize = 12.sp) }
                         }
                     }
                 }
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("All Collections", Modifier.weight(1f), fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                        TextButton(onClick = { descending = !descending }) { Text(if (descending) "Sort: Z to A" else "Sort: A to Z", fontSize = 11.sp); Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(16.dp)) }
-                    }
-                }
-                items(collections, key = { "shelf_${it.id}" }) { collection ->
-                    Surface(onClick = { viewModel.selectCollection(collection) }, shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
-                        Column(Modifier.padding(10.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(collectionIcon(collection.iconName), null, tint = collectionTint(collection.iconName), modifier = Modifier.size(26.dp))
-                                Column(Modifier.weight(1f).padding(horizontal = 7.dp)) {
-                                    Text(collection.name, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold)
-                                    Text("${collection.bookCount} books", fontSize = 11.sp, lineHeight = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (state.selectedCollection != null) {
+                    if (state.collectionBooks.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) { Text("This collection is empty. Long-press a book in your library to add it.", Modifier.padding(vertical = 32.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    items(state.collectionBooks, key = { it.id }) { book -> DashboardBookCard(book, { onBookClick(book.id, book.currentPage) }, { actions = book }, detailed = true) }
+                } else {
+                    val collections = if (descending) state.collections.sortedByDescending { it.name.lowercase() } else state.collections.sortedBy { it.name.lowercase() }
+                    if (collections.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) { Text("Create a collection to organize your PDFs.", Modifier.padding(vertical = 32.dp)) }
+                    items(collections, key = { "quick_${it.id}" }) { collection ->
+                        val tint = Color(android.graphics.Color.parseColor(collection.pastelColorHex))
+                        Surface(onClick = { viewModel.selectCollection(collection) }, shape = RoundedCornerShape(12.dp), color = tint) {
+                            Row(Modifier.padding(8.dp).heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(collectionIcon(collection.iconName), null, tint = collectionTint(collection.iconName), modifier = Modifier.size(28.dp))
+                                Column(Modifier.weight(1f).padding(start = 8.dp)) {
+                                    Text(collection.name, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF101326))
+                                    Text("${collection.bookCount} books", fontSize = 11.sp, lineHeight = 14.sp, color = Color(0xFF666B85))
                                 }
-                                Icon(Icons.Default.ChevronRight, null, Modifier.size(16.dp))
+                                IconButton(onClick = { delete = collection }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.MoreVert, "Manage ${collection.name}", Modifier.size(18.dp), tint = Color(0xFF101326)) }
                             }
-                            Spacer(Modifier.height(10.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                val books = state.allBooks.filter { collection.id in it.collectionIds }.take(3)
-                                books.forEach { book -> BookArtwork(book, Modifier.weight(1f).aspectRatio(.7f)) }
-                                repeat(3 - books.size) { Box(Modifier.weight(1f).aspectRatio(.7f).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.MenuBook, null, tint = BrandPurple.copy(alpha = .25f), modifier = Modifier.size(22.dp)) } }
+                        }
+                    }
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Text("All Collections", Modifier.weight(1f), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            TextButton(onClick = { descending = !descending }) { Text(if (descending) "Sort: Z to A" else "Sort: A to Z", fontSize = 11.sp); Icon(Icons.Default.KeyboardArrowDown, null, Modifier.size(16.dp)) }
+                        }
+                    }
+                    items(collections, key = { "shelf_${it.id}" }) { collection ->
+                        Surface(onClick = { viewModel.selectCollection(collection) }, shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
+                            Column(Modifier.padding(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(collectionIcon(collection.iconName), null, tint = collectionTint(collection.iconName), modifier = Modifier.size(26.dp))
+                                    Column(Modifier.weight(1f).padding(horizontal = 7.dp)) {
+                                        Text(collection.name, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold)
+                                        Text("${collection.bookCount} books", fontSize = 11.sp, lineHeight = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    Icon(Icons.Default.ChevronRight, null, Modifier.size(16.dp))
+                                }
+                                Spacer(Modifier.height(10.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    val books = state.allBooks.filter { collection.id in it.collectionIds }.take(3)
+                                    books.forEach { book -> BookArtwork(book, Modifier.weight(1f).aspectRatio(.7f)) }
+                                    repeat(3 - books.size) { Box(Modifier.weight(1f).aspectRatio(.7f).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp)), contentAlignment = Alignment.Center) { Icon(Icons.Default.MenuBook, null, tint = BrandPurple.copy(alpha = .25f), modifier = Modifier.size(22.dp)) } }
+                                }
                             }
                         }
                     }

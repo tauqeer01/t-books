@@ -203,7 +203,7 @@ fun AnnotationToolRail(
         if (flyout == target) flyout = null else { flyout = target; lastFlyout = target }
     }
 
-    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+    Row(modifier = modifier, verticalAlignment = Alignment.Bottom) {
         AnimatedVisibility(
             visible = flyout != null && state.isDrawingModeActive && !styleFlyoutHidden,
             enter = fadeIn() + slideInHorizontally(initialOffsetX = { it / 3 }),
@@ -221,10 +221,10 @@ fun AnnotationToolRail(
         AnimatedContent(
             targetState = state.isDrawingModeActive,
             transitionSpec = {
-                (fadeIn() + scaleIn(initialScale = .85f, transformOrigin = TransformOrigin(1f, .5f))) togetherWith
-                    (fadeOut() + scaleOut(targetScale = .85f, transformOrigin = TransformOrigin(1f, .5f)))
+                (fadeIn() + scaleIn(initialScale = .85f, transformOrigin = TransformOrigin(1f, 1f))) togetherWith
+                    (fadeOut() + scaleOut(targetScale = .85f, transformOrigin = TransformOrigin(1f, 1f)))
             },
-            contentAlignment = Alignment.CenterEnd,
+            contentAlignment = Alignment.BottomEnd,
             label = "annotation_rail"
         ) { expanded ->
             if (!expanded) {

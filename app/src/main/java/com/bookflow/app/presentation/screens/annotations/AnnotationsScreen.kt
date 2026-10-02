@@ -1,5 +1,6 @@
 package com.bookflow.app.presentation.screens.annotations
 
+import com.bookflow.app.presentation.components.BookFlowTopBar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -70,40 +71,12 @@ fun AnnotationsScreen(
     )
 
     Scaffold(
-        modifier = modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            // Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Annotations",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontFamily = FontFamily.Serif,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = "All quotes, highlights and notes across your library",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            BookFlowTopBar(title = "Annotations", subtitle = "Quotes, highlights and notes across your library") {
                 Box(
                     modifier = Modifier
+                        .padding(end = 12.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(AccentCoral.copy(alpha = 0.15f))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
@@ -116,6 +89,14 @@ fun AnnotationsScreen(
                     )
                 }
             }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Spacer(Modifier.height(12.dp))
 
             // Search Bar
             OutlinedTextField(

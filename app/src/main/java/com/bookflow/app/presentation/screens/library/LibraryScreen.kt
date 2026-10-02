@@ -33,13 +33,13 @@ fun LibraryScreen(viewModel: LibraryViewModel, onBookClick: (String, Int) -> Uni
     var sort by remember { mutableStateOf(false) }
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { if (it.isNotEmpty()) viewModel.importMultiplePdfs(it) }
     LaunchedEffect(state.importMessage) { state.importMessage?.let { snackbar.showSnackbar(it); viewModel.clearImportMessage() } }
-    Scaffold(modifier, snackbarHost = { SnackbarHost(snackbar) }, floatingActionButton = {
+    Scaffold(modifier, topBar = {
+        BookFlowTopBar(title = "My Library", subtitle = "${state.books.size} books • Your reading collection")
+    }, snackbarHost = { SnackbarHost(snackbar) }, contentWindowInsets = WindowInsets(0, 0, 0, 0), floatingActionButton = {
         ExtendedFloatingActionButton(onClick = { importer.launch(arrayOf("application/pdf")) }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(if (state.isImporting) "Importing…" else "Import PDF") })
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("My Library", fontSize = 30.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp)
-                Text("${state.books.size} books • Your reading collection", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
                 OutlinedTextField(state.searchQuery, viewModel::onSearchQueryChanged, placeholder = { Text("Search books and authors") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true, shape = CircleShape, modifier = Modifier.fillMaxWidth())
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     (state.availableCategories + "Reading").forEach { category -> FilterChip(state.selectedCategory == category, { viewModel.onCategorySelected(category) }, label = { Text(category) }) }
