@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_BookFlow · Effective October 2, 2026_
+_Al Hadaf Tech · Effective October 2, 2026_
 
 ## Summary
 

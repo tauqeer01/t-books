@@ -6,7 +6,7 @@ package com.bookflow.app.presentation.screens.legal
  * in docs/legal/ (Play requires the privacy policy at a public URL).
  */
 object LegalInfo {
-    const val PUBLISHER = "BookFlow"
+    const val PUBLISHER = "Al Hadaf Tech"
     const val CONTACT_EMAIL = "aht.apps@alhadaftech.com"
     const val EFFECTIVE_DATE = "October 2, 2026"
 }

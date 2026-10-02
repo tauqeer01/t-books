@@ -1,10 +1,10 @@
 # Terms of Use
 
-_BookFlow · Effective October 2, 2026_
+_Al Hadaf Tech · Effective October 2, 2026_
 
 ## Using BookFlow
 
-BookFlow is provided by BookFlow to read, organize and annotate PDF documents on your device. By using the app you agree to these terms.
+BookFlow is provided by Al Hadaf Tech to read, organize and annotate PDF documents on your device. By using the app you agree to these terms.
 
 ## Your content
 
@@ -16,7 +16,7 @@ Your library and annotations are stored on your device. Keep your own backups of
 
 ## No warranty
 
-BookFlow is provided "as is" without warranties of any kind. To the extent permitted by law, BookFlow is not liable for any loss of data or damages arising from use of the app.
+BookFlow is provided "as is" without warranties of any kind. To the extent permitted by law, Al Hadaf Tech is not liable for any loss of data or damages arising from use of the app.
 
 ## Open-source software
 

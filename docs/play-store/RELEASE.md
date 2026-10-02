@@ -128,4 +128,3 @@ Notes for reviewers / your own records:
 - [ ] **App baseline profile**: the `:baselineprofile` module is set up, but generation on the Android 16 emulator failed with Macrobenchmark 1.3.4 ("Unable to confirm activity launch completion"). Next step: upgrade `baselineprofile` to 1.4.x in `gradle/libs.versions.toml`, then `./gradlew :app:generateReleaseBaselineProfile` with a device connected (note: the run uninstalls the app afterwards). Library profiles (Compose etc.) are already included in the bundle.
 - [ ] Capture store screenshots (phone, plus 7"/10" tablet).
 - [ ] Host `docs/legal/privacy-policy.html` and `terms-of-use.html` and add the URL in Play Console.
-- [ ] Confirm the publisher name shown in the policy and terms (`LegalInfo.PUBLISHER`, currently "BookFlow").
