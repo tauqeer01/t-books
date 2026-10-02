@@ -2,11 +2,12 @@ package com.bookflow.app.presentation.screens.legal
 
 /**
  * Publisher details shown in the privacy policy and terms.
- * Fill these in before release; docs/legal/ mirrors this text for the public policy URL Play requires.
+ * After editing anything in this file, run `python3 scripts/export_legal_docs.py` to refresh the hosted copies
+ * in docs/legal/ (Play requires the privacy policy at a public URL).
  */
 object LegalInfo {
     const val PUBLISHER = "BookFlow"
-    const val CONTACT_EMAIL = "[support email]"
+    const val CONTACT_EMAIL = "aht.apps@alhadaftech.com"
     const val EFFECTIVE_DATE = "October 2, 2026"
 }
 
