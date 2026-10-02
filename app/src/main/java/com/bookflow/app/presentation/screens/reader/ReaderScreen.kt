@@ -174,6 +174,7 @@ import com.bookflow.app.domain.model.BookAnnotation
 import com.bookflow.app.pdf.engine.markupRects
 import com.bookflow.app.pdf.engine.isStickyNote
 import kotlin.math.roundToInt
+import androidx.lifecycle.repeatOnLifecycle
 
 // Highlight Colors matching Phase 4 Requirements: Yellow, Green, Blue, Pink, Purple
 val HighlightColorPalette = listOf(
@@ -195,6 +196,17 @@ fun ReaderScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     ReaderWindowEffects(state, viewModel)
+
+    // Reading goal timer: counts foreground time, pausing once the reader sits untouched for a while
+    val lastActivityAt = remember { java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis()) }
+    LaunchedEffect(state.currentPage, state.isChromeVisible, state.isDrawingModeActive) {
+        lastActivityAt.set(System.currentTimeMillis())
+    }
+    ReadingTimeTracker(
+        active = state.isDocumentReady,
+        lastActivityAt = { lastActivityAt.get() },
+        onRecord = viewModel::recordReadingTime
+    )
 
     // Room for the header; collapses smoothly in full-screen mode
     val headerInset by androidx.compose.animation.core.animateDpAsState(
@@ -318,6 +330,15 @@ fun ReaderScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(Color(android.graphics.Color.parseColor(state.readerTheme.bgHex)))
+                .pointerInput(Unit) {
+                    // Observe (never consume) every touch so the reading timer knows the reader is active
+                    awaitPointerEventScope {
+                        while (true) {
+                            awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                            lastActivityAt.set(System.currentTimeMillis())
+                        }
+                    }
+                }
         ) {
             if (!state.isDocumentReady) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -1999,6 +2020,41 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStickyNote(cent
         listOf(0.32f, 0.52f, 0.72f).forEach { f ->
             val y = top + half * 2 * f
             drawLine(ink, Offset(left + 4.dp.toPx(), y), Offset(right - (if (f > 0.6f) fold + 2.dp.toPx() else 4.dp.toPx()), y), strokeWidth = 1.2.dp.toPx(), cap = StrokeCap.Round)
+        }
+    }
+}
+
+/** Reading pauses counting after this long without touches or page turns. */
+private const val READING_IDLE_CUTOFF_MS = 10 * 60 * 1000L
+
+/**
+ * Accumulates seconds while the reader is resumed and recently used, flushing every 15 seconds
+ * and whenever the reader leaves the foreground.
+ */
+@Composable
+private fun ReadingTimeTracker(
+    active: Boolean,
+    lastActivityAt: () -> Long,
+    onRecord: (Long) -> Unit
+) {
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    val record by androidx.compose.runtime.rememberUpdatedState(onRecord)
+    LaunchedEffect(active, lifecycleOwner) {
+        if (!active) return@LaunchedEffect
+        lifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.RESUMED) {
+            var pending = 0L
+            try {
+                while (true) {
+                    kotlinx.coroutines.delay(1000)
+                    if (System.currentTimeMillis() - lastActivityAt() < READING_IDLE_CUTOFF_MS) pending++
+                    if (pending >= 15) {
+                        record(pending)
+                        pending = 0
+                    }
+                }
+            } finally {
+                if (pending > 0) record(pending)
+            }
         }
     }
 }

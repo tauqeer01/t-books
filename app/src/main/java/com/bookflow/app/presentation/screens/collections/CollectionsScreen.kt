@@ -69,7 +69,7 @@ fun CollectionsScreen(viewModel: CollectionsViewModel, onBookClick: (String, Int
                                 Icon(collectionIcon(collection.iconName), null, tint = collectionTint(collection.iconName), modifier = Modifier.size(28.dp))
                                 Column(Modifier.weight(1f).padding(start = 8.dp)) {
                                     Text(collection.name, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF101326))
-                                    Text("${collection.bookCount} books", fontSize = 11.sp, lineHeight = 14.sp, color = Color(0xFF666B85))
+                                    Text(bookCountLabel(collection.bookCount), fontSize = 11.sp, lineHeight = 14.sp, color = Color(0xFF666B85))
                                 }
                                 IconButton(onClick = { delete = collection }, modifier = Modifier.size(28.dp)) { Icon(Icons.Default.MoreVert, "Manage ${collection.name}", Modifier.size(18.dp), tint = Color(0xFF101326)) }
                             }
@@ -88,7 +88,7 @@ fun CollectionsScreen(viewModel: CollectionsViewModel, onBookClick: (String, Int
                                     Icon(collectionIcon(collection.iconName), null, tint = collectionTint(collection.iconName), modifier = Modifier.size(26.dp))
                                     Column(Modifier.weight(1f).padding(horizontal = 7.dp)) {
                                         Text(collection.name, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Bold)
-                                        Text("${collection.bookCount} books", fontSize = 11.sp, lineHeight = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(bookCountLabel(collection.bookCount), fontSize = 11.sp, lineHeight = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     Icon(Icons.Default.ChevronRight, null, Modifier.size(16.dp))
                                 }

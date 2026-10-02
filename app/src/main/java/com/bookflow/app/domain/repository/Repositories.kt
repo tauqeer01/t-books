@@ -71,3 +71,13 @@ interface PreferencesRepository {
     suspend fun updateHighResRendering(enabled: Boolean)
     suspend fun updateKeepScreenOn(enabled: Boolean)
 }
+
+/** Time spent reading per day and the daily reading goal. */
+interface ReadingStatsRepository {
+    val stats: Flow<com.bookflow.app.domain.model.ReadingStats>
+
+    /** Adds reading time to today. Fire-and-forget so it still lands when the reader is closing. */
+    fun addReadingTime(seconds: Long)
+
+    suspend fun setDailyGoal(minutes: Int)
+}

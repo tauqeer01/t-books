@@ -128,7 +128,8 @@ class ReaderViewModel(
     private val deleteAnnotationUseCase: DeleteAnnotationUseCase,
     private val bookmarkUseCase: BookmarkUseCase,
     private val preferencesRepository: PreferencesRepository,
-    private val pdfEngineFactory: PdfEngineFactory
+    private val pdfEngineFactory: PdfEngineFactory,
+    private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReaderUiState(currentPage = initialPage))
@@ -137,7 +138,24 @@ class ReaderViewModel(
     private var pdfEngine: PdfEngine? = null
     private var searchJob: kotlinx.coroutines.Job? = null
 
+    /** Adds active reading time from the reader screen toward today's reading goal. */
+    fun recordReadingTime(seconds: Long) = readingStatsRepository.addReadingTime(seconds)
+
     init {
+        // Celebrate crossing today's goal while reading, like Apple Books
+        viewModelScope.launch {
+            var previous: com.bookflow.app.domain.model.ReadingStats? = null
+            readingStatsRepository.stats.collect { stats ->
+                val before = previous
+                if (before != null && !before.isGoalMet && stats.isGoalMet) {
+                    _uiState.value = _uiState.value.copy(
+                        toastMessage = "Daily reading goal reached · ${stats.dailyGoalMinutes} min today"
+                    )
+                }
+                previous = stats
+            }
+        }
+
         loadBookAndInitializeEngine()
         observePreferences()
         observeAnnotationsAndBookmarks()
@@ -1105,7 +1123,8 @@ class ReaderViewModel(
         private val deleteAnnotationUseCase: DeleteAnnotationUseCase,
         private val bookmarkUseCase: BookmarkUseCase,
         private val preferencesRepository: PreferencesRepository,
-        private val pdfEngineFactory: PdfEngineFactory
+        private val pdfEngineFactory: PdfEngineFactory,
+        private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -1120,7 +1139,8 @@ class ReaderViewModel(
                 deleteAnnotationUseCase,
                 bookmarkUseCase,
                 preferencesRepository,
-                pdfEngineFactory
+                pdfEngineFactory,
+                readingStatsRepository
             ) as T
         }
     }

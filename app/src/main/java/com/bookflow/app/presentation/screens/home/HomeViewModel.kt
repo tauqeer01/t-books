@@ -27,11 +27,8 @@ data class HomeUiState(
     val allBooks: List<Book> = emptyList(),
     val continueReadingBooks: List<Book> = emptyList(),
     val recentlyOpenedBooks: List<Book> = emptyList(),
-    val myLibraryBooks: List<Book> = emptyList(),
     val collections: List<BookCollection> = emptyList(),
     val allAnnotations: List<com.bookflow.app.domain.model.BookAnnotation> = emptyList(),
-    val selectedFilterPill: String = "All",
-    val filterPills: List<String> = listOf("All", "PDF", "Recent", "Favorites", "Collections"),
     val searchQuery: String = "",
     val isImporting: Boolean = false,
     val toastMessage: String? = null
@@ -44,10 +41,18 @@ class HomeViewModel(
     private val saveBookUseCase: SaveBookUseCase,
     private val bookRepository: BookRepository,
     private val annotationRepository: com.bookflow.app.domain.repository.AnnotationRepository,
-    private val pdfEngineFactory: PdfEngineFactory
+    private val pdfEngineFactory: PdfEngineFactory,
+    private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository
 ) : ViewModel() {
 
-    private val _selectedFilterPill = MutableStateFlow("All")
+    /** Today's reading time against the daily goal, for the Home ring. */
+    val readingStats: StateFlow<com.bookflow.app.domain.model.ReadingStats> = readingStatsRepository.stats
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), com.bookflow.app.domain.model.ReadingStats())
+
+    fun setDailyReadingGoal(minutes: Int) {
+        viewModelScope.launch { readingStatsRepository.setDailyGoal(minutes) }
+    }
+
     private val _searchQuery = MutableStateFlow("")
     private val _isImporting = MutableStateFlow(false)
     private val _toastMessage = MutableStateFlow<String?>(null)
@@ -56,7 +61,6 @@ class HomeViewModel(
         getBooksUseCase(),
         getCollectionsUseCase(),
         annotationRepository.getAllAnnotations(),
-        _selectedFilterPill,
         _searchQuery,
         _isImporting,
         _toastMessage
@@ -67,9 +71,8 @@ class HomeViewModel(
         val collections = params[1] as List<BookCollection>
         @Suppress("UNCHECKED_CAST")
         val allAnnotations = params[2] as List<com.bookflow.app.domain.model.BookAnnotation>
-        val pill = params[3] as String
-        val query = params[4] as String
-        val importing = params[5] as Boolean
+        val query = params[3] as String
+        val importing = params[4] as Boolean
 
         // Continue Reading: Books with progress > 0
         val continueReading = allBooks.filter { it.readingProgress > 0f && it.readingProgress < 1f }.sortedByDescending { it.lastReadTimestamp }
@@ -77,44 +80,21 @@ class HomeViewModel(
         // Recently Opened: Next batch of active books
         val recentlyOpened = allBooks.filter { it.lastReadTimestamp > 0 }.sortedByDescending { it.lastReadTimestamp }
 
-        // My Library: filtered by search or pill
-        var library = allBooks
-        if (pill == "Favorites") library = library.filter { it.isFavorite }
-        if (pill == "PDF") library = library.filter { it.category == "PDF" }
-        if (pill == "Recent") library = library.filter { it.lastReadTimestamp > 0 }
-        if (query.isNotBlank()) {
-            // Pre-compute annotation content map to avoid O(n²) scan
-            val annotationTextByBook = allAnnotations.groupBy(
-                keySelector = { it.bookId },
-                valueTransform = { "${it.selectedText} ${it.noteContent}" }
-            )
-            library = library.filter {
-                it.title.contains(query, ignoreCase = true) || it.author.contains(query, ignoreCase = true) ||
-                    annotationTextByBook[it.id]?.any { text -> text.contains(query, true) } == true
-            }
-        }
-
         HomeUiState(
             allBooks = allBooks,
             continueReadingBooks = continueReading,
             recentlyOpenedBooks = recentlyOpened,
-            myLibraryBooks = library,
             collections = collections.map { collection -> collection.copy(bookCount = allBooks.count { collection.id in it.collectionIds }) },
             allAnnotations = allAnnotations,
-            selectedFilterPill = pill,
             searchQuery = query,
             isImporting = importing,
-            toastMessage = params[6] as String?
+            toastMessage = params[5] as String?
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
         initialValue = HomeUiState()
     )
-
-    fun onFilterPillSelected(pill: String) {
-        _selectedFilterPill.value = pill
-    }
 
     fun onSearchQueryChanged(query: String) {
         _searchQuery.value = query
@@ -158,11 +138,12 @@ class HomeViewModel(
         private val saveBookUseCase: SaveBookUseCase,
         private val bookRepository: BookRepository,
         private val annotationRepository: com.bookflow.app.domain.repository.AnnotationRepository,
-        private val pdfEngineFactory: PdfEngineFactory
+        private val pdfEngineFactory: PdfEngineFactory,
+        private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return HomeViewModel(context, getBooksUseCase, getCollectionsUseCase, saveBookUseCase, bookRepository, annotationRepository, pdfEngineFactory) as T
+            return HomeViewModel(context, getBooksUseCase, getCollectionsUseCase, saveBookUseCase, bookRepository, annotationRepository, pdfEngineFactory, readingStatsRepository) as T
         }
     }
 }

@@ -34,6 +34,10 @@ class AppContainer(private val context: Context) {
         DataStorePreferencesRepository(context)
     }
 
+    val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository by lazy {
+        com.bookflow.app.data.preferences.DataStoreReadingStatsRepository(context)
+    }
+
     val pdfEngineFactory: PdfEngineFactory by lazy {
         PdfEngineFactory(context)
     }

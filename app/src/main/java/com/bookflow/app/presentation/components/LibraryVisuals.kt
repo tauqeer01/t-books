@@ -50,6 +50,9 @@ fun shareBook(context: Context, book: Book) {
     context.startActivity(Intent.createChooser(intent, "Share ${book.title}"))
 }
 
+/** "1 book", "3 books". */
+fun bookCountLabel(count: Int): String = if (count == 1) "1 book" else "$count books"
+
 @Composable
 fun BookArtwork(book: Book, modifier: Modifier = Modifier) {
     val color = runCatching { Color(android.graphics.Color.parseColor(book.coverColorHex)) }.getOrDefault(BrandPurple)

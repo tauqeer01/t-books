@@ -100,7 +100,8 @@ fun BookFlowNavGraph(
                     saveBookUseCase = container.saveBookUseCase,
                     bookRepository = container.bookRepository,
                     annotationRepository = container.annotationRepository,
-                    pdfEngineFactory = container.pdfEngineFactory
+                    pdfEngineFactory = container.pdfEngineFactory,
+                    readingStatsRepository = container.readingStatsRepository
                 )
             )
 
@@ -139,7 +140,6 @@ fun BookFlowNavGraph(
                         onNavigateToCollections = {
                             navController.navigate(Screen.Collections.route)
                         },
-                        onNavigateToSearch = { navController.navigate(Screen.Search.route) },
                         onLibrary = { filter -> libraryViewModel.onCategorySelected(filter); navController.navigate(Screen.Library.route) },
                         onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
                         onSettings = { navController.navigate(Screen.Settings.route) }
@@ -226,7 +226,8 @@ fun BookFlowNavGraph(
                             deleteAnnotationUseCase = container.deleteAnnotationUseCase,
                             bookmarkUseCase = container.bookmarkUseCase,
                             preferencesRepository = container.preferencesRepository,
-                            pdfEngineFactory = container.pdfEngineFactory
+                            pdfEngineFactory = container.pdfEngineFactory,
+                            readingStatsRepository = container.readingStatsRepository
                         )
                     )
 

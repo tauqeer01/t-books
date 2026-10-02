@@ -66,6 +66,7 @@ import com.bookflow.app.domain.model.Book
 import com.bookflow.app.domain.model.BookAnnotation
 import com.bookflow.app.presentation.components.BookCoverCard
 import com.bookflow.app.presentation.components.BookFlowTopBar
+import com.bookflow.app.presentation.components.bookCountLabel
 import androidx.compose.foundation.layout.WindowInsets
 import com.bookflow.app.presentation.screens.home.HomeViewModel
 
@@ -258,7 +259,7 @@ fun SearchScreen(
                                     )
                                 }
                                 Text(
-                                    text = "${readingHistoryBooks.size} books",
+                                    text = bookCountLabel(readingHistoryBooks.size),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = Color(0xFF64748B)
                                 )
