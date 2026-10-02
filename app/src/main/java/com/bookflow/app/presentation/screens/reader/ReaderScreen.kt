@@ -17,6 +17,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -98,7 +99,6 @@ import androidx.compose.material.icons.outlined.AutoStories
 import com.bookflow.app.domain.model.PageScrollMode
 import com.bookflow.app.domain.model.ReaderTheme
 import com.bookflow.app.pdf.drawing.DrawingTool
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -126,6 +126,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import com.bookflow.app.presentation.components.BookFlowBottomSheet
 import com.bookflow.app.presentation.screens.settings.ReadingPreferencesEditor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -151,6 +152,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -161,6 +168,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bookflow.app.core.theme.BrandPurple
 import com.bookflow.app.domain.model.AnnotationType
 import com.bookflow.app.domain.model.BookAnnotation
+import com.bookflow.app.pdf.engine.markupRects
+import com.bookflow.app.pdf.engine.isStickyNote
+import kotlin.math.roundToInt
 
 // Highlight Colors matching Phase 4 Requirements: Yellow, Green, Blue, Pink, Purple
 val HighlightColorPalette = listOf(
@@ -210,6 +220,7 @@ fun ReaderScreen(
             state.isDrawerOpen -> viewModel.setDrawerOpen(false)
             state.showThumbnailsDrawer -> viewModel.closeThumbnailsDrawer()
             state.isGoToPageDialogOpen -> viewModel.closeGoToPageDialog()
+            state.isPageNavigatorVisible -> viewModel.setPageNavigatorVisible(false)
             scale > 1.05f -> {
                 scale = 1f
                 offsetX = 0f
@@ -221,16 +232,59 @@ fun ReaderScreen(
 
     if (state.showReadingPreferences) {
         var scope by remember { mutableStateOf<Boolean?>(null) }
-        if (scope == null) AlertDialog(
+        if (scope == null) BookFlowBottomSheet(
             onDismissRequest = { viewModel.showReadingPreferences(false) },
-            title = { Text("Reading preferences") },
-            text = { Column {
-                TextButton(onClick = { scope = true }) { Text("Customize this book") }
-                TextButton(onClick = { scope = false }) { Text("Change global defaults") }
-                TextButton(onClick = { viewModel.useGlobalPreferences(); viewModel.showReadingPreferences(false) }) { Text("Use global defaults for this book") }
-            } },
-            confirmButton = { TextButton(onClick = { viewModel.showReadingPreferences(false) }) { Text("Cancel") } }
-        ) else ReadingPreferencesEditor(state.preferences, onDismiss = { viewModel.showReadingPreferences(false) }, onSave = { viewModel.saveReadingPreferences(it, scope == true) })
+            title = "Reading Preferences",
+            subtitle = "Choose how settings are applied",
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.showReadingPreferences(false) },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Cancel", color = Color(0xFF64748B))
+                }
+            }
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                Surface(
+                    onClick = { scope = true },
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFF1F5F9),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("Customize for This Book", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
+                        Text("Overrides apply only while reading this PDF", fontSize = 12.sp, color = Color(0xFF64748B))
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    onClick = { scope = false },
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFFF1F5F9),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("Change Global Defaults", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color(0xFF0F172A))
+                        Text("Applies to all books in your library", fontSize = 12.sp, color = Color(0xFF64748B))
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    onClick = {
+                        viewModel.useGlobalPreferences()
+                        viewModel.showReadingPreferences(false)
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.Transparent,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("Reset to Global Defaults", fontWeight = FontWeight.Medium, fontSize = 14.sp, color = BrandPurple)
+                    }
+                }
+            }
+        } else ReadingPreferencesEditor(state.preferences, onDismiss = { viewModel.showReadingPreferences(false) }, onSave = { viewModel.saveReadingPreferences(it, scope == true) })
     }
 
     Scaffold(
@@ -238,7 +292,7 @@ fun ReaderScreen(
             SnackbarHost(
                 snackbarHostState,
                 Modifier.navigationBarsPadding().padding(
-                    bottom = if (state.areControlsVisible || state.isDrawingModeActive) 164.dp else 12.dp
+                    bottom = if (state.isPageNavigatorVisible) 80.dp else 12.dp
                 )
             )
         },
@@ -263,13 +317,13 @@ fun ReaderScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .navigationBarsPadding()
-                    .pointerInput(state.isDrawingModeActive, state.isStylusOnlyDrawing) {
+                    .pointerInput(state.isDrawingModeActive, state.isStylusOnlyDrawing, state.drawingTool) {
                         awaitEachGesture {
                             awaitFirstDown(requireUnconsumed = false)
                             do {
                                 val event = awaitPointerEvent()
                                 val pressed = event.changes.count { it.pressed }
-                                val drawing = state.isDrawingModeActive && (!state.isStylusOnlyDrawing || event.changes.any { it.type == androidx.compose.ui.input.pointer.PointerType.Stylus })
+                                val drawing = state.isDrawingModeActive && state.drawingTool != DrawingTool.HAND && (!state.isStylusOnlyDrawing || event.changes.any { it.type == androidx.compose.ui.input.pointer.PointerType.Stylus })
                                 if (pressed >= 2 || (scale > 1.05f && !drawing && event.changes.none { it.isConsumed })) {
                                     val zoom = event.calculateZoom()
                                     val pan = event.calculatePan()
@@ -315,8 +369,8 @@ fun ReaderScreen(
                         LazyColumn(
                             state = listState,
                             contentPadding = PaddingValues(
-                                top = if (state.areControlsVisible) 72.dp else 16.dp,
-                                bottom = if (state.areControlsVisible) 180.dp else 24.dp,
+                                top = ReaderHeaderHeight + 12.dp,
+                                bottom = 24.dp,
                                 start = 12.dp,
                                 end = 12.dp
                             ),
@@ -343,6 +397,32 @@ fun ReaderScreen(
                                 )
                             }
                         }
+                    } else if (state.scrollMode == PageScrollMode.BOOK) {
+                        // MODE 3: Book — Apple Books style page curl
+                        BookPageTurner(
+                            pageCount = state.pageCount,
+                            currentPage = state.currentPage,
+                            onPageChange = viewModel::onPageScrolled,
+                            swipeEnabled = scale <= 1.05f && (!state.isDrawingModeActive || state.drawingTool == DrawingTool.HAND),
+                            pageAspectRatio = viewModel::getPageAspectRatio,
+                            modifier = Modifier.padding(top = ReaderHeaderHeight + 8.dp, bottom = 16.dp, start = 12.dp, end = 12.dp)
+                        ) { pageIndex ->
+                            PdfPageItem(
+                                pageIndex = pageIndex,
+                                viewModel = viewModel,
+                                aspectRatio = viewModel.getPageAspectRatio(pageIndex),
+                                annotations = state.allBookAnnotations.filter { it.pageIndex == pageIndex },
+                                state = state,
+                                activeSelection = if (state.selectedTextSelection?.pageIndex == pageIndex) state.selectedTextSelection else null,
+                                onAnnotationClick = { ann -> viewModel.onAnnotationTapped(ann) },
+                                onDoubleTap = { scale = if (scale > 1.2f) 1f else 2.4f; offsetX = 0f; offsetY = 0f },
+                                fitPageToViewport = true,
+                                modifier = Modifier
+                                    .shadow(12.dp, RoundedCornerShape(4.dp))
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color.White)
+                            )
+                        }
                     } else {
                         // MODE 2: Horizontal Page Flip / Single Page Pager
                         val pagerState = rememberPagerState(
@@ -356,7 +436,11 @@ fun ReaderScreen(
 
                         LaunchedEffect(state.navigationRequest) {
                             if (pagerState.currentPage != state.currentPage) {
-                                pagerState.scrollToPage(state.currentPage)
+                                if (kotlin.math.abs(pagerState.currentPage - state.currentPage) == 1) {
+                                    pagerState.animateScrollToPage(state.currentPage)
+                                } else {
+                                    pagerState.scrollToPage(state.currentPage)
+                                }
                             }
                         }
 
@@ -366,8 +450,8 @@ fun ReaderScreen(
                             pageSpacing = state.preferences.pageSpacing.dp,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(
-                                top = if (state.areControlsVisible) 64.dp else 12.dp,
-                                bottom = if (state.areControlsVisible) 160.dp else 16.dp,
+                                top = ReaderHeaderHeight + 8.dp,
+                                bottom = 16.dp,
                                 start = 12.dp,
                                 end = 12.dp
                             )
@@ -406,7 +490,7 @@ fun ReaderScreen(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
-                        .padding(bottom = 120.dp, start = 16.dp, end = 16.dp)
+                        .padding(bottom = if (state.isPageNavigatorVisible) 80.dp else 24.dp, start = 16.dp, end = 16.dp)
                 ) {
                     ExistingAnnotationActionMenu(
                         annotation = activeAnn,
@@ -426,94 +510,22 @@ fun ReaderScreen(
                 }
             }
 
-            // --- TOP APP BAR (Full-screen Show/Hide Animation) ---
+            // --- TOP APP BAR (stays on screen; hidden only while a text selection popup is open) ---
             AnimatedVisibility(
-                visible = state.areControlsVisible && state.selectedTextSelection == null,
+                visible = state.selectedTextSelection == null,
                 enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
                 exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut(),
                 modifier = Modifier.align(Alignment.TopCenter)
             ) {
-                Surface(
-                    color = Color.White.copy(alpha = 0.96f),
-                    shadowElevation = 4.dp,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .statusBarsPadding()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Back + Title + Page count
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            IconButton(
-                                onClick = onBackClick,
-                                modifier = Modifier.size(38.dp).testTag("reader_back_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = Color(0xFF0F172A)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(4.dp))
-
-                            Column {
-                                Text(
-                                    text = state.book?.title ?: "PDF Reader",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF0F172A),
-                                    fontSize = 14.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Text(
-                                    text = "Page ${state.currentPage + 1} of ${state.pageCount}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF64748B),
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-
-                        // Actions: Scroll Mode Switcher, Outline/TOC, Search, Bookmark
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(
-                                onClick = { viewModel.setSearchOpen(!state.isSearchOpen) },
-                                modifier = Modifier.size(38.dp).testTag("reader_search_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Search,
-                                    contentDescription = "Search",
-                                    tint = Color(0xFF334155)
-                                )
-                            }
-
-                            IconButton(
-                                onClick = viewModel::toggleBookmark,
-                                modifier = Modifier.size(38.dp).testTag("reader_bookmark_toggle")
-                            ) {
-                                Icon(
-                                    imageVector = if (state.isCurrentPageBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                                    contentDescription = "Bookmark",
-                                    tint = if (state.isCurrentPageBookmarked) BrandPurple else Color(0xFF334155)
-                                )
-                            }
-
-                            IconButton(onClick = { viewModel.openMoreOptionsSheet(true) }, modifier = Modifier.size(40.dp)) {
-                                Icon(Icons.Default.MoreVert, "Reader options", tint = Color(0xFF334155))
-                            }
-                        }
-                    }
-                }
+                ReaderHeader(
+                    state = state,
+                    onBackClick = onBackClick,
+                    onContentsClick = { viewModel.setDrawerOpen(true, 0) },
+                    onPageLabelClick = viewModel::openGoToPageDialog,
+                    onSearchClick = { viewModel.setSearchOpen(!state.isSearchOpen) },
+                    onBookmarkClick = viewModel::toggleBookmark,
+                    onMoreClick = { viewModel.openMoreOptionsSheet(true) }
+                )
             }
 
             // --- SEARCH OVERLAY BAR ---
@@ -524,7 +536,7 @@ fun ReaderScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(top = if (state.areControlsVisible) 58.dp else 12.dp, start = 12.dp, end = 12.dp)
+                    .padding(top = ReaderHeaderHeight, start = 12.dp, end = 12.dp)
             ) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
@@ -692,99 +704,39 @@ fun ReaderScreen(
                 }
             }
 
-            // --- FLOATING VERTICAL TOOLBAR (Right Side) ---
+            // --- RIGHT ANNOTATION RAIL (pen button that expands into a vertical tool strip) ---
             AnimatedVisibility(
-                visible = state.areControlsVisible && state.selectedTextSelection == null,
+                visible = state.isDocumentReady && state.selectedTextSelection == null,
                 enter = fadeIn(),
                 exit = fadeOut(),
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
-                    .padding(end = 12.dp)
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(top = ReaderHeaderHeight + 8.dp, bottom = 16.dp, end = 12.dp)
             ) {
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(28.dp))
-                        .shadow(8.dp, RoundedCornerShape(28.dp)),
-                    color = Color.White
-                ) {
-                    Column(
-                        modifier = Modifier.padding(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        VerticalToolbarIcon(
-                            icon = Icons.Default.Create,
-                            isActive = state.isDrawingModeActive && state.drawingTool == DrawingTool.PEN,
-                            onClick = {
-                                viewModel.setDrawingMode(true)
-                                viewModel.setDrawingTool(DrawingTool.PEN)
-                            }
-                        )
-                        VerticalToolbarIcon(
-                            icon = Icons.Default.Highlight,
-                            isActive = state.isDrawingModeActive && state.drawingTool == DrawingTool.HIGHLIGHTER,
-                            onClick = {
-                                viewModel.setDrawingMode(true)
-                                viewModel.setDrawingTool(DrawingTool.HIGHLIGHTER)
-                            }
-                        )
-                        VerticalToolbarIcon(
-                            icon = Icons.Default.CropFree,
-                            isActive = state.isDrawingModeActive && state.drawingTool == DrawingTool.ERASER,
-                            onClick = {
-                                viewModel.setDrawingMode(true)
-                                viewModel.setDrawingTool(DrawingTool.ERASER)
-                            }
-                        )
-                        VerticalToolbarIcon(
-                            icon = Icons.AutoMirrored.Filled.Undo,
-                            isActive = false,
-                            onClick = viewModel::undoDrawing
-                        )
-                        VerticalToolbarIcon(
-                            icon = Icons.AutoMirrored.Filled.Redo,
-                            isActive = false,
-                            onClick = viewModel::redoDrawing
-                        )
-                    }
-                }
+                AnnotationToolRail(state = state, viewModel = viewModel)
             }
 
+            // --- PAGE NAVIGATOR (opens when the page is tapped) ---
             AnimatedVisibility(
-                visible = state.isDocumentReady && state.areControlsVisible && state.selectedTextSelection == null && !state.isDrawingModeActive,
-                enter = fadeIn(), exit = fadeOut(), modifier = Modifier.align(Alignment.BottomCenter)
+                visible = state.isDocumentReady && state.isPageNavigatorVisible && state.selectedTextSelection == null && !state.isDrawingModeActive,
+                enter = slideInVertically(initialOffsetY = { it / 2 }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it / 2 }) + fadeOut(),
+                modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                Column(Modifier.fillMaxWidth().background(Color.White).navigationBarsPadding()) {
-                    val thumbnailState = rememberLazyListState()
-                    LaunchedEffect(state.currentPage) { thumbnailState.animateScrollToItem((state.currentPage - 2).coerceAtLeast(0)) }
-                    LazyRow(state = thumbnailState, modifier = Modifier.fillMaxWidth().background(Color(0xFFE2E2E9)), contentPadding = PaddingValues(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        items(state.pageCount) { page ->
-                            Column(Modifier.width(60.dp).clickable { viewModel.jumpToPage(page) }, horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(Modifier.height(70.dp).fillMaxWidth().border(if (page == state.currentPage) 2.dp else 1.dp, if (page == state.currentPage) BrandPurple else Color(0xFFCCCCD8), RoundedCornerShape(5.dp)).padding(3.dp).background(Color.White), contentAlignment = Alignment.Center) {
-                                    MiniPageThumbnail(page, viewModel)
-                                }
-                                Text("${page + 1}", fontSize = 10.sp, color = Color(0xFF101326))
-                            }
-                        }
-                    }
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { viewModel.setDrawerOpen(true, 0) }) { Icon(Icons.Default.Menu, "Contents, bookmarks and history") }
-                        IconButton(onClick = viewModel::previousPage, enabled = state.currentPage > 0) { Icon(Icons.Default.ChevronLeft, "Previous page") }
-                        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                            var scrubPage by remember(state.currentPage) { mutableFloatStateOf(state.currentPage.toFloat()) }
-                            Slider(value = scrubPage, onValueChange = { scrubPage = it }, onValueChangeFinished = { viewModel.jumpToPage(scrubPage.toInt()) }, valueRange = 0f..(state.pageCount - 1).coerceAtLeast(1).toFloat(), enabled = state.pageCount > 1, modifier = Modifier.height(32.dp))
-                            Text("${state.currentPage + 1} / ${state.pageCount}", fontSize = 11.sp, color = Color(0xFF101326), modifier = Modifier.clickable { viewModel.openGoToPageDialog() })
-                        }
-                        IconButton(onClick = viewModel::nextPage, enabled = state.currentPage < state.pageCount - 1) { Icon(Icons.Default.ChevronRight, "Next page") }
-                        IconButton(onClick = viewModel::openGoToPageDialog) { Icon(Icons.Default.FindInPage, "Go to page") }
-                    }
-                }
+                PageNavigator(state = state, viewModel = viewModel)
             }
 
             if (state.isMoreOptionsSheetOpen) {
                 ModalBottomSheet(onDismissRequest = { viewModel.openMoreOptionsSheet(false) }) {
                     Column(Modifier.fillMaxWidth().padding(20.dp)) {
                         Text("Reader options", style = MaterialTheme.typography.titleLarge)
+                        Spacer(Modifier.height(14.dp))
+                        Text("Reading mode", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF64748B))
+                        Spacer(Modifier.height(8.dp))
+                        ReadingModeSelector(selected = state.scrollMode, onSelect = viewModel::setScrollMode)
+                        Spacer(Modifier.height(8.dp))
                         listOf(
                             "Reading preferences" to { viewModel.showReadingPreferences(true) },
                             "Contents & navigation" to { viewModel.setDrawerOpen(true, 0) },
@@ -805,63 +757,10 @@ fun ReaderScreen(
                 var inputPageText by remember { mutableStateOf("${state.currentPage + 1}") }
                 var sliderPageValue by remember { mutableFloatStateOf((state.currentPage + 1).toFloat()) }
 
-                AlertDialog(
+                BookFlowBottomSheet(
                     onDismissRequest = viewModel::closeGoToPageDialog,
-                    title = {
-                        Text("Jump to Page", fontWeight = FontWeight.Bold)
-                    },
-                    text = {
-                        Column {
-                            Text(
-                                text = "Enter a page number between 1 and ${state.pageCount}:",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF64748B)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            OutlinedTextField(
-                                value = inputPageText,
-                                onValueChange = { text ->
-                                    inputPageText = text.filter { it.isDigit() }
-                                    val p = inputPageText.toIntOrNull()
-                                    if (p != null && p in 1..state.pageCount) {
-                                        sliderPageValue = p.toFloat()
-                                    }
-                                },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(
-                                    keyboardType = KeyboardType.Number,
-                                    imeAction = ImeAction.Go
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onGo = {
-                                        val p = inputPageText.toIntOrNull()
-                                        if (p != null && p in 1..state.pageCount) {
-                                            viewModel.jumpToPage(p - 1)
-                                            viewModel.closeGoToPageDialog()
-                                        }
-                                    }
-                                ),
-                                label = { Text("Page Number") },
-                                modifier = Modifier.fillMaxWidth().testTag("goto_page_input")
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            Slider(
-                                value = sliderPageValue,
-                                onValueChange = {
-                                    sliderPageValue = it
-                                    inputPageText = it.toInt().toString()
-                                },
-                                valueRange = 1f..state.pageCount.coerceAtLeast(1).toFloat(),
-                                colors = SliderDefaults.colors(
-                                    thumbColor = BrandPurple,
-                                    activeTrackColor = BrandPurple
-                                )
-                            )
-                        }
-                    },
+                    title = "Jump to Page",
+                    subtitle = "Enter a page number between 1 and ${state.pageCount}",
                     confirmButton = {
                         Button(
                             onClick = {
@@ -871,17 +770,70 @@ fun ReaderScreen(
                                 }
                                 viewModel.closeGoToPageDialog()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPurple)
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Jump")
+                            Text("Jump", fontWeight = FontWeight.SemiBold)
                         }
                     },
                     dismissButton = {
-                        OutlinedButton(onClick = viewModel::closeGoToPageDialog) {
-                            Text("Cancel")
+                        TextButton(
+                            onClick = viewModel::closeGoToPageDialog,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Cancel", color = Color(0xFF64748B))
                         }
                     }
-                )
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        OutlinedTextField(
+                            value = inputPageText,
+                            onValueChange = { text ->
+                                inputPageText = text.filter { it.isDigit() }
+                                val p = inputPageText.toIntOrNull()
+                                if (p != null && p in 1..state.pageCount) {
+                                    sliderPageValue = p.toFloat()
+                                }
+                            },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Go
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onGo = {
+                                    val p = inputPageText.toIntOrNull()
+                                    if (p != null && p in 1..state.pageCount) {
+                                        viewModel.jumpToPage(p - 1)
+                                        viewModel.closeGoToPageDialog()
+                                    }
+                                }
+                            ),
+                            label = { Text("Page Number") },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = BrandPurple,
+                                focusedLabelColor = BrandPurple
+                            ),
+                            modifier = Modifier.fillMaxWidth().testTag("goto_page_input")
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Slider(
+                            value = sliderPageValue,
+                            onValueChange = {
+                                sliderPageValue = it
+                                inputPageText = it.toInt().toString()
+                            },
+                            valueRange = 1f..state.pageCount.coerceAtLeast(1).toFloat(),
+                            colors = SliderDefaults.colors(
+                                thumbColor = BrandPurple,
+                                activeTrackColor = BrandPurple
+                            )
+                        )
+                    }
+                }
             }
 
             // --- DIALOG: EDIT NOTE ---
@@ -889,48 +841,53 @@ fun ReaderScreen(
                 val ann = state.editingNoteAnnotation!!
                 var noteInput by remember { mutableStateOf(ann.noteContent) }
 
-                AlertDialog(
+                BookFlowBottomSheet(
                     onDismissRequest = viewModel::cancelEditingNote,
-                    title = {
-                        Text("Edit Note", fontWeight = FontWeight.Bold)
-                    },
-                    text = {
-                        Column {
-                            if (ann.selectedText.isNotBlank()) {
-                                Text(
-                                    text = "\"${ann.selectedText.take(120)}...\"",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF64748B),
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Spacer(modifier = Modifier.height(10.dp))
-                            }
-                            OutlinedTextField(
-                                value = noteInput,
-                                onValueChange = { noteInput = it },
-                                placeholder = { Text("Enter your personal note or thoughts...") },
-                                minLines = 3,
-                                maxLines = 6,
-                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPurple),
-                                modifier = Modifier.fillMaxWidth().testTag("edit_note_input")
-                            )
-                        }
-                    },
+                    title = "Edit Note",
                     confirmButton = {
                         Button(
                             onClick = { viewModel.saveAnnotationNote(ann.id, noteInput) },
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPurple)
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Text("Save Note")
+                            Text("Save Note", fontWeight = FontWeight.SemiBold)
                         }
                     },
                     dismissButton = {
-                        OutlinedButton(onClick = viewModel::cancelEditingNote) {
-                            Text("Cancel")
+                        TextButton(
+                            onClick = viewModel::cancelEditingNote,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Cancel", color = Color(0xFF64748B))
                         }
                     }
-                )
+                ) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        if (ann.selectedText.isNotBlank()) {
+                            Text(
+                                text = "\"${ann.selectedText.take(120)}...\"",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF64748B),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                        }
+                        OutlinedTextField(
+                            value = noteInput,
+                            onValueChange = { noteInput = it },
+                            placeholder = { Text("Enter your personal note or thoughts...") },
+                            minLines = 3,
+                            maxLines = 6,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = BrandPurple,
+                                focusedLabelColor = BrandPurple
+                            ),
+                            modifier = Modifier.fillMaxWidth().testTag("edit_note_input")
+                        )
+                    }
+                }
             }
 
             // --- MODAL BOTTOM SHEET: FULL PAGE THUMBNAILS GRID ---
@@ -1262,22 +1219,6 @@ fun ReaderScreen(
                 }
             }
 
-            // --- PHASE 6: DRAWING & PEN ANNOTATION TOOLBAR ---
-            AnimatedVisibility(
-                visible = state.isDrawingModeActive,
-                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 12.dp)
-            ) {
-                DrawingToolbar(
-                    state = state,
-                    viewModel = viewModel
-                )
-            }
-
             // --- PHASE 6: EXPORT ANNOTATED PDF DIALOG ---
             if (state.showExportDialog) {
                 ExportAnnotatedPdfDialog(
@@ -1456,65 +1397,27 @@ fun AnnotationOverlayCanvas(
 
         // 1. Draw Saved Annotations
         annotations.forEach { ann ->
-            val left = ann.rectLeft * pageW
-            val top = ann.rectTop * pageH
-            val right = ann.rectRight * pageW
-            val bottom = ann.rectBottom * pageH
-
             val color = try {
                 Color(android.graphics.Color.parseColor(ann.colorHex))
             } catch (_: Exception) {
                 Color(0xFFFFE600)
             }
-
-            when (ann.type) {
-                AnnotationType.HIGHLIGHT -> {
-                    drawRoundRect(
-                        color = color.copy(alpha = 0.42f),
-                        topLeft = Offset(left, top),
-                        size = Size((right - left).coerceAtLeast(10f), (bottom - top).coerceAtLeast(8f)),
-                        cornerRadius = CornerRadius(4f, 4f)
-                    )
-                }
-                AnnotationType.UNDERLINE -> {
-                    drawLine(
-                        color = color,
-                        start = Offset(left, bottom),
-                        end = Offset(right, bottom),
-                        strokeWidth = 3.5f,
-                        cap = StrokeCap.Round
-                    )
-                }
-                AnnotationType.STRIKETHROUGH -> {
-                    val midY = top + (bottom - top) / 2f
-                    drawLine(
-                        color = color,
-                        start = Offset(left, midY),
-                        end = Offset(right, midY),
-                        strokeWidth = 3f,
-                        cap = StrokeCap.Round
-                    )
-                }
-                AnnotationType.NOTE -> {
+            when {
+                ann.type == AnnotationType.PEN_DRAW -> Unit
+                ann.isStickyNote -> drawStickyNote(
+                    center = Offset((ann.rectLeft + ann.rectRight) / 2f * pageW, (ann.rectTop + ann.rectBottom) / 2f * pageH),
+                    color = color,
+                    hasText = ann.noteContent.isNotBlank()
+                )
+                ann.type == AnnotationType.NOTE -> {
                     // Highlight the text + draw a note indicator marker
-                    drawRoundRect(
-                        color = color.copy(alpha = 0.35f),
-                        topLeft = Offset(left, top),
-                        size = Size((right - left).coerceAtLeast(10f), (bottom - top).coerceAtLeast(8f)),
-                        cornerRadius = CornerRadius(4f, 4f)
-                    )
-                    drawCircle(
-                        color = color,
-                        radius = 6.dp.toPx(),
-                        center = Offset(right - 2f, top + 2f)
-                    )
-                    drawCircle(
-                        color = Color.White,
-                        radius = 3.dp.toPx(),
-                        center = Offset(right - 2f, top + 2f)
-                    )
+                    drawTextMarkup(AnnotationType.HIGHLIGHT, ann.markupRects(), color.copy(alpha = 0.35f / 0.42f))
+                    val right = ann.rectRight * pageW
+                    val top = ann.rectTop * pageH
+                    drawCircle(color = color, radius = 6.dp.toPx(), center = Offset(right - 2f, top + 2f))
+                    drawCircle(color = Color.White, radius = 3.dp.toPx(), center = Offset(right - 2f, top + 2f))
                 }
-                else -> {}
+                else -> drawTextMarkup(ann.type, ann.markupRects(), color)
             }
         }
 
@@ -1731,25 +1634,393 @@ private fun MiniPageThumbnail(
     }
 }
 
+private val ReaderHeaderHeight = 56.dp
+
+/**
+ * Persistent reader header: back, title with tappable page indicator (opens Go to page), and reading tools.
+ */
 @Composable
-private fun VerticalToolbarIcon(
+private fun ReaderHeader(
+    state: ReaderUiState,
+    onBackClick: () -> Unit,
+    onContentsClick: () -> Unit,
+    onPageLabelClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    onBookmarkClick: () -> Unit,
+    onMoreClick: () -> Unit
+) {
+    Surface(
+        color = Color.White.copy(alpha = 0.97f),
+        shadowElevation = 3.dp,
+        modifier = Modifier.fillMaxWidth().testTag("reader_header")
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .height(ReaderHeaderHeight)
+                .padding(horizontal = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBackClick, modifier = Modifier.testTag("reader_back_button")) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color(0xFF0F172A))
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClickLabel = "Go to page", onClick = onPageLabelClick)
+                    .padding(horizontal = 4.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = state.book?.title ?: "PDF Reader",
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0F172A),
+                    fontSize = 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "Page ${state.currentPage + 1} of ${state.pageCount}",
+                    color = Color(0xFF64748B),
+                    fontSize = 11.sp,
+                    maxLines = 1
+                )
+            }
+            HeaderAction(Icons.AutoMirrored.Filled.ViewList, "Contents", "reader_contents_button", onClick = onContentsClick)
+            HeaderAction(Icons.Default.Search, "Search", "reader_search_button", isActive = state.isSearchOpen, onClick = onSearchClick)
+            HeaderAction(
+                icon = if (state.isCurrentPageBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                label = "Bookmark",
+                testTag = "reader_bookmark_toggle",
+                isActive = state.isCurrentPageBookmarked,
+                onClick = onBookmarkClick
+            )
+            HeaderAction(Icons.Default.MoreVert, "Reader options", "reader_more_button", onClick = onMoreClick)
+        }
+    }
+}
+
+@Composable
+private fun HeaderAction(
     icon: ImageVector,
-    isActive: Boolean,
+    label: String,
+    testTag: String,
+    isActive: Boolean = false,
     onClick: () -> Unit
 ) {
+    IconButton(onClick = onClick, modifier = Modifier.size(42.dp).testTag(testTag)) {
+        Icon(icon, contentDescription = label, tint = if (isActive) BrandPurple else Color(0xFF334155), modifier = Modifier.size(22.dp))
+    }
+}
+
+/**
+ * Compact floating page bar shown on page tap: a slim scrubber with bookmark ticks, prev/next, and a
+ * page chip (opens Go to page). While scrubbing, a preview bubble shows the target page's thumbnail and chapter.
+ */
+@Composable
+private fun PageNavigator(
+    state: ReaderUiState,
+    viewModel: ReaderViewModel
+) {
+    val maxPage = (state.pageCount - 1).coerceAtLeast(0)
+    var isScrubbing by remember { mutableStateOf(false) }
+    var scrubPage by remember(state.currentPage) { mutableIntStateOf(state.currentPage) }
+    var trackStartX by remember { mutableFloatStateOf(0f) }
+    var trackWidth by remember { mutableFloatStateOf(0f) }
+    var barWidth by remember { mutableFloatStateOf(0f) }
+    val shownPage = if (isScrubbing) scrubPage else state.currentPage
+    val density = androidx.compose.ui.platform.LocalDensity.current
+
     Box(
         modifier = Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .background(if (isActive) BrandPurple else Color.Transparent)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 14.dp)
+            .widthIn(max = 520.dp)
+            .fillMaxWidth()
+            .onGloballyPositioned { barWidth = it.size.width.toFloat() }
+            .testTag("page_navigator")
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = icon.name.substringAfterLast('.'),
-            tint = if (isActive) Color.White else Color(0xFF475569),
-            modifier = Modifier.size(18.dp)
-        )
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = Color.White.copy(alpha = 0.97f),
+            shadowElevation = 6.dp,
+            border = BorderStroke(0.5.dp, Color(0x14000000)),
+            modifier = Modifier.fillMaxWidth().height(44.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                PageBarIcon(Icons.Default.ChevronLeft, "Previous page", enabled = state.currentPage > 0, onClick = viewModel::previousPage)
+                PageScrubber(
+                    page = shownPage,
+                    maxPage = maxPage,
+                    isScrubbing = isScrubbing,
+                    bookmarkedPages = state.bookmarks.map { it.pageIndex },
+                    onScrubStart = { isScrubbing = true },
+                    onScrub = { scrubPage = it },
+                    onScrubEnd = {
+                        isScrubbing = false
+                        viewModel.jumpToPage(scrubPage)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .onGloballyPositioned {
+                            trackStartX = it.positionInParent().x
+                            trackWidth = it.size.width.toFloat()
+                        }
+                )
+                PageBarIcon(Icons.Default.ChevronRight, "Next page", enabled = state.currentPage < maxPage, onClick = viewModel::nextPage)
+                Surface(
+                    onClick = viewModel::openGoToPageDialog,
+                    shape = RoundedCornerShape(50),
+                    color = Color(0xFFF1F5F9),
+                    modifier = Modifier
+                        .padding(end = 2.dp)
+                        .semantics { contentDescription = "Go to page" }
+                ) {
+                    Text(
+                        text = "${shownPage + 1} / ${state.pageCount}",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF0F172A),
+                        style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                }
+            }
+        }
+
+        // Scrub preview bubble, centred over the thumb and kept inside the bar
+        AnimatedVisibility(
+            visible = isScrubbing,
+            enter = fadeIn() + androidx.compose.animation.scaleIn(initialScale = .9f),
+            exit = fadeOut(),
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .offset {
+                    val bubbleWidth = with(density) { PreviewBubbleWidth.toPx() }
+                    val inset = with(density) { ScrubberThumbInset.toPx() }
+                    val fraction = if (maxPage == 0) 0f else scrubPage / maxPage.toFloat()
+                    val thumbX = trackStartX + inset + fraction * (trackWidth - 2 * inset)
+                    val x = (thumbX - bubbleWidth / 2f).coerceIn(0f, (barWidth - bubbleWidth).coerceAtLeast(0f))
+                    androidx.compose.ui.unit.IntOffset(x.roundToInt(), -with(density) { 54.dp.roundToPx() })
+                }
+        ) {
+            val chapter = state.outline.lastOrNull { it.pageIndex <= scrubPage }?.title
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color.White,
+                shadowElevation = 10.dp,
+                modifier = Modifier.width(PreviewBubbleWidth)
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 64.dp, height = 86.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(6.dp))
+                            .background(Color.White),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        MiniPageThumbnail(scrubPage, viewModel)
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text("Page ${scrubPage + 1}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                    if (chapter != null) {
+                        Text(chapter, fontSize = 10.sp, color = Color(0xFF64748B), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private val PreviewBubbleWidth = 112.dp
+private val ScrubberThumbInset = 10.dp
+
+@Composable
+private fun PageBarIcon(icon: ImageVector, label: String, enabled: Boolean, onClick: () -> Unit) {
+    IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(36.dp)) {
+        Icon(icon, contentDescription = label, tint = if (enabled) Color(0xFF334155) else Color(0xFFCBD5E1), modifier = Modifier.size(20.dp))
+    }
+}
+
+/**
+ * Thin page scrubber: 4dp track, bookmark ticks, and a ringed thumb that grows while dragging.
+ * Tapping the track jumps there; dragging previews until release.
+ */
+@Composable
+private fun PageScrubber(
+    page: Int,
+    maxPage: Int,
+    isScrubbing: Boolean,
+    bookmarkedPages: List<Int>,
+    onScrubStart: () -> Unit,
+    onScrub: (Int) -> Unit,
+    onScrubEnd: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val thumbRadius by androidx.compose.animation.core.animateDpAsState(if (isScrubbing) 9.dp else 7.dp, label = "thumb")
+    val fraction = if (maxPage == 0) 0f else page / maxPage.toFloat()
+    Canvas(
+        modifier = modifier
+            .height(32.dp)
+            .semantics {
+                contentDescription = "Page scrubber"
+                progressBarRangeInfo = androidx.compose.ui.semantics.ProgressBarRangeInfo(page.toFloat(), 0f..maxPage.toFloat().coerceAtLeast(1f))
+            }
+            .pointerInput(maxPage) {
+                val inset = ScrubberThumbInset.toPx()
+                fun pageAt(x: Float): Int {
+                    val f = ((x - inset) / (size.width - 2 * inset)).coerceIn(0f, 1f)
+                    return (f * maxPage).roundToInt()
+                }
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    down.consume()
+                    onScrubStart()
+                    onScrub(pageAt(down.position.x))
+                    drag(down.id) { change ->
+                        onScrub(pageAt(change.position.x))
+                        change.consume()
+                    }
+                    onScrubEnd()
+                }
+            }
+    ) {
+        val inset = ScrubberThumbInset.toPx()
+        val cy = size.height / 2f
+        val start = inset
+        val end = size.width - inset
+        val thumbX = start + fraction * (end - start)
+        val track = 4.dp.toPx()
+        drawLine(Color(0xFFE2E8F0), Offset(start, cy), Offset(end, cy), strokeWidth = track, cap = StrokeCap.Round)
+        drawLine(BrandPurple, Offset(start, cy), Offset(thumbX, cy), strokeWidth = track, cap = StrokeCap.Round)
+        if (maxPage > 0) {
+            bookmarkedPages.forEach { bm ->
+                val x = start + bm / maxPage.toFloat() * (end - start)
+                drawCircle(Color(0xFFA78BFA), radius = 2.dp.toPx(), center = Offset(x, cy - 7.dp.toPx()))
+            }
+        }
+        val r = thumbRadius.toPx()
+        drawCircle(Color.Black.copy(alpha = 0.12f), radius = r + 1.5.dp.toPx(), center = Offset(thumbX, cy + 1.dp.toPx()))
+        drawCircle(Color.White, radius = r, center = Offset(thumbX, cy))
+        drawCircle(BrandPurple, radius = r, center = Offset(thumbX, cy), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2.5.dp.toPx()))
+    }
+}
+
+/**
+ * Segmented reading-mode switcher: scroll, swipe, single page, or book-style page curl.
+ */
+@Composable
+private fun ReadingModeSelector(
+    selected: PageScrollMode,
+    onSelect: (PageScrollMode) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFF1F5F9))
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        listOf(
+            Triple(PageScrollMode.CONTINUOUS_VERTICAL, Icons.Default.SwapVert, "Scroll"),
+            Triple(PageScrollMode.HORIZONTAL_PAGING, Icons.Default.ViewAgenda, "Swipe"),
+            Triple(PageScrollMode.SINGLE_PAGE, Icons.Default.CropFree, "Single"),
+            Triple(PageScrollMode.BOOK, Icons.AutoMirrored.Filled.MenuBook, "Book")
+        ).forEach { (mode, icon, label) ->
+            val isSelected = mode == selected
+            Surface(
+                onClick = { onSelect(mode) },
+                shape = RoundedCornerShape(12.dp),
+                color = if (isSelected) Color.White else Color.Transparent,
+                shadowElevation = if (isSelected) 2.dp else 0.dp,
+                modifier = Modifier.weight(1f).testTag("reading_mode_${mode.name.lowercase()}")
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    Icon(icon, contentDescription = null, tint = if (isSelected) BrandPurple else Color(0xFF64748B), modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        label,
+                        fontSize = 11.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (isSelected) Color(0xFF0F172A) else Color(0xFF64748B)
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Draws a highlight, underline or strikethrough over normalized line rects. */
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawTextMarkup(
+    type: AnnotationType,
+    rects: List<com.bookflow.app.pdf.engine.PdfRect>,
+    color: Color
+) {
+    val pageW = size.width
+    val pageH = size.height
+    rects.forEach { r ->
+        val left = r.left * pageW
+        val top = r.top * pageH
+        val right = r.right * pageW
+        val bottom = r.bottom * pageH
+        when (type) {
+            AnnotationType.UNDERLINE -> drawLine(color, Offset(left, bottom), Offset(right, bottom), strokeWidth = 3.5f, cap = StrokeCap.Round)
+            AnnotationType.STRIKETHROUGH -> {
+                val midY = (top + bottom) / 2f
+                drawLine(color, Offset(left, midY), Offset(right, midY), strokeWidth = 3f, cap = StrokeCap.Round)
+            }
+            else -> drawRoundRect(
+                color = color.copy(alpha = 0.42f * color.alpha),
+                topLeft = Offset(left, top),
+                size = Size((right - left).coerceAtLeast(10f), (bottom - top).coerceAtLeast(8f)),
+                cornerRadius = CornerRadius(4f, 4f)
+            )
+        }
+    }
+}
+
+/** Sticky note glyph: a small square with a folded corner and ruled lines once it has text. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawStickyNote(center: Offset, color: Color, hasText: Boolean) {
+    val half = 11.dp.toPx()
+    val fold = 6.dp.toPx()
+    val left = center.x - half
+    val top = center.y - half
+    val right = center.x + half
+    val bottom = center.y + half
+    drawRoundRect(Color.Black.copy(alpha = 0.18f), Offset(left + 1.dp.toPx(), top + 2.dp.toPx()), Size(half * 2, half * 2), CornerRadius(3.dp.toPx()))
+    val body = androidx.compose.ui.graphics.Path().apply {
+        moveTo(left, top)
+        lineTo(right, top)
+        lineTo(right, bottom - fold)
+        lineTo(right - fold, bottom)
+        lineTo(left, bottom)
+        close()
+    }
+    drawPath(body, color)
+    val corner = androidx.compose.ui.graphics.Path().apply {
+        moveTo(right, bottom - fold)
+        lineTo(right - fold, bottom - fold)
+        lineTo(right - fold, bottom)
+        close()
+    }
+    drawPath(corner, Color.Black.copy(alpha = 0.18f))
+    if (hasText) {
+        val ink = Color.Black.copy(alpha = 0.35f)
+        listOf(0.32f, 0.52f, 0.72f).forEach { f ->
+            val y = top + half * 2 * f
+            drawLine(ink, Offset(left + 4.dp.toPx(), y), Offset(right - (if (f > 0.6f) fold + 2.dp.toPx() else 4.dp.toPx()), y), strokeWidth = 1.2.dp.toPx(), cap = StrokeCap.Round)
+        }
     }
 }

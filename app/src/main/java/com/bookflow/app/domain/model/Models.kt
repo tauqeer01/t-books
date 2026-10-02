@@ -10,7 +10,8 @@ enum class ReaderTheme(val displayName: String, val bgHex: String, val inkHex: S
 enum class PageScrollMode(val displayName: String) {
     HORIZONTAL_PAGING("Horizontal"),
     CONTINUOUS_VERTICAL("Vertical"),
-    SINGLE_PAGE("Single Page")
+    SINGLE_PAGE("Single Page"),
+    BOOK("Book")
 }
 
 enum class AnnotationType {

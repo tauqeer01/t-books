@@ -85,29 +85,140 @@ fun DashboardBookCard(book: Book, onClick: () -> Unit, onActions: () -> Unit, mo
 }
 
 @Composable
-fun BookActionsDialog(book: Book, onDismiss: () -> Unit, onOpen: () -> Unit, onFavorite: () -> Unit, onCollections: () -> Unit, onInformation: () -> Unit, onShare: () -> Unit, onRemove: () -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text(book.title) }, text = {
-        Column {
-            listOf("Open" to onOpen, (if (book.isFavorite) "Remove from Favorites" else "Favorite") to onFavorite,
-                "Add to Collection" to onCollections, "Book Information" to onInformation, "Share" to onShare, "Remove from Library" to onRemove).forEach { (label, action) ->
-                TextButton(onClick = { onDismiss(); action() }, modifier = Modifier.fillMaxWidth()) { Text(label, modifier = Modifier.fillMaxWidth()) }
-            }
-        }
-    }, confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } })
-}
+fun BookActionsDialog(
+    book: Book,
+    onDismiss: () -> Unit,
+    onOpen: () -> Unit,
+    onFavorite: () -> Unit,
+    onCollections: () -> Unit,
+    onInformation: () -> Unit,
+    onShare: () -> Unit,
+    onRemove: () -> Unit
+) {
+    BookFlowBottomSheet(
+        onDismissRequest = onDismiss,
+        title = book.title,
+        subtitle = "${book.pageCount} pages • ${book.category}",
+        showCloseButton = true
+    ) {
+        val actions = listOf(
+            Triple("Open", Icons.Default.MenuBook, onOpen),
+            Triple(if (book.isFavorite) "Remove from Favorites" else "Favorite", androidx.compose.material.icons.Icons.Default.Favorite, onFavorite),
+            Triple("Add to Collection", androidx.compose.material.icons.Icons.Default.FolderSpecial, onCollections),
+            Triple("Book Information", androidx.compose.material.icons.Icons.Default.Info, onInformation),
+            Triple("Share", androidx.compose.material.icons.Icons.Default.Share, onShare),
+            Triple("Remove from Library", androidx.compose.material.icons.Icons.Default.DeleteOutline, onRemove)
+        )
 
-@Composable
-fun BookCollectionsDialog(book: Book, collections: List<BookCollection>, onDismiss: () -> Unit, onSave: (List<String>) -> Unit) {
-    var selected by remember(book.id) { mutableStateOf(book.collectionIds) }
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Add to Collection") }, text = {
-        Column(Modifier.verticalScroll(rememberScrollState())) {
-            if (collections.isEmpty()) Text("Create a collection in the Collections tab first.")
-            collections.forEach { collection ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(collection.id in selected, { checked -> selected = if (checked) selected + collection.id else selected - collection.id })
-                    Text(collection.name)
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            actions.forEach { (label, icon, action) ->
+                val isDestructive = label == "Remove from Library"
+                Surface(
+                    onClick = {
+                        onDismiss()
+                        action()
+                    },
+                    color = Color.Transparent,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = if (isDestructive) MaterialTheme.colorScheme.error else Color(0xFF475569),
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(Modifier.width(16.dp))
+                        Text(
+                            text = label,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = if (isDestructive) MaterialTheme.colorScheme.error else Color(0xFF0F172A)
+                        )
+                    }
                 }
             }
         }
-    }, confirmButton = { TextButton(onClick = { onSave(selected); onDismiss() }) { Text("Save") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } })
+    }
+}
+
+@Composable
+fun BookCollectionsDialog(
+    book: Book,
+    collections: List<BookCollection>,
+    onDismiss: () -> Unit,
+    onSave: (List<String>) -> Unit
+) {
+    var selected by remember(book.id) { mutableStateOf(book.collectionIds) }
+
+    BookFlowBottomSheet(
+        onDismissRequest = onDismiss,
+        title = "Add to Collection",
+        subtitle = "Choose collections for \"${book.title}\"",
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(selected)
+                    onDismiss()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Save", fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cancel", color = Color(0xFF64748B))
+            }
+        }
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            if (collections.isEmpty()) {
+                Text(
+                    text = "No collections found. Create a collection in the Collections tab first.",
+                    fontSize = 13.5.sp,
+                    color = Color(0xFF64748B),
+                    modifier = Modifier.padding(vertical = 12.dp)
+                )
+            } else {
+                collections.forEach { collection ->
+                    val isChecked = collection.id in selected
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                selected = if (isChecked) selected - collection.id else selected + collection.id
+                            }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = isChecked,
+                            onCheckedChange = { checked ->
+                                selected = if (checked) selected + collection.id else selected - collection.id
+                            },
+                            colors = CheckboxDefaults.colors(checkedColor = BrandPurple)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            text = collection.name,
+                            fontSize = 14.5.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color(0xFF0F172A)
+                        )
+                    }
+                }
+            }
+        }
+    }
 }

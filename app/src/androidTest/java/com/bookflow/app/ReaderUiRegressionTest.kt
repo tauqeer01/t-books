@@ -61,6 +61,7 @@ class ReaderUiRegressionTest {
         compose.waitForIdle()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.waitForIdle()
+        openPageNavigator()
         compose.onNodeWithContentDescription("Next page").performClick()
         compose.onNodeWithText("2 / 3").assertExists()
         compose.onNodeWithContentDescription("Go to page").performClick()
@@ -74,7 +75,7 @@ class ReaderUiRegressionTest {
         compose.onNodeWithContentDescription("Close Search").performClick()
         compose.onNodeWithContentDescription("Reader options").performClick()
         compose.onNodeWithText("Reading preferences").performClick()
-        compose.onNodeWithText("Customize this book").performClick()
+        compose.onNodeWithText("Customize for This Book").performClick()
         compose.onNodeWithText("Single Page").performClick()
         compose.onNodeWithText("Save").performClick()
         compose.onNodeWithContentDescription("Previous page").performClick()
@@ -100,7 +101,7 @@ class ReaderUiRegressionTest {
             org.junit.Assert.assertTrue(activity.window.attributes.flags and android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON != 0)
             activity.onKeyDown(android.view.KeyEvent.KEYCODE_VOLUME_DOWN, android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_VOLUME_DOWN))
         }
-        compose.onNodeWithText("2 / 3").assertExists()
+        compose.onNodeWithText("Page 2 of 3").assertExists()
         compose.onNodeWithContentDescription("Back").performClick()
         compose.waitForIdle()
         compose.runOnIdle {
@@ -136,11 +137,12 @@ class ReaderUiRegressionTest {
                 kotlin.math.abs(it.width / it.height - 2f / 3f) < .02f
             } == true
         }
+        openPageNavigator()
         compose.onNodeWithContentDescription("Next page").performClick()
         compose.onNodeWithText("2 / 3").assertExists()
         compose.onNodeWithContentDescription("Back").performClick()
         compose.onNodeWithText("UI Regression PDF").performClick()
-        compose.onNodeWithText("2 / 3").assertExists()
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Page 2 of 3").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithContentDescription("Back").performClick()
     }
 
@@ -163,7 +165,8 @@ class ReaderUiRegressionTest {
         compose.waitForIdle()
         compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
         compose.onNodeWithTag("reader_screen").assertExists()
-        compose.onNodeWithContentDescription("Create").performClick()
+        compose.onNodeWithTag("drawing_toolbar").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Annotate").performClick()
         compose.onNodeWithTag("drawing_toolbar").assertExists()
         compose.onNodeWithContentDescription("PDF Page 1").performTouchInput {
             swipe(center.copy(x = center.x * .6f), center.copy(x = center.x * 1.3f), 300)
@@ -181,5 +184,58 @@ class ReaderUiRegressionTest {
         runBlocking { withTimeout(5000) { app.container.annotationRepository.getAnnotationsForBook(bookId).first { it.isNotEmpty() } } }
         compose.onNodeWithTag("drawing_done_button").performClick()
         compose.onNodeWithTag("drawing_toolbar").assertDoesNotExist()
+    }
+
+    @Test fun textMarkerStickyNoteAndBookModeWork() {
+        compose.onNodeWithContentDescription("Library").performClick()
+        compose.onNodeWithText("UI Regression PDF").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("PDF Page 1").fetchSemanticsNodes().isNotEmpty() }
+
+        // Text marker: drag across the first line snaps to whole words
+        compose.onNodeWithContentDescription("Annotate").performClick()
+        compose.onNodeWithTag("tool_text").performClick()
+        compose.onNodeWithContentDescription("PDF Page 1").performTouchInput {
+            swipe(androidx.compose.ui.geometry.Offset(width * .09f, height * .125f), androidx.compose.ui.geometry.Offset(width * .40f, height * .125f), 400)
+        }
+        runBlocking {
+            val markup = withTimeout(5000) {
+                app.container.annotationRepository.getAnnotationsForBook(bookId).first { list -> list.any { it.type == com.bookflow.app.domain.model.AnnotationType.HIGHLIGHT } }
+            }.first()
+            org.junit.Assert.assertTrue(markup.selectedText, markup.selectedText.startsWith("Cobalt reader"))
+        }
+        compose.onNodeWithTag("drawing_undo_button").performClick()
+        runBlocking { withTimeout(5000) { app.container.annotationRepository.getAnnotationsForBook(bookId).first { it.isEmpty() } } }
+
+        // Sticky note: tap to drop, then write it
+        compose.onNodeWithTag("tool_sticky_note").performClick()
+        compose.onNodeWithContentDescription("PDF Page 1").performTouchInput { click(androidx.compose.ui.geometry.Offset(width * .7f, height * .6f)) }
+        compose.onNodeWithTag("edit_note_input").performTextInput("Check this")
+        compose.onNodeWithText("Save Note").performClick()
+        runBlocking {
+            val note = withTimeout(5000) {
+                app.container.annotationRepository.getAnnotationsForBook(bookId).first { list -> list.any { it.noteContent == "Check this" } }
+            }.single()
+            org.junit.Assert.assertEquals(com.bookflow.app.domain.model.AnnotationType.NOTE, note.type)
+            org.junit.Assert.assertEquals("", note.selectedText)
+        }
+        compose.onNodeWithTag("drawing_done_button").performClick()
+
+        // Book mode: tapping the right edge curls to the next page, swiping turns again
+        compose.onNodeWithContentDescription("Reader options").performClick()
+        compose.onNodeWithTag("reading_mode_book").performClick()
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("book_page_turner").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("PDF Page 1").performTouchInput { click(androidx.compose.ui.geometry.Offset(width * .95f, height * .5f)) }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Page 2 of 3").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("PDF Page 2").performTouchInput { swipeLeft() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Page 3 of 3").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("PDF Page 3").performTouchInput { swipeRight() }
+        compose.waitUntil(5_000) { compose.onAllNodesWithText("Page 2 of 3").fetchSemanticsNodes().isNotEmpty() }
+    }
+
+    /** The page navigator (scrubber, prev/next, go to page) is hidden until the page is tapped. */
+    private fun openPageNavigator() {
+        compose.onAllNodesWithContentDescription("PDF Page", substring = true).onFirst().performClick()
+        compose.waitUntil(5_000) { compose.onAllNodesWithTag("page_navigator").fetchSemanticsNodes().isNotEmpty() }
     }
 }

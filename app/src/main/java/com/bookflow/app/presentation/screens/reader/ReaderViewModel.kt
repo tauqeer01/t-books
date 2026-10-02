@@ -22,6 +22,10 @@ import com.bookflow.app.domain.usecase.SaveAnnotationUseCase
 import com.bookflow.app.domain.usecase.UpdateProgressUseCase
 import com.bookflow.app.pdf.engine.PdfEngine
 import com.bookflow.app.pdf.engine.PdfEngineFactory
+import com.bookflow.app.pdf.engine.MarkupRects
+import com.bookflow.app.pdf.engine.PdfTextSelection
+import com.bookflow.app.pdf.engine.markupRects
+import com.bookflow.app.pdf.engine.mergedIntoLines
 import com.bookflow.app.pdf.engine.PdfOutlineItem
 import com.bookflow.app.pdf.engine.PdfSearchResult
 import com.bookflow.app.pdf.engine.PdfSource
@@ -47,6 +51,8 @@ sealed class DrawingAction {
     data class AddStroke(val stroke: DrawingStroke) : DrawingAction()
     data class RemoveStrokes(val strokes: List<DrawingStroke>) : DrawingAction()
     data class ClearPage(val pageIndex: Int, val strokes: List<DrawingStroke>) : DrawingAction()
+    data class AddAnnotation(val annotation: BookAnnotation) : DrawingAction()
+    data class RemoveAnnotations(val annotations: List<BookAnnotation>) : DrawingAction()
 }
 
 enum class ReaderTool {
@@ -77,7 +83,7 @@ data class ReaderUiState(
     val activeHighlightColorHex: String = "#FFE066",
     val readerTheme: ReaderTheme = ReaderTheme.SEPIA,
     val scrollMode: PageScrollMode = PageScrollMode.HORIZONTAL_PAGING,
-    val areControlsVisible: Boolean = true,
+    val isPageNavigatorVisible: Boolean = false,
     val isDrawerOpen: Boolean = false,
     val activeDrawerTab: Int = 0, // 0: Outline, 1: Bookmarks, 2: Annotations
     val isSearchOpen: Boolean = false,
@@ -291,14 +297,21 @@ class ReaderViewModel(
         }
     }
 
-    fun toggleControls() {
+    fun togglePageNavigator() {
         _uiState.value = _uiState.value.copy(
-            areControlsVisible = !_uiState.value.areControlsVisible
+            isPageNavigatorVisible = !_uiState.value.isPageNavigatorVisible && !_uiState.value.isDrawingModeActive
         )
     }
 
-    fun setControlsVisible(visible: Boolean) {
-        _uiState.value = _uiState.value.copy(areControlsVisible = visible)
+    fun setPageNavigatorVisible(visible: Boolean) {
+        _uiState.value = _uiState.value.copy(isPageNavigatorVisible = visible)
+    }
+
+    fun setScrollMode(mode: PageScrollMode) {
+        if (mode == _uiState.value.scrollMode) return
+        val preferences = _uiState.value.preferences.copy(scrollMode = mode)
+        _uiState.value = _uiState.value.copy(scrollMode = mode, preferences = preferences)
+        viewModelScope.launch { preferencesRepository.savePreferences(preferences, bookId) }
     }
 
     fun toggleScrollMode() {
@@ -355,8 +368,12 @@ class ReaderViewModel(
     fun onPageTapped(pageIndex: Int, x: Float, y: Float) {
         viewModelScope.launch {
             val target = try { pdfEngine?.internalLinkAt(pageIndex, x, y) } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
-            if (target != null) jumpToPage(target) else {
-                clearSelection(); closeAnnotationMenu(); toggleControls()
+            val paged = _uiState.value.scrollMode != PageScrollMode.CONTINUOUS_VERTICAL
+            when {
+                target != null -> jumpToPage(target)
+                paged && x < EDGE_TAP_ZONE -> { clearSelection(); closeAnnotationMenu(); previousPage() }
+                paged && x > 1f - EDGE_TAP_ZONE -> { clearSelection(); closeAnnotationMenu(); nextPage() }
+                else -> { clearSelection(); closeAnnotationMenu(); togglePageNavigator() }
             }
         }
     }
@@ -470,8 +487,8 @@ class ReaderViewModel(
                 createHighlightAt(normX, normY, AnnotationType.UNDERLINE)
             }
             else -> {
-                // In pan mode, single tap toggles controls
-                toggleControls()
+                // In pan mode, single tap toggles the page navigator
+                togglePageNavigator()
             }
         }
     }
@@ -558,7 +575,8 @@ class ReaderViewModel(
         noteContent: String = ""
     ) {
         val selection = _uiState.value.selectedTextSelection ?: return
-        val rect = selection.highlightRects.firstOrNull() ?: com.bookflow.app.pdf.engine.PdfRect(0.1f, 0.2f, 0.9f, 0.25f)
+        val lines = selection.highlightRects.mergedIntoLines()
+        val rect = if (lines.isEmpty()) com.bookflow.app.pdf.engine.PdfRect(0.1f, 0.2f, 0.9f, 0.25f) else MarkupRects.union(lines)
         val color = colorHex ?: _uiState.value.activeHighlightColorHex
 
         viewModelScope.launch {
@@ -576,6 +594,7 @@ class ReaderViewModel(
                 rectTop = rect.top,
                 rectRight = rect.right,
                 rectBottom = rect.bottom,
+                strokePathData = if (lines.size > 1) MarkupRects.encode(lines) else null,
                 createdAt = now,
                 updatedAt = now
             )
@@ -650,6 +669,7 @@ class ReaderViewModel(
                 updatedAt = System.currentTimeMillis()
             )
             saveAnnotationUseCase(updated)
+            if (annotationId == newStickyNoteId) newStickyNoteId = null
             _uiState.value = _uiState.value.copy(
                 editingNoteAnnotation = null,
                 toastMessage = "Note saved"
@@ -658,7 +678,16 @@ class ReaderViewModel(
     }
 
     fun cancelEditingNote() {
+        val editing = _uiState.value.editingNoteAnnotation
         _uiState.value = _uiState.value.copy(editingNoteAnnotation = null)
+        if (editing != null && editing.id == newStickyNoteId && editing.noteContent.isBlank()) {
+            newStickyNoteId = null
+            viewModelScope.launch {
+                deleteAnnotationUseCase(editing.id)
+                undoStack.removeAll { it is DrawingAction.AddAnnotation && it.annotation.id == editing.id }
+                _uiState.value = _uiState.value.copy(canUndoDrawing = undoStack.isNotEmpty())
+            }
+        }
     }
 
     // ==========================================
@@ -670,36 +699,47 @@ class ReaderViewModel(
     fun setDrawingMode(active: Boolean) {
         _uiState.value = _uiState.value.copy(
             isDrawingModeActive = active,
-            areControlsVisible = if (active) false else _uiState.value.areControlsVisible,
+            isPageNavigatorVisible = if (active) false else _uiState.value.isPageNavigatorVisible,
             activeAnnotationMenu = null,
             selectedTextSelection = null
         )
     }
 
+    // Last color/width chosen for ink tools (pen + shapes) and the highlighter, kept across tool switches
+    private var inkStyle: Pair<String, Float>? = null
+    private var highlighterStyle: Pair<String, Float> = "#FFE066" to 14.0f
+
     fun setDrawingTool(tool: DrawingTool) {
-        val defaultColor = when (tool) {
-            DrawingTool.PEN -> _uiState.value.preferences.penColor
-            DrawingTool.HIGHLIGHTER -> "#FFE066"
-            DrawingTool.ERASER -> _uiState.value.drawingColorHex
+        val current = _uiState.value
+        val (color, width) = when {
+            !tool.hasColor -> current.drawingColorHex to current.drawingStrokeWidth
+            tool.usesHighlighterPalette -> highlighterStyle
+            else -> inkStyle ?: (current.preferences.penColor to current.preferences.penWidth)
         }
-        val defaultWidth = when (tool) {
-            DrawingTool.PEN -> _uiState.value.preferences.penWidth
-            DrawingTool.HIGHLIGHTER -> 14.0f
-            DrawingTool.ERASER -> 16.0f
-        }
-        _uiState.value = _uiState.value.copy(
+        _uiState.value = current.copy(
             drawingTool = tool,
-            drawingColorHex = defaultColor,
-            drawingStrokeWidth = defaultWidth
+            drawingColorHex = color,
+            drawingStrokeWidth = width
         )
+    }
+
+    private fun rememberToolStyle() {
+        val s = _uiState.value
+        when {
+            !s.drawingTool.hasColor -> Unit
+            s.drawingTool.usesHighlighterPalette -> highlighterStyle = s.drawingColorHex to s.drawingStrokeWidth
+            else -> inkStyle = s.drawingColorHex to s.drawingStrokeWidth
+        }
     }
 
     fun setDrawingColor(colorHex: String) {
         _uiState.value = _uiState.value.copy(drawingColorHex = colorHex)
+        rememberToolStyle()
     }
 
     fun setStrokeWidth(width: Float) {
         _uiState.value = _uiState.value.copy(drawingStrokeWidth = width)
+        rememberToolStyle()
     }
 
     fun toggleStylusOnlyDrawing() {
@@ -734,6 +774,79 @@ class ReaderViewModel(
         }
     }
 
+    // Ids already being erased, so repeated eraser move events don't delete (and record undo for) them twice
+    private val erasingIds = mutableSetOf<String>()
+
+    /** Text selection between two normalized points on a page, for the text markup tools' live preview. */
+    suspend fun selectTextRange(pageIndex: Int, startX: Float, startY: Float, endX: Float, endY: Float): PdfTextSelection? =
+        try {
+            pdfEngine?.selectTextRange(pageIndex, startX, startY, endX, endY)
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
+
+    fun commitTextMarkup(selection: PdfTextSelection?, tool: DrawingTool) {
+        if (selection == null || selection.highlightRects.isEmpty()) {
+            _uiState.value = _uiState.value.copy(toastMessage = "No text there to mark")
+            return
+        }
+        val type = when (tool) {
+            DrawingTool.TEXT_UNDERLINE -> AnnotationType.UNDERLINE
+            DrawingTool.TEXT_STRIKETHROUGH -> AnnotationType.STRIKETHROUGH
+            else -> AnnotationType.HIGHLIGHT
+        }
+        val lines = selection.highlightRects
+        val union = MarkupRects.union(lines)
+        val now = System.currentTimeMillis()
+        addAnnotationWithUndo(
+            BookAnnotation(
+                id = UUID.randomUUID().toString(),
+                bookId = bookId,
+                pageIndex = selection.pageIndex,
+                type = type,
+                colorHex = _uiState.value.drawingColorHex,
+                selectedText = selection.text,
+                rectLeft = union.left,
+                rectTop = union.top,
+                rectRight = union.right,
+                rectBottom = union.bottom,
+                strokePathData = MarkupRects.encode(lines),
+                createdAt = now,
+                updatedAt = now
+            )
+        )
+    }
+
+    private var newStickyNoteId: String? = null
+
+    /** Drops a sticky note at a normalized point and opens the note editor for it. */
+    fun placeStickyNote(pageIndex: Int, normX: Float, normY: Float) {
+        val now = System.currentTimeMillis()
+        val note = BookAnnotation(
+            id = UUID.randomUUID().toString(),
+            bookId = bookId,
+            pageIndex = pageIndex,
+            type = AnnotationType.NOTE,
+            colorHex = _uiState.value.drawingColorHex,
+            rectLeft = (normX - 0.025f).coerceIn(0f, 1f),
+            rectTop = (normY - 0.018f).coerceIn(0f, 1f),
+            rectRight = (normX + 0.025f).coerceIn(0f, 1f),
+            rectBottom = (normY + 0.018f).coerceIn(0f, 1f),
+            createdAt = now,
+            updatedAt = now
+        )
+        newStickyNoteId = note.id
+        addAnnotationWithUndo(note)
+        _uiState.value = _uiState.value.copy(editingNoteAnnotation = note)
+    }
+
+    private fun addAnnotationWithUndo(annotation: BookAnnotation) {
+        viewModelScope.launch {
+            saveAnnotationUseCase(annotation)
+            undoStack.add(DrawingAction.AddAnnotation(annotation))
+            redoStack.clear()
+            _uiState.value = _uiState.value.copy(canUndoDrawing = true, canRedoDrawing = false)
+        }
+    }
+
     fun eraseStrokesAt(pageIndex: Int, normX: Float, normY: Float, normRadius: Float = 0.035f) {
         val pageStrokes = _uiState.value.allBookAnnotations
             .filter { it.pageIndex == pageIndex && it.type == AnnotationType.PEN_DRAW }
@@ -747,7 +860,25 @@ class ReaderViewModel(
             }
         }
 
+        erasedStrokes.removeAll { it.id in erasingIds }
+        val erasedMarkups = _uiState.value.allBookAnnotations.filter { ann ->
+            ann.pageIndex == pageIndex && ann.type != AnnotationType.PEN_DRAW && ann.id !in erasingIds &&
+                ann.markupRects().any { r ->
+                    normX in (r.left - normRadius)..(r.right + normRadius) && normY in (r.top - normRadius)..(r.bottom + normRadius)
+                }
+        }
+        if (erasedMarkups.isNotEmpty()) {
+            erasingIds += erasedMarkups.map { it.id }
+            viewModelScope.launch {
+                erasedMarkups.forEach { deleteAnnotationUseCase(it.id) }
+                undoStack.add(DrawingAction.RemoveAnnotations(erasedMarkups))
+                redoStack.clear()
+                _uiState.value = _uiState.value.copy(canUndoDrawing = true, canRedoDrawing = false)
+            }
+        }
+
         if (erasedStrokes.isNotEmpty()) {
+            erasingIds += erasedStrokes.map { it.id }
             viewModelScope.launch {
                 erasedStrokes.forEach { stroke ->
                     deleteAnnotationUseCase(stroke.id)
@@ -786,6 +917,14 @@ class ReaderViewModel(
                             )
                         )
                     }
+                    redoStack.add(action)
+                }
+                is DrawingAction.AddAnnotation -> {
+                    deleteAnnotationUseCase(action.annotation.id)
+                    redoStack.add(action)
+                }
+                is DrawingAction.RemoveAnnotations -> {
+                    action.annotations.forEach { saveAnnotationUseCase(it) }
                     redoStack.add(action)
                 }
                 is DrawingAction.ClearPage -> {
@@ -843,6 +982,14 @@ class ReaderViewModel(
                     action.strokes.forEach { stroke ->
                         deleteAnnotationUseCase(stroke.id)
                     }
+                    undoStack.add(action)
+                }
+                is DrawingAction.AddAnnotation -> {
+                    saveAnnotationUseCase(action.annotation)
+                    undoStack.add(action)
+                }
+                is DrawingAction.RemoveAnnotations -> {
+                    action.annotations.forEach { deleteAnnotationUseCase(it.id) }
                     undoStack.add(action)
                 }
             }
@@ -970,3 +1117,6 @@ class ReaderViewModel(
         }
     }
 }
+
+/** Fraction of the page width on each side where a tap turns the page in paged reading modes. */
+private const val EDGE_TAP_ZONE = 0.2f

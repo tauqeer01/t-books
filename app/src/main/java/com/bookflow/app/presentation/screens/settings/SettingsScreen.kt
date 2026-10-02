@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bookflow.app.core.theme.BrandPurple
+import com.bookflow.app.presentation.components.BookFlowBottomSheet
+import com.bookflow.app.presentation.components.BookFlowConfirmationSheet
 import com.bookflow.app.presentation.components.BookFlowEmblem
 import java.util.Locale
 
@@ -395,90 +397,37 @@ fun SettingsScreen(
         )
     }
 
-    // Storage & Cache Dialog
+    // Storage & Cache Bottom Sheet
     if (showStorageDialog) {
-        AlertDialog(
+        BookFlowConfirmationSheet(
             onDismissRequest = { showStorageDialog = false },
-            shape = RoundedCornerShape(22.dp),
-            containerColor = Color.White,
-            title = {
-                Text(
-                    "Storage & Cache",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = Color(0xFF0F172A)
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        "Temporary render cache currently occupies ${formatBytes(state.cacheSizeBytes)}.",
-                        fontSize = 14.sp,
-                        color = Color(0xFF475569),
-                        lineHeight = 20.sp
-                    )
-                    Text(
-                        "Clearing the cache frees up device storage without deleting any of your books, annotations, bookmarks, or reading progress.",
-                        fontSize = 13.sp,
-                        color = Color(0xFF64748B),
-                        lineHeight = 18.sp
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.clearCache()
-                        showStorageDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Clear Cache", fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showStorageDialog = false },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Cancel", color = Color(0xFF64748B))
-                }
-            }
+            title = "Storage & Cache",
+            message = "Temporary render cache currently occupies ${formatBytes(state.cacheSizeBytes)}.\n\nClearing the cache frees up device storage without deleting any of your books, annotations, bookmarks, or reading progress.",
+            confirmText = "Clear Cache",
+            icon = Icons.Default.DeleteOutline,
+            onConfirm = { viewModel.clearCache() }
         )
     }
 
-    // Privacy Dialog
+    // Privacy Bottom Sheet
     if (showPrivacyDialog) {
-        AlertDialog(
+        BookFlowBottomSheet(
             onDismissRequest = { showPrivacyDialog = false },
-            shape = RoundedCornerShape(22.dp),
-            containerColor = Color.White,
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Lock,
-                        contentDescription = null,
-                        tint = Color(0xFFE11D48),
-                        modifier = Modifier.size(24.dp)
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        "Your Books Stay With You",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        color = Color(0xFF0F172A)
-                    )
-                }
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.padding(top = 4.dp)
+            title = "Your Books Stay With You",
+            titleIcon = {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color(0xFFE11D48).copy(alpha = 0.12f),
+                    modifier = Modifier.size(36.dp)
                 ) {
-                    PrivacyBulletPoint("100% On-Device", "No account required, no server uploads, and no cloud database. Everything is stored locally.")
-                    PrivacyBulletPoint("Zero Telemetry", "No background tracking, analytics, or behavioral logging.")
-                    PrivacyBulletPoint("Safe File Management", "Removing a book from BookFlow only deletes the app's local record — your original PDF document is never deleted or modified.")
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = Color(0xFFE11D48),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
             },
             confirmButton = {
@@ -490,61 +439,25 @@ fun SettingsScreen(
                     Text("Understood", fontWeight = FontWeight.SemiBold)
                 }
             }
-        )
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(vertical = 4.dp)
+            ) {
+                PrivacyBulletPoint("100% On-Device", "No account required, no server uploads, and no cloud database. Everything is stored locally.")
+                PrivacyBulletPoint("Zero Telemetry", "No background tracking, analytics, or behavioral logging.")
+                PrivacyBulletPoint("Safe File Management", "Removing a book from BookFlow only deletes the app's local record — your original PDF document is never deleted or modified.")
+            }
+        }
     }
 
-    // About Dialog
+    // About Bottom Sheet
     if (showAboutDialog) {
-        AlertDialog(
+        BookFlowBottomSheet(
             onDismissRequest = { showAboutDialog = false },
-            shape = RoundedCornerShape(22.dp),
-            containerColor = Color.White,
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    BookFlowEmblem(Modifier.size(36.dp))
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            "BookFlow",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 19.sp,
-                            color = Color(0xFF0F172A)
-                        )
-                        Text(
-                            "Version 1.0.0 (Build 1)",
-                            fontSize = 12.sp,
-                            color = Color(0xFF64748B)
-                        )
-                    }
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        "BookFlow is a modern, high-performance Android PDF reader built for smooth document reading, text selection, annotation, and organization.",
-                        fontSize = 13.5.sp,
-                        color = Color(0xFF334155),
-                        lineHeight = 19.sp
-                    )
-                    HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
-                    Text(
-                        "Open Source Components:",
-                        fontSize = 12.5.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF0F172A)
-                    )
-                    Text(
-                        "• Jetpack Compose & AndroidX (Apache 2.0)\n" +
-                                "• PDFBox Android (Apache 2.0)\n" +
-                                "• Coil Image Loader (Apache 2.0)\n" +
-                                "• Kotlin Coroutines & Flow (Apache 2.0)\n" +
-                                "• Room & DataStore (Apache 2.0)",
-                        fontSize = 12.sp,
-                        color = Color(0xFF64748B),
-                        lineHeight = 17.sp
-                    )
-                }
-            },
+            title = "BookFlow",
+            subtitle = "Version 1.0.0 (Build 1) • Your Reading Companion",
+            titleIcon = { BookFlowEmblem(Modifier.size(40.dp)) },
             confirmButton = {
                 Button(
                     onClick = { showAboutDialog = false },
@@ -554,7 +467,33 @@ fun SettingsScreen(
                     Text("Close", fontWeight = FontWeight.SemiBold)
                 }
             }
-        )
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(vertical = 4.dp)) {
+                Text(
+                    "BookFlow is a modern, high-performance Android PDF reader built for smooth document reading, text selection, annotation, and organization.",
+                    fontSize = 13.5.sp,
+                    color = Color(0xFF334155),
+                    lineHeight = 19.sp
+                )
+                HorizontalDivider(color = Color(0xFFF1F5F9), thickness = 1.dp)
+                Text(
+                    "Open Source Components:",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF0F172A)
+                )
+                Text(
+                    "• Jetpack Compose & AndroidX (Apache 2.0)\n" +
+                            "• PDFBox Android (Apache 2.0)\n" +
+                            "• Coil Image Loader (Apache 2.0)\n" +
+                            "• Kotlin Coroutines & Flow (Apache 2.0)\n" +
+                            "• Room & DataStore (Apache 2.0)",
+                    fontSize = 12.sp,
+                    color = Color(0xFF64748B),
+                    lineHeight = 18.sp
+                )
+            }
+        }
     }
 }
 

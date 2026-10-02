@@ -1,5 +1,7 @@
 package com.bookflow.app.pdf.exporter
 
+import com.bookflow.app.pdf.engine.isStickyNote
+import com.bookflow.app.pdf.engine.markupRects
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -64,17 +66,14 @@ object PdfAnnotatedExporter {
                 // A. Highlights, Underlines, Strikethroughs
                 val textPaint = Paint(Paint.ANTI_ALIAS_FLAG)
                 for (ann in pageAnnotations) {
-                    val rect = RectF(
-                        ann.rectLeft * pageWidth,
-                        ann.rectTop * pageHeight,
-                        ann.rectRight * pageWidth,
-                        ann.rectBottom * pageHeight
-                    )
-
                     val colorInt = try {
                         AndroidColor.parseColor(ann.colorHex)
                     } catch (_: Exception) {
                         AndroidColor.YELLOW
+                    }
+                    // One rect per text line for markups; the union rect for older single-rect annotations
+                    val lineRects = ann.markupRects().map {
+                        RectF(it.left * pageWidth, it.top * pageHeight, it.right * pageWidth, it.bottom * pageHeight)
                     }
 
                     when (ann.type) {
@@ -82,30 +81,38 @@ object PdfAnnotatedExporter {
                             textPaint.style = Paint.Style.FILL
                             textPaint.color = colorInt
                             textPaint.alpha = 110 // Translucent highlight
-                            canvas.drawRoundRect(rect, 4f, 4f, textPaint)
+                            lineRects.forEach { canvas.drawRoundRect(it, 4f, 4f, textPaint) }
                         }
                         AnnotationType.UNDERLINE -> {
                             textPaint.style = Paint.Style.STROKE
                             textPaint.strokeWidth = 3f * (pageWidth / 595f)
                             textPaint.color = colorInt
                             textPaint.alpha = 240
-                            canvas.drawLine(rect.left, rect.bottom, rect.right, rect.bottom, textPaint)
+                            lineRects.forEach { canvas.drawLine(it.left, it.bottom, it.right, it.bottom, textPaint) }
                         }
                         AnnotationType.STRIKETHROUGH -> {
                             textPaint.style = Paint.Style.STROKE
                             textPaint.strokeWidth = 2.5f * (pageWidth / 595f)
                             textPaint.color = colorInt
                             textPaint.alpha = 240
-                            val midY = (rect.top + rect.bottom) / 2f
-                            canvas.drawLine(rect.left, midY, rect.right, midY, textPaint)
+                            lineRects.forEach {
+                                val midY = (it.top + it.bottom) / 2f
+                                canvas.drawLine(it.left, midY, it.right, midY, textPaint)
+                            }
                         }
                         AnnotationType.NOTE -> {
-                            // Note icon badge indicator
-                            val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                style = Paint.Style.FILL
-                                color = AndroidColor.parseColor("#4F46E5")
+                            val rect = RectF(ann.rectLeft * pageWidth, ann.rectTop * pageHeight, ann.rectRight * pageWidth, ann.rectBottom * pageHeight)
+                            val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+                            if (ann.isStickyNote) {
+                                // Sticky note square in the note's color
+                                val half = 9f * (pageWidth / 595f)
+                                badgePaint.color = colorInt
+                                canvas.drawRoundRect(rect.centerX() - half, rect.centerY() - half, rect.centerX() + half, rect.centerY() + half, 3f, 3f, badgePaint)
+                            } else {
+                                // Note icon badge indicator
+                                badgePaint.color = AndroidColor.parseColor("#4F46E5")
+                                canvas.drawCircle(rect.left + 12f, rect.top + 12f, 10f, badgePaint)
                             }
-                            canvas.drawCircle(rect.left + 12f, rect.top + 12f, 10f, badgePaint)
                         }
                         AnnotationType.PEN_DRAW -> {
                             // Handled in drawing strokes pass below

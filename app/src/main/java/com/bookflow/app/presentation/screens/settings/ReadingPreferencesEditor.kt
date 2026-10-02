@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.sp
 import com.bookflow.app.core.theme.BrandPurple
 import com.bookflow.app.domain.model.*
 
+import com.bookflow.app.presentation.components.BookFlowBottomSheet
+
 @Composable
 fun ReadingPreferencesEditor(
     initial: UserReadingPreferences,
@@ -31,25 +33,34 @@ fun ReadingPreferencesEditor(
 ) {
     var prefs by remember { mutableStateOf(initial) }
 
-    AlertDialog(
+    BookFlowBottomSheet(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(24.dp),
-        containerColor = Color.White,
-        title = {
-            Text(
-                text = section,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF0F172A)
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+        title = section,
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(prefs)
+                    onDismiss()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
+                shape = RoundedCornerShape(12.dp)
             ) {
+                Text("Save", fontWeight = FontWeight.SemiBold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cancel", color = Color(0xFF64748B))
+            }
+        }
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
                 if (section in listOf("Reading Preferences", "Reading Mode")) {
                     Text(
                         "Page Scrolling Mode",
@@ -62,6 +73,7 @@ fun ReadingPreferencesEditor(
                             PageScrollMode.CONTINUOUS_VERTICAL -> "Smooth continuous vertical scrolling"
                             PageScrollMode.HORIZONTAL_PAGING -> "Swipe horizontally between pages"
                             PageScrollMode.SINGLE_PAGE -> "Snap to a single page at a time"
+                            PageScrollMode.BOOK -> "Turn pages with a curl, like a printed book"
                         }
                         SelectionCard(
                             title = mode.displayName,
@@ -349,29 +361,8 @@ fun ReadingPreferencesEditor(
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onSave(prefs)
-                    onDismiss()
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Save", fontWeight = FontWeight.SemiBold)
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("Cancel", color = Color(0xFF64748B))
-            }
         }
-    )
-}
+    }
 
 @Composable
 private fun SelectionCard(

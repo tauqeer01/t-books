@@ -101,6 +101,8 @@ class AndroidPdfRendererEngine(private val context: Context) : PdfEngine {
     override suspend fun extractText(pageIndex: Int) = textIndex.extractText(pageIndex)
     override suspend fun selectTextAt(pageIndex: Int, startNormalized: PdfRect, endNormalized: PdfRect) = textIndex.select(pageIndex, startNormalized.left, startNormalized.top)
     override suspend fun selectTextAtPoint(pageIndex: Int, normX: Float, normY: Float) = textIndex.select(pageIndex, normX, normY)
+    override suspend fun selectTextRange(pageIndex: Int, startX: Float, startY: Float, endX: Float, endY: Float) =
+        textIndex.selectRange(pageIndex, startX, startY, endX, endY)
     override suspend fun internalLinkAt(pageIndex: Int, x: Float, y: Float) = textIndex.internalLinkAt(pageIndex, x, y)
     override suspend fun documentMetadata() = textIndex.metadata()
     override fun evictPage(pageIndex: Int) { cache.snapshot().keys.filter { it.startsWith("${pageIndex}_") }.forEach { cache.remove(it) } }

@@ -51,6 +51,8 @@ class PdfiumEngineAdapter(
     override suspend fun renderThumbnail(pageIndex: Int) = fallbackEngine.renderThumbnail(pageIndex)
     override fun evictPage(pageIndex: Int) = fallbackEngine.evictPage(pageIndex)
     override suspend fun selectTextAtPoint(pageIndex: Int, normX: Float, normY: Float) = fallbackEngine.selectTextAtPoint(pageIndex, normX, normY)
+    override suspend fun selectTextRange(pageIndex: Int, startX: Float, startY: Float, endX: Float, endY: Float) =
+        fallbackEngine.selectTextRange(pageIndex, startX, startY, endX, endY)
 
     override fun close() {
         fallbackEngine.close()

@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -339,31 +338,18 @@ fun BookCoverCard(
         }
     }
 
-    // Confirmation Dialog for deleting original file from device
+    // Confirmation Bottom Sheet for deleting original file from device
     if (showDeleteConfirmDialog) {
-        AlertDialog(
+        BookFlowConfirmationSheet(
             onDismissRequest = { showDeleteConfirmDialog = false },
-            title = {
-                Text("Delete File from Device?", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Text("This will permanently delete \"${book.title}.pdf\" from your device storage. This action cannot be undone.")
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        showDeleteConfirmDialog = false
-                        onDeleteDeviceFile()
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) {
-                    Text("Delete Permanently")
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = { showDeleteConfirmDialog = false }) {
-                    Text("Cancel")
-                }
+            title = "Delete File from Device?",
+            message = "This will permanently delete \"${book.title}.pdf\" from your device storage. This action cannot be undone.",
+            confirmText = "Delete Permanently",
+            isDestructive = true,
+            icon = Icons.Default.DeleteForever,
+            onConfirm = {
+                showDeleteConfirmDialog = false
+                onDeleteDeviceFile()
             }
         )
     }

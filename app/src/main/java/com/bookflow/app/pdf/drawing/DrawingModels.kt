@@ -3,6 +3,7 @@ package com.bookflow.app.pdf.drawing
 import android.graphics.Color as AndroidColor
 import android.graphics.Paint as AndroidPaint
 import android.graphics.Path as AndroidPath
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -10,11 +11,80 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import java.util.UUID
+import kotlin.math.PI
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.sin
 
 enum class DrawingTool(val title: String) {
     PEN("Pen"),
     HIGHLIGHTER("Highlighter"),
-    ERASER("Eraser")
+    ERASER("Eraser"),
+    LINE("Line"),
+    ARROW("Arrow"),
+    RECTANGLE("Rectangle"),
+    ELLIPSE("Ellipse"),
+    TEXT_HIGHLIGHT("Highlight"),
+    TEXT_UNDERLINE("Underline"),
+    TEXT_STRIKETHROUGH("Strikethrough"),
+    STICKY_NOTE("Sticky note"),
+    HAND("Scroll");
+
+    val isShape: Boolean get() = this == LINE || this == ARROW || this == RECTANGLE || this == ELLIPSE
+
+    /** Drag across text to mark whole words (snaps to the PDF text layer). */
+    val isTextMarkup: Boolean get() = this == TEXT_HIGHLIGHT || this == TEXT_UNDERLINE || this == TEXT_STRIKETHROUGH
+
+    /** Translucent tools pick from the pastel palette. */
+    val usesHighlighterPalette: Boolean get() = this == HIGHLIGHTER || this == TEXT_HIGHLIGHT || this == STICKY_NOTE
+
+    val hasColor: Boolean get() = this != ERASER && this != HAND
+
+    val hasStrokeWidth: Boolean get() = this == PEN || this == HIGHLIGHTER || isShape
+}
+
+/**
+ * Builds shape outlines as ordinary stroke points so shapes reuse stroke persistence, erasing and export.
+ * Coordinates are in pixels; edges are densified so the Bezier smoothing in [DrawingStroke] keeps corners sharp.
+ */
+object ShapeGeometry {
+    fun points(
+        tool: DrawingTool,
+        start: Offset,
+        end: Offset,
+        arrowHeadRange: ClosedFloatingPointRange<Float> = 12f..48f
+    ): List<Offset> = when (tool) {
+        DrawingTool.LINE -> segment(start, end)
+        DrawingTool.ARROW -> {
+            val angle = atan2(end.y - start.y, end.x - start.x)
+            val head = (hypot(end.x - start.x, end.y - start.y) * 0.28f).coerceIn(arrowHeadRange)
+            val left = Offset(end.x - head * cos(angle - ARROW_SPREAD), end.y - head * sin(angle - ARROW_SPREAD))
+            val right = Offset(end.x - head * cos(angle + ARROW_SPREAD), end.y - head * sin(angle + ARROW_SPREAD))
+            segment(start, end) + segment(end, left).drop(1) + segment(left, end).drop(1) + segment(end, right).drop(1)
+        }
+        DrawingTool.RECTANGLE -> {
+            val corners = listOf(start, Offset(end.x, start.y), end, Offset(start.x, end.y), start)
+            corners.zipWithNext().flatMapIndexed { i, (a, b) -> segment(a, b).let { if (i == 0) it else it.drop(1) } }
+        }
+        DrawingTool.ELLIPSE -> {
+            val cx = (start.x + end.x) / 2f
+            val cy = (start.y + end.y) / 2f
+            val rx = abs(end.x - start.x) / 2f
+            val ry = abs(end.y - start.y) / 2f
+            (0..64).map { i ->
+                val t = (2 * PI * i / 64).toFloat()
+                Offset(cx + rx * cos(t), cy + ry * sin(t))
+            }
+        }
+        else -> listOf(start, end)
+    }
+
+    private fun segment(a: Offset, b: Offset, steps: Int = 16): List<Offset> =
+        (0..steps).map { i -> Offset(a.x + (b.x - a.x) * i / steps, a.y + (b.y - a.y) * i / steps) }
+
+    private const val ARROW_SPREAD = 0.45f
 }
 
 data class NormalizedPoint(

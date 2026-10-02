@@ -190,6 +190,40 @@ internal class PdfTextIndex(private val context: Context) {
         }
     }
 
+    /**
+     * Selects whole words from the glyph nearest ([x1], [y1]) to the glyph nearest ([x2], [y2]) in reading order.
+     * Returns one highlight rect per text line.
+     */
+    suspend fun selectRange(index: Int, x1: Float, y1: Float, x2: Float, y2: Float): PdfTextSelection? = withContext(Dispatchers.IO) {
+        synchronized(lock) {
+            val page = page(index)
+            val a = nearestGlyph(page, x1, y1) ?: return@synchronized null
+            val b = nearestGlyph(page, x2, y2) ?: return@synchronized null
+            var start = minOf(a.start, b.start)
+            var end = maxOf(a.end, b.end)
+            while (start > 0 && !page.text[start - 1].isWhitespace()) start--
+            while (end < page.text.length && !page.text[end].isWhitespace()) end++
+            val bounds = page.glyphs.filter { it.end > start && it.start < end }.map { it.bounds }
+            PdfTextSelection(index, page.text.substring(start, end).trim(), bounds.mergedIntoLines())
+        }
+    }
+
+    private fun nearestGlyph(page: TextPage, x: Float, y: Float, maxDistance: Float = 0.03f): Glyph? {
+        var best: Glyph? = null
+        var bestDistance = maxDistance * maxDistance
+        for (glyph in page.glyphs) {
+            if (glyph.start >= glyph.end || page.text[glyph.start].isWhitespace()) continue
+            val dx = maxOf(glyph.bounds.left - x, 0f, x - glyph.bounds.right)
+            val dy = maxOf(glyph.bounds.top - y, 0f, y - glyph.bounds.bottom)
+            val distance = dx * dx + dy * dy
+            if (distance <= bestDistance) {
+                best = glyph
+                bestDistance = distance
+            }
+        }
+        return best
+    }
+
     fun close() = synchronized(lock) {
         runCatching { document?.close() }
         document = null

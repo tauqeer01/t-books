@@ -74,6 +74,12 @@ interface PdfEngine {
     }
 
     /**
+     * Selects whole words between two normalized points (e.g. the ends of a drag), one rect per line.
+     */
+    suspend fun selectTextRange(pageIndex: Int, startX: Float, startY: Float, endX: Float, endY: Float): PdfTextSelection? =
+        selectTextAtPoint(pageIndex, endX, endY)
+
+    /**
      * Gets aspect ratio (width / height) for a specific page.
      */
     fun getPageAspectRatio(pageIndex: Int): Float {

@@ -102,10 +102,24 @@ fun CollectionsScreen(viewModel: CollectionsViewModel, onBookClick: (String, Int
         }
     }
     if (state.isCreateDialogOpen) CreateCollectionDialog(viewModel::closeCreateDialog, viewModel::createCollection)
-    delete?.let { collection -> AlertDialog(onDismissRequest = { delete = null }, title = { Text(collection.name) }, text = { Text("Remove this collection? Books and annotations will remain in your library.") }, confirmButton = { TextButton(onClick = { viewModel.deleteCollection(collection.id); delete = null }) { Text("Remove collection") } }, dismissButton = { TextButton(onClick = { delete = null }) { Text("Cancel") } }) }
+    delete?.let { collection ->
+        BookFlowConfirmationSheet(
+            onDismissRequest = { delete = null },
+            title = "Remove Collection",
+            message = "Remove \"${collection.name}\"? Books and annotations will remain safely in your library.",
+            confirmText = "Remove Collection",
+            isDestructive = true,
+            icon = Icons.Default.DeleteOutline,
+            onConfirm = {
+                viewModel.deleteCollection(collection.id)
+                delete = null
+            }
+        )
+    }
     actions?.let { book -> BookActionsDialog(book, { actions = null }, { onBookClick(book.id, book.currentPage) }, { viewModel.toggleFavorite(book) }, { managing = book }, { onBookInformation(book.id) }, { runCatching { shareBook(context, book) }.onFailure { android.widget.Toast.makeText(context, "Unable to share this file", android.widget.Toast.LENGTH_SHORT).show() } }, { viewModel.removeBook(book) }) }
     managing?.let { book -> BookCollectionsDialog(book, state.collections, { managing = null }, { viewModel.setCollections(book, it) }) }
 }
+
 @Composable
 fun CreateCollectionDialog(
     onDismiss: () -> Unit,
@@ -125,70 +139,10 @@ fun CreateCollectionDialog(
         "#FDE2EC"
     )
 
-    AlertDialog(
+    BookFlowBottomSheet(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = "New Collection",
-                style = MaterialTheme.typography.headlineMedium,
-                fontFamily = FontFamily.Serif,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Collection Name") },
-                    placeholder = { Text("e.g. Modern Physics") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    placeholder = { Text("Short shelf summary") },
-                    maxLines = 2,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Pastel Palette",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    pastelColors.forEach { hex ->
-                        val isSelected = selectedColorHex == hex
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .clip(CircleShape)
-                                .background(Color(android.graphics.Color.parseColor(hex)))
-                                .border(
-                                    width = if (isSelected) 3.dp else 1.dp,
-                                    color = if (isSelected) Color(0xFF1E293B) else Color.Transparent,
-                                    shape = CircleShape
-                                )
-                                .clickable { selectedColorHex = hex }
-                        )
-                    }
-                }
-            }
-        },
+        title = "New Collection",
+        subtitle = "Create a shelf to organize your study materials",
         confirmButton = {
             Button(
                 onClick = {
@@ -197,15 +151,83 @@ fun CreateCollectionDialog(
                     }
                 },
                 enabled = name.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPurple)
+                colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
+                shape = RoundedCornerShape(12.dp)
             ) {
-                Text("Create")
+                Text("Create Collection", fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
-            OutlinedButton(onClick = onDismiss) {
-                Text("Cancel")
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cancel", color = Color(0xFF64748B))
             }
         }
-    )
+    ) {
+        Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Collection Name") },
+                placeholder = { Text("e.g. Modern Physics") },
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = BrandPurple,
+                    focusedLabelColor = BrandPurple
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Description") },
+                placeholder = { Text("Short shelf summary (optional)") },
+                maxLines = 2,
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = BrandPurple,
+                    focusedLabelColor = BrandPurple
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Pastel Color Theme",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF475569)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                pastelColors.forEach { hex ->
+                    val isSelected = selectedColorHex == hex
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color(android.graphics.Color.parseColor(hex)))
+                            .border(
+                                width = if (isSelected) 3.dp else 1.dp,
+                                color = if (isSelected) Color(0xFF1E293B) else Color(0xFFCBD5E1),
+                                shape = CircleShape
+                            )
+                            .clickable { selectedColorHex = hex }
+                    )
+                }
+            }
+        }
+    }
 }

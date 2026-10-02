@@ -92,3 +92,54 @@ sealed interface PdfDocumentResult {
         val throwable: Throwable? = null
     ) : PdfDocumentResult
 }
+
+/**
+ * Merges glyph rects (in reading order) into one rect per text line.
+ */
+fun List<PdfRect>.mergedIntoLines(): List<PdfRect> {
+    val lines = mutableListOf<PdfRect>()
+    for (rect in this) {
+        val last = lines.lastOrNull()
+        val centerY = (rect.top + rect.bottom) / 2f
+        if (last != null && centerY in last.top..last.bottom && rect.left >= last.left - rect.height) {
+            lines[lines.lastIndex] = PdfRect(
+                minOf(last.left, rect.left), minOf(last.top, rect.top),
+                maxOf(last.right, rect.right), maxOf(last.bottom, rect.bottom)
+            )
+        } else {
+            lines += rect
+        }
+    }
+    return lines
+}
+
+/**
+ * Text markup annotations (highlight/underline/strikethrough) store one rect per line in
+ * BookAnnotation.strokePathData as "rects:l,t,r,b;l,t,r,b". The rect* fields hold their union for hit testing.
+ */
+object MarkupRects {
+    private const val PREFIX = "rects:"
+
+    fun encode(rects: List<PdfRect>): String = PREFIX + rects.joinToString(";") {
+        String.format(java.util.Locale.US, "%.5f,%.5f,%.5f,%.5f", it.left, it.top, it.right, it.bottom)
+    }
+
+    fun decode(data: String?): List<PdfRect>? {
+        if (data == null || !data.startsWith(PREFIX)) return null
+        return data.removePrefix(PREFIX).split(";").mapNotNull { item ->
+            val v = item.split(",").mapNotNull { it.toFloatOrNull() }
+            if (v.size == 4) PdfRect(v[0], v[1], v[2], v[3]) else null
+        }.takeIf { it.isNotEmpty() }
+    }
+
+    fun union(rects: List<PdfRect>): PdfRect = PdfRect(
+        rects.minOf { it.left }, rects.minOf { it.top }, rects.maxOf { it.right }, rects.maxOf { it.bottom }
+    )
+}
+
+fun com.bookflow.app.domain.model.BookAnnotation.markupRects(): List<PdfRect> =
+    MarkupRects.decode(strokePathData) ?: listOf(PdfRect(rectLeft, rectTop, rectRight, rectBottom))
+
+/** A note dropped on the page with the sticky-note tool, rather than attached to selected text. */
+val com.bookflow.app.domain.model.BookAnnotation.isStickyNote: Boolean
+    get() = type == com.bookflow.app.domain.model.AnnotationType.NOTE && selectedText.isBlank()

@@ -40,7 +40,6 @@ import androidx.compose.material.icons.filled.FormatUnderlined
 import androidx.compose.material.icons.filled.NoteAlt
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -67,6 +66,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -396,48 +396,53 @@ fun BookDetailsScreen(
         val ann = state.editingAnnotation!!
         var noteText by remember { mutableStateOf(ann.noteContent) }
 
-        AlertDialog(
+        com.bookflow.app.presentation.components.BookFlowBottomSheet(
             onDismissRequest = viewModel::cancelEditingNote,
-            title = {
-                Text("Edit Note", fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column {
-                    if (ann.selectedText.isNotBlank()) {
-                        Text(
-                            text = "\"${ann.selectedText.take(120)}...\"",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color(0xFF64748B),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                    }
-                    OutlinedTextField(
-                        value = noteText,
-                        onValueChange = { noteText = it },
-                        placeholder = { Text("Write your thoughts, summary, or exam notes...") },
-                        minLines = 3,
-                        maxLines = 6,
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPurple),
-                        modifier = Modifier.fillMaxWidth().testTag("details_edit_note_input")
-                    )
-                }
-            },
+            title = "Edit Note",
             confirmButton = {
                 Button(
                     onClick = { viewModel.saveAnnotationNote(ann.id, noteText) },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPurple)
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
+                    shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text("Save Note")
+                    Text("Save Note", fontWeight = FontWeight.SemiBold)
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = viewModel::cancelEditingNote) {
-                    Text("Cancel")
+                TextButton(
+                    onClick = viewModel::cancelEditingNote,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Cancel", color = Color(0xFF64748B))
                 }
             }
-        )
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                if (ann.selectedText.isNotBlank()) {
+                    Text(
+                        text = "\"${ann.selectedText.take(120)}...\"",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF64748B),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { noteText = it },
+                    placeholder = { Text("Write your thoughts, summary, or exam notes...") },
+                    minLines = 3,
+                    maxLines = 6,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = BrandPurple,
+                        focusedLabelColor = BrandPurple
+                    ),
+                    modifier = Modifier.fillMaxWidth().testTag("details_edit_note_input")
+                )
+            }
+        }
     }
 }
 

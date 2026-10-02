@@ -62,12 +62,24 @@ fun BookFlowNavGraph(
                 BookFlowBottomBar(
                     currentRoute = currentRoute,
                     onNavigate = { route ->
-                        navController.navigate(route) {
-                            popUpTo(Screen.Home.route) {
-                                saveState = true
+                        if (route == Screen.Home.route) {
+                            val popped = navController.popBackStack(Screen.Home.route, inclusive = false)
+                            if (!popped) {
+                                navController.navigate(Screen.Home.route) {
+                                    popUpTo(navController.graph.id) {
+                                        inclusive = false
+                                    }
+                                    launchSingleTop = true
+                                }
                             }
-                            launchSingleTop = true
-                            restoreState = true
+                        } else {
+                            navController.navigate(route) {
+                                popUpTo(Screen.Home.route) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                 )
