@@ -37,9 +37,9 @@ import com.bookflow.app.domain.model.Book
 import com.bookflow.app.presentation.components.*
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onNavigateToCollections: () -> Unit, onLibrary: (String) -> Unit, onBookInformation: (String) -> Unit, onSearch: () -> Unit = {}, modifier: Modifier = Modifier,
+fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onNavigateToCollections: () -> Unit, onLibrary: (String) -> Unit, onBookInformation: (String) -> Unit, onSearch: () -> Unit = {}, modifier: Modifier = Modifier, onSettings: () -> Unit = {},
     dueCards: Int = 0, recentNotes: List<com.bookflow.app.notes.domain.NoteSummary> = emptyList(),
-    onStudyCards: () -> Unit = {}, onOpenNote: (String) -> Unit = {}, onSeeNotes: () -> Unit = {}) {
+    onStudyCards: () -> Unit = {}, onOpenNote: (String) -> Unit = {}, onSeeNotes: () -> Unit = {}, onNewNote: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val readingStats by viewModel.readingStats.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -66,7 +66,7 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
                     Text(greeting(), fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp)
                 },
                 actions = {
-                    BookFlowTopBarAction(icon = Icons.Default.Search, contentDescription = "Search", onClick = onSearch)
+                    BookFlowTopBarAction(icon = Icons.Default.Settings, contentDescription = "Settings", onClick = onSettings)
                     ReadingGoalBadge(readingStats, onClick = { showReadingGoal = true })
                     // Quick light/dark switch; the full System/Light/Dark choice lives in Settings › App Theme
                     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
@@ -89,7 +89,15 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (state.isImporting) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
-            if (dueCards > 0) item { DueCardsBanner(dueCards, onStudyCards) }
+            item {
+                // New features add a tile here; the grid wraps to further rows of four
+                QuickActions(listOf(
+                    QuickAction(Icons.Default.UploadFile, "Import", Color(0xFF6D28D9)) { importer.launch(arrayOf("application/pdf")) },
+                    QuickAction(Icons.Default.EditNote, "New note", Color(0xFF2563EB), onClick = onNewNote),
+                    QuickAction(Icons.Default.Style, "Study", Color(0xFF059669), badge = dueCards.takeIf { it > 0 }, onClick = onStudyCards),
+                    QuickAction(Icons.Default.Search, "Search", Color(0xFFD97706), onClick = onSearch)
+                ))
+            }
             item { SectionHeader("Continue Reading") { onLibrary("Reading") } }
             item {
                 if (state.continueReadingBooks.isEmpty()) EmptyShelf("Open a PDF to start your next chapter.")
@@ -107,26 +115,6 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
                     }
                 }
             }
-            item { SectionHeader("Recently Opened") { onLibrary("Recent") } }
-            item {
-                if (state.recentlyOpenedBooks.isEmpty()) EmptyShelf("Your recently opened books will appear here.")
-                else LazyRow(state = rememberShelfState(state.recentlyOpenedBooks.first().id), contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(state.recentlyOpenedBooks.take(12), key = { it.id }) { book ->
-                        CompactBookCard(book, { onBookClick(book.id, book.currentPage) }, { actions = book }, width = CompactCoverWidth)
-                    }
-                }
-            }
-            item { SectionHeader("My Library") { onLibrary("All") } }
-            item {
-                // allBooks, not myLibraryBooks: the Search tab shares this ViewModel's query, which must not filter Home
-                LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(state.allBooks, key = { it.id }) { book ->
-                        CompactBookCard(book, { onBookClick(book.id, book.currentPage) }, { actions = book }, width = CompactCoverWidth)
-                    }
-                    item { ImportTile { importer.launch(arrayOf("application/pdf")) } }
-                }
-                if (state.allBooks.isEmpty()) EmptyShelf("Build your library. Import your first PDF.")
-            }
             item { SectionHeader("Collections", onNavigateToCollections) }
             item {
                 LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -143,19 +131,39 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
 
 private val CompactCoverWidth = 92.dp
 
+data class QuickAction(
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val label: String,
+    val tint: Color,
+    val badge: Int? = null,
+    val onClick: () -> Unit
+)
+
+/** Compact shortcut icons, four per row; more actions wrap to a new row. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DueCardsBanner(count: Int, onStudy: () -> Unit) {
-    Surface(onClick = onStudy, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Style, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(if (count == 1) "1 flashcard to study" else "$count flashcards to study", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                Text("A few minutes now keeps them in memory", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .8f))
+private fun QuickActions(actions: List<QuickAction>) {
+    FlowRow(maxItemsInEachRow = 4, verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        actions.forEach { action -> QuickActionTile(action, Modifier.weight(1f)) }
+        // Keep columns aligned when the last row is not full
+        repeat((4 - actions.size % 4) % 4) { Spacer(Modifier.weight(1f)) }
+    }
+}
+
+@Composable
+private fun QuickActionTile(action: QuickAction, modifier: Modifier) {
+    Column(
+        modifier.clip(RoundedCornerShape(14.dp)).clickable(onClick = action.onClick).padding(vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        BadgedBox(badge = { action.badge?.let { Badge { Text(if (it > 99) "99+" else "$it") } } }) {
+            Box(Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(action.tint.copy(alpha = .12f)), contentAlignment = Alignment.Center) {
+                Icon(action.icon, null, tint = action.tint, modifier = Modifier.size(24.dp))
             }
-            Text("Study", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }
+        Text(action.label, fontSize = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1, color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.padding(top = 6.dp))
     }
 }
 
@@ -237,23 +245,6 @@ private fun CompactBookCard(book: Book, onClick: () -> Unit, onActions: () -> Un
             IconButton(onClick = onActions, modifier = Modifier.size(24.dp)) {
                 Icon(Icons.Default.MoreHoriz, "Options for ${book.title}", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
             }
-        }
-    }
-}
-
-@Composable
-private fun ImportTile(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(8.dp),
-        color = BrandPurple.copy(alpha = .06f),
-        border = BorderStroke(1.dp, BrandPurple.copy(alpha = .2f)),
-        modifier = Modifier.width(CompactCoverWidth).aspectRatio(CoverAspectRatio)
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            Icon(Icons.Default.AddCircle, null, tint = BrandPurple, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.height(4.dp))
-            Text("Import PDF", color = BrandPurple, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }

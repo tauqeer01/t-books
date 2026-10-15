@@ -24,12 +24,10 @@ import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -88,13 +86,6 @@ val NavTabs = listOf(
         filledIcon = Icons.Filled.Style,
         outlinedIcon = Icons.Outlined.Style,
         testTag = "nav_cards_tab"
-    ),
-    NavTabItem(
-        route = Screen.Settings.route,
-        labelRes = R.string.nav_settings,
-        filledIcon = Icons.Filled.Settings,
-        outlinedIcon = Icons.Outlined.Settings,
-        testTag = "nav_settings_tab"
     )
 )
 

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,7 +74,6 @@ fun BookFlowNavGraph(
         Screen.Library.route,
         Screen.Collections.route,
         Screen.Search.route,
-        Screen.Settings.route,
         Screen.Notes.route,
         Screen.Cards.route
     )
@@ -165,12 +165,20 @@ fun BookFlowNavGraph(
                         onLibrary = { filter -> libraryViewModel.onCategorySelected(filter); navController.navigate(Screen.Library.route) },
                         onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
                         onSearch = { navController.navigate(Screen.Search.route) { launchSingleTop = true } },
+                        onSettings = { navController.navigate(Screen.Settings.route) { launchSingleTop = true } },
                         dueCards = remember { container.flashcardRepository.dueToday() }.collectAsStateWithLifecycle(0).value,
                         recentNotes = remember { container.notesRepository.notes() }.collectAsStateWithLifecycle(emptyList()).value
                             .sortedByDescending { it.updatedAt },
                         onStudyCards = { navigateToTab(Screen.Cards.route) },
                         onOpenNote = { navController.navigate(Screen.NoteEditor.createRoute(it)) },
-                        onSeeNotes = { navigateToTab(Screen.Notes.route) }
+                        onSeeNotes = { navigateToTab(Screen.Notes.route) },
+                        // Opens straight into a note with the last used page template (changeable in the editor)
+                        onNewNote = {
+                            container.applicationScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                                val id = container.notesRepository.createNote(background = container.notePenPreferences.lastTemplate())
+                                navController.navigate(Screen.NoteEditor.createRoute(id))
+                            }
+                        }
                     )
                 }
 
@@ -328,6 +336,7 @@ fun BookFlowNavGraph(
                         viewModel = settingsViewModel,
                         onCollections = { libraryShowsCollections = true; navigateToTab(Screen.Library.route) },
                         onLibrary = { navController.navigate(Screen.Library.route) },
+                        onBack = { navController.popBackStack() },
                         onOpenLegal = { navController.navigate(Screen.Legal.createRoute(it.route)) },
                         onOpenLicenses = { navController.navigate(Screen.Licenses.route) }
                     )

@@ -40,7 +40,8 @@ fun SettingsScreen(
     onLibrary: () -> Unit = {},
     onOpenLegal: (com.bookflow.app.presentation.screens.legal.LegalDocument) -> Unit = {},
     onOpenLicenses: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onBack: (() -> Unit)? = null
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val prefs = state.preferences
@@ -64,7 +65,7 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            BookFlowTopBar(title = "Settings", subtitle = "Customize your reading experience")
+            BookFlowTopBar(title = "Settings", subtitle = "Customize your reading experience", onBack = onBack)
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
