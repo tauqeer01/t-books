@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -146,7 +147,7 @@ fun ESignHomeScreen(
                         supportingContent = { Text("${book.pageCount} pages") },
                         leadingContent = { Icon(Icons.Outlined.Description, null) },
                         colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = Color.Transparent),
-                        modifier = Modifier.combinedClickable(onClick = { choosingBook = false; onSignBook(book.id) }))
+                        modifier = Modifier.clickable { choosingBook = false; onSignBook(book.id) })
                 }
             }
             Spacer(Modifier.height(16.dp))

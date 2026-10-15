@@ -1,6 +1,6 @@
 # BookFlow — Google Play release checklist
 
-Everything needed to publish **BookFlow 1.0.0 (version code 1)**, package `com.alhadaftech.bookflow`.
+Everything needed to publish **BookFlow 1.1.0 (version code 2)**, package `com.alhadaftech.bookflow`.
 Store link (live after publishing): https://play.google.com/store/apps/details?id=com.alhadaftech.bookflow
 
 ## 1. Before every upload

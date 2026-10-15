@@ -183,8 +183,28 @@ class NotesRegressionTest {
         }
     }
 
+    /** The production release (1.0.0) shipped schema 3; its users jump straight to the latest schema. */
+    @Test fun upgradeFromTheProductionSchemaKeepsBooksAndAddsFlashcards() {
+        migrations.createDatabase(MIGRATION_DB_PROD, 3).use { db ->
+            db.execSQL("INSERT INTO books (id, title, author, filePath, uriString, fileSizeBytes, pageCount, currentPage, readingProgress, isFavorite, category, collectionId, thumbnailPath, coverColorHex, lastReadTimestamp, addedTimestamp) " +
+                "VALUES ('b1', 'Kept', 'A', '', NULL, 1, 10, 7, 0.7, 1, 'PDF', NULL, NULL, '#000000', 0, 0)")
+            db.execSQL("INSERT INTO annotations (id, bookId, pageIndex, type, colorHex, selectedText, noteContent, rectLeft, rectTop, rectRight, rectBottom, strokePathData, createdAt, updatedAt) " +
+                "VALUES ('a1', 'b1', 3, 'HIGHLIGHT', '#FDE047', 'lift', '', 0.1, 0.1, 0.5, 0.2, NULL, 0, 0)")
+        }
+        migrations.runMigrationsAndValidate(MIGRATION_DB_PROD, 6, true).use { db ->
+            db.query("SELECT title, currentPage, isFavorite FROM books WHERE id = 'b1'").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals("Kept", c.getString(0)); assertEquals(7, c.getInt(1)); assertEquals(1, c.getInt(2))
+            }
+            db.query("SELECT selectedText FROM annotations WHERE id = 'a1'").use { c -> assertTrue(c.moveToFirst()); assertEquals("lift", c.getString(0)) }
+            listOf("notes", "decks", "cards", "card_schedule", "review_log").forEach { table ->
+                db.query("SELECT COUNT(*) FROM $table").use { c -> assertTrue(c.moveToFirst()); assertEquals(table, 0, c.getInt(0)) }
+            }
+        }
+    }
+
     private companion object {
         const val MIGRATION_DB = "migration-test"
         const val MIGRATION_DB_5 = "migration-test-5"
+        const val MIGRATION_DB_PROD = "migration-test-prod"
     }
 }
