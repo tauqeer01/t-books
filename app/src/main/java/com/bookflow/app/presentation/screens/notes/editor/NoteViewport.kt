@@ -111,7 +111,7 @@ class NoteViewport(private val gutterPx: Float) {
         val contentWidth = PAGE_WIDTH * pxPerUnit
         offsetX = if (contentWidth + 2 * gutterPx <= size.width) (size.width - contentWidth) / 2
         else offsetX.coerceIn(size.width - contentWidth - gutterPx, gutterPx)
-        val contentHeight = (pageCount * PAGE_PITCH - PAGE_GAP) * pxPerUnit
+        val contentHeight = (pageCount * PAGE_PITCH + ADD_PAGE_TILE) * pxPerUnit
         val minY = (size.height - contentHeight - gutterPx * 4).coerceAtMost(gutterPx)
         offsetY = offsetY.coerceIn(minY, gutterPx)
     }
@@ -119,6 +119,8 @@ class NoteViewport(private val gutterPx: Float) {
     companion object {
         const val PAGE_GAP = 36f
         const val PAGE_PITCH = PAGE_HEIGHT + PAGE_GAP
+        /** Height of the "+ Add page" tile below the last page, in document units. */
+        const val ADD_PAGE_TILE = 220f
         const val MIN_ZOOM = 0.5f
         const val MAX_ZOOM = 4f
     }

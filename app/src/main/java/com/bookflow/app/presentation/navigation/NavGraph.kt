@@ -204,7 +204,7 @@ fun BookFlowNavGraph(
 
                 composable(Screen.Notes.route) {
                     val notesViewModel: com.bookflow.app.presentation.screens.notes.NotesHomeViewModel = viewModel(
-                        factory = com.bookflow.app.presentation.screens.notes.NotesHomeViewModel.Factory(container.notesRepository)
+                        factory = com.bookflow.app.presentation.screens.notes.NotesHomeViewModel.Factory(container.notesRepository, container.notePenPreferences)
                     )
                     com.bookflow.app.presentation.screens.notes.NotesHomeScreen(
                         viewModel = notesViewModel,

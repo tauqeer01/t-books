@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -79,8 +81,11 @@ fun NoteElementView(element: NoteElement, pageId: String, editing: Boolean, text
                 }
             }
             val quote = element.kind == ElementKind.PDF_CLIP
+            val sticky = element.fillColor
             Box(
                 position.wrapContentHeight()
+                    .then(if (sticky != null) Modifier.heightIn(min = (element.width * PAGE_WIDTH * 0.6f).dp)
+                        .shadow(6.dp, RoundedCornerShape(6.dp)).background(Color(sticky), RoundedCornerShape(6.dp)) else Modifier)
                     .then(if (editing) Modifier.border(1.dp, Color(0xFF8B5CF6), RoundedCornerShape(4.dp)) else Modifier)
                     .then(if (quote) Modifier.background(Color(0xFFF5F3FF), RoundedCornerShape(4.dp)) else Modifier)
                     .onSizeChanged { size ->
@@ -96,7 +101,8 @@ fun NoteElementView(element: NoteElement, pageId: String, editing: Boolean, text
                     readOnly = !editing,
                     textStyle = noteTextStyle,
                     cursorBrush = SolidColor(Color(0xFF6D28D9)),
-                    modifier = Modifier.fillMaxWidth().padding(start = if (quote) 12.dp else 4.dp, end = 4.dp, top = 4.dp, bottom = if (element.sourcePage != null) 22.dp else 4.dp)
+                    modifier = Modifier.fillMaxWidth().padding(start = if (quote) 12.dp else if (sticky != null) 14.dp else 4.dp, end = if (sticky != null) 14.dp else 4.dp,
+                        top = if (sticky != null) 14.dp else 4.dp, bottom = if (element.sourcePage != null) 22.dp else 4.dp)
                         .focusRequester(focus)
                 )
                 SourceChip(element, Modifier.align(Alignment.BottomStart))

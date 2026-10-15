@@ -1,6 +1,7 @@
 package com.bookflow.app.presentation.screens.notes.editor
 
 import android.content.Context
+import com.bookflow.app.notes.domain.PageBackground
 import com.bookflow.app.notes.ink.InkBrushes
 import com.bookflow.app.notes.ink.PenPreset
 import com.bookflow.app.notes.ink.PenType
@@ -21,6 +22,10 @@ class NotePenPreferences(context: Context) {
     fun activeIndex() = prefs.getInt(KEY_ACTIVE, 0).coerceIn(0, presets().lastIndex)
     fun setActive(index: Int) = prefs.edit().putInt(KEY_ACTIVE, index).apply()
 
+    /** Template for the next new note; defaults to a blank drawing canvas. */
+    fun lastTemplate(): PageBackground = runCatching { PageBackground.valueOf(prefs.getString(KEY_TEMPLATE, null)!!) }.getOrDefault(PageBackground.BLANK)
+    fun setLastTemplate(template: PageBackground) = prefs.edit().putString(KEY_TEMPLATE, template.name).apply()
+
     fun fingerDrawing() = prefs.getBoolean(KEY_FINGER, true)
     fun setFingerDrawing(enabled: Boolean) = prefs.edit().putBoolean(KEY_FINGER, enabled).apply()
 
@@ -28,5 +33,6 @@ class NotePenPreferences(context: Context) {
         const val KEY_PRESETS = "presets"
         const val KEY_ACTIVE = "active"
         const val KEY_FINGER = "finger_drawing"
+        const val KEY_TEMPLATE = "last_template"
     }
 }

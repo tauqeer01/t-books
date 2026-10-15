@@ -5,8 +5,12 @@ import com.bookflow.app.notes.domain.PageBackground
 import com.bookflow.app.notes.ink.InkGeometry
 import com.bookflow.app.notes.ink.InkStroke
 import com.bookflow.app.notes.ink.PenPreset
+import com.bookflow.app.notes.ink.ShapeKind
 
-enum class EditorTool { PEN, ERASER, LASSO, TEXT, HAND }
+enum class EditorTool { PEN, SHAPE, ERASER, LASSO, TEXT, HAND;
+    /** Tools whose stylus/finger drag produces ink-like input rather than navigation. */
+    val draws: Boolean get() = this == PEN || this == SHAPE || this == ERASER || this == LASSO
+}
 
 enum class EraserMode(val title: String) { STROKE("Stroke"), PARTIAL("Partial") }
 
@@ -32,6 +36,7 @@ data class NoteEditorUiState(
     val tool: EditorTool = EditorTool.PEN,
     val presets: List<PenPreset> = emptyList(),
     val activePreset: Int = 0,
+    val shapeKind: ShapeKind = ShapeKind.RECTANGLE,
     val eraserMode: EraserMode = EraserMode.STROKE,
     val eraserSize: Float = 24f,
     val selection: EditorSelection? = null,

@@ -142,6 +142,20 @@ Fixed A4-ratio pages; free-positioned text/image/clip elements; ink on top. Engi
 - Backup: device-to-device transfer includes `files/notes/`; cloud backup stays database-only (25 MB quota), so restored notes keep text but show missing ink/images as unavailable.
 - Deviations: Pencil is a soft graphite marker (Ink's textured pencil and forced path rendering are restricted APIs in 1.0). Strokes use stock brushes only.
 
+### Follow-up: templates and tools (2026-10-15, from user review)
+
+User feedback: only one ruled sheet was visible and tools felt limited. Templates existed but were hidden in the overflow menu.
+
+- [x] Nine A4 templates in a visual picker (real miniature pages): Drawing canvas, Ruled, Narrow ruled, Square grid, Math graph (1 mm/5 mm/1 cm), Dot grid, Cornell notes, Music staff, Isometric. Spacing uses real millimetres.
+- [x] Picker appears for New note (remembers the last choice), Add page, and Change page template (optionally all pages); mixed templates per note.
+- [x] "+ Add page" tile under the last page (never inks in Pen mode).
+- [x] Shapes tool: line, arrow, rectangle, ellipse, triangle with live preview, using the active pen color/width.
+- [x] New pens: Marker and Dashed (now Pen, Fountain pen, Pencil, Marker, Dashed, Highlighter).
+- [x] Sticky notes with six colors (Room v5 auto-migration adds `note_elements.fillColor`).
+- [x] Page overview with thumbnails: tap to jump, arrows to reorder; Pages button in the top bar.
+- [x] Labeled toolbar that fits a phone: Pen, Shapes, Eraser, Lasso, Text, Select, Insert (Sticky note, Photo, Camera, Page).
+- [x] Tests: `NoteShapesTest` (5), 4→5 migration and sticky/template persistence in `NotesRegressionTest`. Suite: 28 instrumented (1 stress skipped) + 28 unit; lint passes.
+
 ### Manual stylus checklist (real hardware; the emulator cannot verify these)
 
 - [ ] Ink appears under the nib with no visible lag on a Samsung S Pen and a USI stylus.

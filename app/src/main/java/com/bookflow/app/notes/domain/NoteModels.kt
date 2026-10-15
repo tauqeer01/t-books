@@ -7,7 +7,18 @@ package com.bookflow.app.notes.domain
 const val PAGE_WIDTH = 1000f
 const val PAGE_HEIGHT = 1414f
 
-enum class PageBackground(val title: String) { BLANK("Blank"), LINED("Lined"), GRID("Grid"), DOTTED("Dotted") }
+/** Paper templates. Persisted by name; unknown names fall back to [BLANK]. Spacing is real-world mm on A4. */
+enum class PageBackground(val title: String, val description: String) {
+    BLANK("Drawing canvas", "Plain page for sketches and diagrams"),
+    LINED("Ruled", "Wide lines for handwriting and typing"),
+    NARROW("Narrow ruled", "College-ruled lines, more per page"),
+    GRID("Square grid", "5 mm squares"),
+    GRAPH("Math graph", "1 mm / 5 mm / 1 cm graph paper"),
+    DOTTED("Dot grid", "5 mm dots for bullet journaling"),
+    CORNELL("Cornell notes", "Cues, notes, and summary areas"),
+    MUSIC("Music staff", "Staves for notation"),
+    ISOMETRIC("Isometric", "30° grid for 3D drawing")
+}
 
 enum class ElementKind { TEXT, IMAGE, PDF_CLIP }
 
@@ -45,7 +56,9 @@ data class NoteElement(
     /** Plain text of a PDF text clip, kept for search and attribution. */
     val quoteText: String? = null,
     val sourceBookId: String? = null,
-    val sourcePage: Int? = null
+    val sourcePage: Int? = null,
+    /** Background of a sticky note (ARGB); null for plain text boxes, images, and clips. */
+    val fillColor: Int? = null
 ) {
     val bottom: Float get() = y + height
     val right: Float get() = x + width

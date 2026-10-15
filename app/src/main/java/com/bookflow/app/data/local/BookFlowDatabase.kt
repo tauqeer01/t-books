@@ -36,10 +36,11 @@ import com.bookflow.app.notes.data.NotesDao
     ],
     // Version 3 is the first Play Store release schema (exported to app/schemas).
     // Any future change must bump the version and add a migration (auto or in MIGRATIONS).
-    version = 4,
+    version = 5,
     exportSchema = true,
     // 4: Notes (folders, notes, pages, elements, full-text index) — new tables only.
-    autoMigrations = [AutoMigration(from = 3, to = 4)]
+    // 5: Sticky-note fill color on note elements (nullable column).
+    autoMigrations = [AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5)]
 )
 abstract class BookFlowDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao

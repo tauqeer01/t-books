@@ -9,6 +9,8 @@ enum class PenType(val title: String) {
     BALLPOINT("Pen"),
     FOUNTAIN("Fountain pen"),
     PENCIL("Pencil"),
+    MARKER("Marker"),
+    DASHED("Dashed"),
     HIGHLIGHTER("Highlighter");
 
     val translucent: Boolean get() = this == HIGHLIGHTER
@@ -18,7 +20,7 @@ data class PenPreset(val type: PenType, val colorArgb: Int, val size: Float)
 
 object InkBrushes {
     /** Sizes are in page units (a page is 1000 units wide). */
-    val sizes = listOf(2f, 4f, 6f, 10f, 16f)
+    val sizes = listOf(2f, 4f, 6f, 10f, 16f, 24f)
     val highlighterSizes = listOf(16f, 28f, 40f, 56f)
 
     val defaultPresets = listOf(
@@ -27,6 +29,7 @@ object InkBrushes {
         PenPreset(PenType.FOUNTAIN, 0xFF111827.toInt(), 6f),
         PenPreset(PenType.FOUNTAIN, 0xFFDC2626.toInt(), 6f),
         PenPreset(PenType.PENCIL, 0xFF4B5563.toInt(), 5f),
+        PenPreset(PenType.MARKER, 0xFF16A34A.toInt(), 14f),
         PenPreset(PenType.HIGHLIGHTER, 0xFFFDE047.toInt(), 28f),
         PenPreset(PenType.HIGHLIGHTER, 0xFF86EFAC.toInt(), 28f),
     )
@@ -42,7 +45,8 @@ object InkBrushes {
         val family = when (type) {
             PenType.BALLPOINT -> StockBrushes.marker()
             PenType.FOUNTAIN -> StockBrushes.pressurePen()
-            PenType.PENCIL -> StockBrushes.marker()
+            PenType.PENCIL, PenType.MARKER -> StockBrushes.marker()
+            PenType.DASHED -> StockBrushes.dashedLine()
             PenType.HIGHLIGHTER -> StockBrushes.highlighter()
         }
         // Pencil reads as soft graphite: the stock textured pencil is not public API yet

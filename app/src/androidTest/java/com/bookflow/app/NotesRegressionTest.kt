@@ -45,7 +45,7 @@ class NotesRegressionTest {
     @Test fun addingAndReorderingPagesKeepsEveryPagesElements(): Unit = runBlocking(Dispatchers.IO) {
         val noteId = repository.createNote(title = "Physics")
         val first = repository.loadNote(noteId)!!.pages.single()
-        repository.saveElements(noteId, first.id, listOf(text("t1", "<p>Bernoulli</p>")))
+        repository.saveElements(noteId, first.id, listOf(text("t1", "<p>Bernoulli</p>").copy(fillColor = 0xFFFEF08A.toInt())))
         val second = repository.addPage(noteId, 0, PageBackground.GRID)
         repository.saveElements(noteId, second.id, listOf(text("t2", "<p>Second</p>")))
         repository.reorderPages(noteId, listOf(first.id, second.id))
@@ -54,6 +54,8 @@ class NotesRegressionTest {
         val doc = repository.loadNote(noteId)!!
         assertEquals(listOf(first.id, second.id), doc.pages.take(2).map { it.id })
         assertEquals(listOf("t1"), doc.pages[0].elements.map { it.id })
+        assertEquals("sticky color persists", 0xFFFEF08A.toInt(), doc.pages[0].elements.single().fillColor)
+        assertEquals(PageBackground.GRID, doc.pages[1].background)
         assertEquals(listOf("t2"), doc.pages[1].elements.map { it.id })
         assertEquals(3, doc.pages.size)
         repository.deleteNote(noteId)
@@ -167,5 +169,22 @@ class NotesRegressionTest {
         }
     }
 
-    private companion object { const val MIGRATION_DB = "migration-test" }
+    @Test fun migrationFrom4To5AddsStickyColorAndKeepsElements() {
+        migrations.createDatabase(MIGRATION_DB_5, 4).use { db ->
+            db.execSQL("INSERT INTO notes (id, folderId, title, pinned, tags, createdAt, updatedAt, thumbnailPath) VALUES ('n', NULL, 'T', 0, '', 0, 0, NULL)")
+            db.execSQL("INSERT INTO note_pages (id, noteId, pageIndex, background) VALUES ('p', 'n', 0, 'GRAPH')")
+            db.execSQL("INSERT INTO note_elements (id, pageId, kind, x, y, w, h, rotation, z, html, imagePath, quoteText, sourceBookId, sourcePage) " +
+                "VALUES ('e', 'p', 'TEXT', 0.1, 0.1, 0.5, 0.1, 0, 1, '<p>kept</p>', NULL, NULL, NULL, NULL)")
+        }
+        migrations.runMigrationsAndValidate(MIGRATION_DB_5, 5, true).use { db ->
+            db.query("SELECT html, fillColor FROM note_elements WHERE id = 'e'").use { c ->
+                assertTrue(c.moveToFirst()); assertEquals("<p>kept</p>", c.getString(0)); assertTrue(c.isNull(1))
+            }
+        }
+    }
+
+    private companion object {
+        const val MIGRATION_DB = "migration-test"
+        const val MIGRATION_DB_5 = "migration-test-5"
+    }
 }

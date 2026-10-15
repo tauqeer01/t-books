@@ -2,6 +2,8 @@ package com.bookflow.app.presentation.screens.notes.editor
 
 import android.content.Context
 import android.net.Uri
+import androidx.ink.brush.InputToolType
+import androidx.ink.strokes.MutableStrokeInputBatch
 import androidx.ink.strokes.Stroke
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -17,6 +19,8 @@ import com.bookflow.app.notes.ink.InkBrushes
 import com.bookflow.app.notes.ink.InkGeometry
 import com.bookflow.app.notes.ink.InkSerializer
 import com.bookflow.app.notes.ink.InkStroke
+import com.bookflow.app.notes.ink.NoteShapes
+import com.bookflow.app.notes.ink.ShapeKind
 import com.bookflow.app.notes.ink.PenPreset
 import com.bookflow.app.notes.ink.PenType
 import com.bookflow.app.presentation.screens.notes.export.NotePageRenderer
@@ -96,6 +100,27 @@ class NoteEditorViewModel(
         val active = s.activePreset.coerceAtMost(presets.lastIndex)
         pens.save(presets); pens.setActive(active)
         s.copy(presets = presets, activePreset = active)
+    }
+
+    fun selectShape(kind: ShapeKind) = _state.update { it.copy(shapeKind = kind, tool = EditorTool.SHAPE) }
+
+    /** A shape dragged from [a] to [b] in page units, drawn with the active pen's color and width. */
+    fun addShape(pageId: String, a: InkGeometry.Point, b: InkGeometry.Point) {
+        if (kotlin.math.hypot(b.x - a.x, b.y - a.y) < 4f) return
+        val pen = _state.value.activePen ?: return
+        val points = NoteShapes.points(_state.value.shapeKind, a, b)
+        val batch = MutableStrokeInputBatch()
+        points.forEachIndexed { i, p -> batch.add(InputToolType.STYLUS, p.x, p.y, i * 4L) }
+        // Shapes use the solid pen of the same type unless the active pen is a highlighter or dashed line
+        val type = if (pen.type == PenType.FOUNTAIN || pen.type == PenType.PENCIL) PenType.BALLPOINT else pen.type
+        val stroke = Stroke(InkBrushes.brush(type, pen.colorArgb, pen.size), batch)
+        editPage(pageId) { page -> page.copy(strokes = page.strokes + InkStroke.from(stroke, type)) }
+    }
+
+    fun addStickyNote(pageId: String, x: Float, y: Float, color: Int) {
+        val element = NoteElement(UUID.randomUUID().toString(), ElementKind.TEXT, x.coerceIn(0f, 0.65f), y.coerceIn(0f, 0.8f), 0.32f, 0.18f, html = "", fillColor = color)
+        editPage(pageId) { page -> page.copy(elements = page.elements + element.copy(z = (page.elements.maxOfOrNull { it.z } ?: 0) + 1)) }
+        _state.update { it.copy(editingElementId = element.id, selection = null, tool = EditorTool.TEXT) }
     }
 
     fun setEraserMode(mode: EraserMode) = _state.update { it.copy(eraserMode = mode, tool = EditorTool.ERASER) }
@@ -212,6 +237,11 @@ class NoteEditorViewModel(
         _state.update { it.copy(selection = newSelection) }
     }
 
+    fun setStickyColor(color: Int) {
+        val selection = _state.value.selection ?: return
+        editPage(selection.pageId) { page -> page.copy(elements = page.elements.map { if (it.id in selection.elementIds && it.fillColor != null) it.copy(fillColor = color) else it }) }
+    }
+
     fun bringSelectionToFront() {
         val selection = _state.value.selection ?: return
         editPage(selection.pageId) { page ->
@@ -281,9 +311,8 @@ class NoteEditorViewModel(
 
     // --- Pages -------------------------------------------------------------------------------------------
 
-    fun addPage(afterIndex: Int) {
+    fun addPage(afterIndex: Int, background: PageBackground = _state.value.pages.getOrNull(afterIndex)?.background ?: PageBackground.BLANK) {
         viewModelScope.launch {
-            val background = _state.value.pages.getOrNull(afterIndex)?.background ?: PageBackground.LINED
             flush()
             val page = repository.addPage(noteId, afterIndex + 1, background)
             _state.update { s -> s.copy(pages = s.pages.toMutableList().apply { add((afterIndex + 1).coerceAtMost(size), EditorPage(page.id, background, emptyList(), emptyList())) }) }

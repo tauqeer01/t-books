@@ -46,6 +46,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -76,6 +77,7 @@ import java.io.File
 
 private val folderColors = listOf("#6D28D9", "#2563EB", "#059669", "#D97706", "#DC2626", "#DB2777")
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun NotesHomeScreen(viewModel: NotesHomeViewModel, onOpenNote: (String) -> Unit) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -85,6 +87,7 @@ fun NotesHomeScreen(viewModel: NotesHomeViewModel, onOpenNote: (String) -> Unit)
     var newFolder by remember { mutableStateOf(false) }
     var folderAction by remember { mutableStateOf<NoteFolder?>(null) }
     var noteAction by remember { mutableStateOf<NoteSummary?>(null) }
+    var choosingTemplate by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -105,7 +108,7 @@ fun NotesHomeScreen(viewModel: NotesHomeViewModel, onOpenNote: (String) -> Unit)
         },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
-            ExtendedFloatingActionButton(onClick = { scope.launch { onOpenNote(viewModel.createNote()) } },
+            ExtendedFloatingActionButton(onClick = { choosingTemplate = true },
                 icon = { Icon(Icons.Outlined.Add, null) }, text = { Text("New note") })
         }
     ) { padding ->
@@ -150,6 +153,18 @@ fun NotesHomeScreen(viewModel: NotesHomeViewModel, onOpenNote: (String) -> Unit)
                     items(state.others, key = { it.id }) { NoteCard(it, state.grid, { onOpenNote(it.id) }, { noteAction = it }) }
                 }
             }
+        }
+    }
+
+    if (choosingTemplate) {
+        ModalBottomSheet(onDismissRequest = { choosingTemplate = false }) {
+            Text("Choose a page", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 20.dp))
+            Text("You can change any page's template later, or mix templates in one note.", color = MaterialTheme.colorScheme.outline,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+            PageTemplatePicker(selected = viewModel.lastTemplate, onPick = { template ->
+                choosingTemplate = false
+                scope.launch { onOpenNote(viewModel.createNote(template)) }
+            })
         }
     }
 

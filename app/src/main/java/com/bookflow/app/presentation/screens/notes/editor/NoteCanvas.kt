@@ -3,6 +3,7 @@ package com.bookflow.app.presentation.screens.notes.editor
 import android.view.MotionEvent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -59,6 +60,7 @@ import com.bookflow.app.notes.domain.PAGE_HEIGHT
 import com.bookflow.app.notes.domain.PAGE_WIDTH
 import com.bookflow.app.notes.ink.InkBrushes
 import com.bookflow.app.notes.ink.InkGeometry
+import com.bookflow.app.notes.ink.NoteShapes
 import com.bookflow.app.notes.ink.translated
 import com.bookflow.app.presentation.screens.notes.export.NotePageRenderer
 import kotlinx.coroutines.CoroutineScope
@@ -71,6 +73,8 @@ import kotlin.math.roundToInt
 private class CanvasOverlay {
     val lasso = mutableStateListOf<Offset>()
     var eraserCursor by mutableStateOf<Offset?>(null)
+    /** Shape being dragged, in screen coordinates. */
+    val shape = mutableStateListOf<Offset>()
 }
 
 @Composable
@@ -80,6 +84,7 @@ fun NoteCanvas(
     textStates: RichTextStates,
     vm: NoteEditorViewModel,
     onOpenSource: (bookId: String, page: Int) -> Unit,
+    onAddPage: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val overlay = remember { CanvasOverlay() }
@@ -95,12 +100,13 @@ fun NoteCanvas(
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .clipToBounds()
             .onSizeChanged { viewport.onSize(it) }
-            .pointerInput(Unit) { routeGestures({ latest }, viewport, vm, scope, overlay, onOpenSource) }
+            .pointerInput(Unit) { routeGestures({ latest }, viewport, vm, scope, overlay, onOpenSource, onAddPage) }
     ) {
         for (index in visible) {
             val page = state.pages.getOrNull(index) ?: continue
             key(page.id) { PageView(page, index, state, viewport, textStates, vm, renderer) }
         }
+        if (state.pages.isNotEmpty() && state.pages.lastIndex in visible) AddPageTile(viewport, state.pages.size)
 
         val pen = state.activePen
         if (state.tool == EditorTool.PEN && pen != null) {
@@ -125,6 +131,11 @@ fun NoteCanvas(
             if (overlay.lasso.size > 1) {
                 val path = Path().apply { moveTo(overlay.lasso[0].x, overlay.lasso[0].y); overlay.lasso.drop(1).forEach { lineTo(it.x, it.y) } }
                 drawPath(path, Color(0xFF6D28D9), style = Stroke(2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(14f, 10f))))
+            }
+            if (overlay.shape.size > 1) {
+                val path = Path().apply { moveTo(overlay.shape[0].x, overlay.shape[0].y); overlay.shape.drop(1).forEach { lineTo(it.x, it.y) } }
+                val pen = latest.activePen
+                drawPath(path, Color(pen?.colorArgb ?: 0xFF111827.toInt()).copy(alpha = 0.7f), style = Stroke(((pen?.size ?: 4f) * viewport.pxPerUnit).coerceAtLeast(2f)))
             }
             overlay.eraserCursor?.let { c ->
                 drawCircle(Color(0x33000000), radius = latest.eraserSize / 2 * viewport.pxPerUnit, center = c)
@@ -197,7 +208,29 @@ private fun PageView(
 
 private const val HANDLE_RADIUS_DP = 9
 
-private enum class GestureMode { IDLE, INK, ERASE, LASSO, TRANSFORM, NAVIGATE, PASSTHROUGH }
+private enum class GestureMode { IDLE, INK, SHAPE, ERASE, LASSO, TRANSFORM, NAVIGATE, PASSTHROUGH }
+
+private const val ADD_PAGE_TILE = NoteViewport.ADD_PAGE_TILE
+
+@Composable
+private fun AddPageTile(viewport: NoteViewport, pageCount: Int) {
+    val density = LocalDensity.current
+    val k = viewport.pxPerUnit
+    Box(
+        Modifier
+            .offset { IntOffset(viewport.offsetX.roundToInt(), viewport.pageScreenTop(pageCount).roundToInt()) }
+            .size(with(density) { (PAGE_WIDTH * k).toDp() }, with(density) { (ADD_PAGE_TILE * k).toDp() })
+            .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center
+    ) { Text("+  Add page", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium) }
+}
+
+/** Whether a screen point lies on the "+ Add page" tile below the last page. */
+private fun NoteViewport.onAddPageTile(screen: Offset, pageCount: Int): Boolean {
+    val doc = toDocument(screen)
+    val top = pageTop(pageCount)
+    return doc.x in 0f..PAGE_WIDTH && doc.y in top..(top + ADD_PAGE_TILE)
+}
 
 private fun PointerInputChange.isStylus() = type == PointerType.Stylus || type == PointerType.Eraser
 
@@ -212,7 +245,8 @@ private suspend fun PointerInputScope.routeGestures(
     vm: NoteEditorViewModel,
     scope: CoroutineScope,
     overlay: CanvasOverlay,
-    onOpenSource: (String, Int) -> Unit
+    onOpenSource: (String, Int) -> Unit,
+    onAddPage: () -> Unit
 ) = awaitPointerEventScope {
     val nav = mutableMapOf<PointerId, Offset>()
     val velocity = VelocityTracker()
@@ -260,6 +294,7 @@ private suspend fun PointerInputScope.routeGestures(
     }
 
     fun onTap(s: NoteEditorUiState, screen: Offset) {
+        if (viewport.onAddPageTile(screen, s.pages.size)) { onAddPage(); return }
         val (page, element) = hitElement(s, screen) ?: run { vm.clearSelection(); if (s.editingElementId != null) vm.stopEditing(); return }
         val local = pagePoint(screen, s.pages.indexOf(page))
         when (s.tool) {
@@ -284,13 +319,14 @@ private suspend fun PointerInputScope.routeGestures(
 
     fun reset() {
         mode = GestureMode.IDLE; activeId = null; nav.clear(); lastPagePoint = null; tapStart = null; navMoved = false
-        overlay.lasso.clear(); overlay.eraserCursor = null; velocity.resetTracking()
+        overlay.lasso.clear(); overlay.shape.clear(); overlay.eraserCursor = null; velocity.resetTracking()
     }
 
     fun cancelDrawing() {
         when (mode) {
             GestureMode.ERASE -> { vm.endErase(); overlay.eraserCursor = null }
             GestureMode.LASSO -> overlay.lasso.clear()
+            GestureMode.SHAPE -> overlay.shape.clear()
             else -> Unit
         }
     }
@@ -305,7 +341,7 @@ private suspend fun PointerInputScope.routeGestures(
             flingJob?.cancel()
             val stylus = change.isStylus()
             if (mode == GestureMode.IDLE) {
-                val drawingTool = s.tool == EditorTool.PEN || s.tool == EditorTool.ERASER || s.tool == EditorTool.LASSO
+                val drawingTool = s.tool.draws && !viewport.onAddPageTile(change.position, s.pages.size)
                 val inks = stylus || (s.fingerInks && change.type == PointerType.Touch)
                 val selectionRect = selectionScreenRect(s)
                 mode = when {
@@ -318,7 +354,12 @@ private suspend fun PointerInputScope.routeGestures(
                     }
                     change.type == PointerType.Eraser -> GestureMode.ERASE
                     stylus && sideButton -> GestureMode.LASSO
-                    drawingTool && inks -> when (s.tool) { EditorTool.PEN -> GestureMode.INK; EditorTool.ERASER -> GestureMode.ERASE; else -> GestureMode.LASSO }
+                    drawingTool && inks -> when (s.tool) {
+                        EditorTool.PEN -> GestureMode.INK
+                        EditorTool.SHAPE -> GestureMode.SHAPE
+                        EditorTool.ERASER -> GestureMode.ERASE
+                        else -> GestureMode.LASSO
+                    }
                     s.tool == EditorTool.TEXT && editingRect(s)?.contains(change.position) == true -> GestureMode.PASSTHROUGH
                     else -> GestureMode.NAVIGATE
                 }
@@ -334,7 +375,7 @@ private suspend fun PointerInputScope.routeGestures(
                 }
             } else if (change.type == PointerType.Touch) {
                 // A second finger turns finger drawing into a pan/zoom; the half-drawn stroke is canceled
-                if (activeIsTouch && (mode == GestureMode.INK || mode == GestureMode.ERASE || mode == GestureMode.LASSO)) {
+                if (activeIsTouch && (mode == GestureMode.INK || mode == GestureMode.SHAPE || mode == GestureMode.ERASE || mode == GestureMode.LASSO)) {
                     cancelDrawing()
                     event.changes.firstOrNull { it.id == activeId }?.let { nav[it.id] = it.position }
                     mode = GestureMode.NAVIGATE
@@ -347,6 +388,22 @@ private suspend fun PointerInputScope.routeGestures(
         val active = event.changes.firstOrNull { it.id == activeId }
         when (mode) {
             GestureMode.INK -> event.changes.forEach { if (it.id != activeId) it.consume() }
+            GestureMode.SHAPE -> {
+                event.changes.forEach { it.consume() }
+                val start = lastPagePoint
+                if (active != null && start != null) {
+                    val end = pagePoint(active.position, gesturePage)
+                    if (active.pressed) {
+                        val top = viewport.pageTop(gesturePage)
+                        overlay.shape.clear()
+                        NoteShapes.points(s.shapeKind, InkGeometry.Point(start.x, start.y), InkGeometry.Point(end.x, end.y))
+                            .forEach { overlay.shape.add(viewport.toScreen(Offset(it.x, top + it.y))) }
+                    } else {
+                        s.pages.getOrNull(gesturePage)?.let { p -> vm.addShape(p.id, InkGeometry.Point(start.x, start.y), InkGeometry.Point(end.x, end.y)) }
+                        overlay.shape.clear()
+                    }
+                }
+            }
             GestureMode.ERASE -> {
                 event.changes.forEach { it.consume() }
                 if (active != null && active.pressed) {
@@ -380,7 +437,7 @@ private suspend fun PointerInputScope.routeGestures(
                 } else if (active != null) vm.commitTransform()
             }
             GestureMode.NAVIGATE -> {
-                val drawingTool = s.tool == EditorTool.PEN || s.tool == EditorTool.ERASER || s.tool == EditorTool.LASSO
+                val drawingTool = s.tool.draws
                 val pressed = event.changes.filter { it.pressed && it.id in nav }
                 if (pressed.isNotEmpty()) {
                     val previous = pressed.mapNotNull { nav[it.id] }

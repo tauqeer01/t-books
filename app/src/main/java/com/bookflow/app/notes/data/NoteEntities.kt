@@ -73,14 +73,15 @@ data class NoteElementEntity(
     val imagePath: String?,
     val quoteText: String?,
     val sourceBookId: String?,
-    val sourcePage: Int?
+    val sourcePage: Int?,
+    @ColumnInfo(defaultValue = "NULL") val fillColor: Int? = null
 ) {
     fun toDomain() = NoteElement(id, runCatching { ElementKind.valueOf(kind) }.getOrDefault(ElementKind.TEXT), x, y, w, h, rotation, z,
-        html, imagePath, quoteText, sourceBookId, sourcePage)
+        html, imagePath, quoteText, sourceBookId, sourcePage, fillColor)
 
     companion object {
         fun from(pageId: String, e: NoteElement) = NoteElementEntity(e.id, pageId, e.kind.name, e.x, e.y, e.width, e.height, e.rotation, e.z,
-            e.html, e.imagePath, e.quoteText, e.sourceBookId, e.sourcePage)
+            e.html, e.imagePath, e.quoteText, e.sourceBookId, e.sourcePage, e.fillColor)
     }
 }
 

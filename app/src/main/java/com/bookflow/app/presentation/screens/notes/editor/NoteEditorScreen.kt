@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,9 +58,19 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.bookflow.app.notes.domain.PageBackground
+import com.bookflow.app.presentation.screens.notes.PageTemplatePicker
 import com.bookflow.app.presentation.screens.notes.export.NoteExporter
 import kotlinx.coroutines.launch
 import java.io.File
+
+private enum class TemplateSheet { ADD, ADD_AT_END, CHANGE }
+
+/** Vertical position (page fraction) near the top of what is on screen, for inserting new items in view. */
+private fun visiblePageY(viewport: NoteViewport): Float {
+    val index = viewport.currentPage()
+    val docTop = -viewport.offsetY / viewport.pxPerUnit
+    return ((docTop - viewport.pageTop(index)) / com.bookflow.app.notes.domain.PAGE_HEIGHT + 0.1f).coerceIn(0.05f, 0.8f)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,7 +89,15 @@ fun NoteEditorScreen(
     var menuOpen by remember { mutableStateOf(false) }
     var editingPen by remember { mutableStateOf(false) }
     var confirmDeletePage by remember { mutableStateOf<String?>(null) }
-    var backgroundSheet by remember { mutableStateOf(false) }
+    /** Template sheet: adding a page after the current one, or changing the current page's template. */
+    var templateSheet by remember { mutableStateOf<TemplateSheet?>(null) }
+    var pagesSheet by remember { mutableStateOf(false) }
+    /** Page to bring into view once it exists (after adding a page). */
+    var pendingScroll by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(state.pages.size, pendingScroll) {
+        val target = pendingScroll ?: return@LaunchedEffect
+        if (target < state.pages.size) { viewport.pageCount = state.pages.size; viewport.scrollToPage(target); pendingScroll = null }
+    }
     var cameraFile by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun currentPageId() = state.pages.getOrNull(viewport.currentPage())?.id
@@ -122,14 +141,16 @@ fun NoteEditorScreen(
                     )
                 },
                 actions = {
+                    IconButton(onClick = { pagesSheet = true }) { Icon(Icons.Outlined.GridView, "All pages") }
                     IconButton(onClick = vm::undo, enabled = state.canUndo) { Icon(Icons.AutoMirrored.Outlined.Undo, "Undo") }
                     IconButton(onClick = vm::redo, enabled = state.canRedo) { Icon(Icons.AutoMirrored.Outlined.Redo, "Redo") }
                     Box {
                         IconButton(onClick = { menuOpen = true }) { Icon(Icons.Outlined.MoreVert, "More") }
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
                             val pageIndex = viewport.currentPage()
-                            DropdownMenuItem(text = { Text("Add page after ${pageIndex + 1}") }, onClick = { menuOpen = false; vm.addPage(pageIndex) })
-                            DropdownMenuItem(text = { Text("Page background…") }, onClick = { menuOpen = false; backgroundSheet = true })
+                            DropdownMenuItem(text = { Text("Add page…") }, onClick = { menuOpen = false; templateSheet = TemplateSheet.ADD })
+                            DropdownMenuItem(text = { Text("Change page template…") }, onClick = { menuOpen = false; templateSheet = TemplateSheet.CHANGE })
+                            DropdownMenuItem(text = { Text("All pages") }, onClick = { menuOpen = false; pagesSheet = true })
                             DropdownMenuItem(text = { Text("Move page up") }, enabled = pageIndex > 0, onClick = { menuOpen = false; currentPageId()?.let { vm.movePage(it, -1) } })
                             DropdownMenuItem(text = { Text("Move page down") }, enabled = pageIndex < state.pages.lastIndex, onClick = { menuOpen = false; currentPageId()?.let { vm.movePage(it, 1) } })
                             DropdownMenuItem(text = { Text("Delete page ${pageIndex + 1}") }, onClick = { menuOpen = false; confirmDeletePage = currentPageId() })
@@ -178,6 +199,8 @@ fun NoteEditorScreen(
                         SelectionBar(
                             canRecolor = selection.strokeIds.isNotEmpty(),
                             sourceAvailable = source != null,
+                            isSticky = page?.elements?.any { it.id in selection.elementIds && it.fillColor != null } == true,
+                            onStickyColor = vm::setStickyColor,
                             onDelete = vm::deleteSelection,
                             onDuplicate = vm::duplicateSelection,
                             onFront = vm::bringSelectionToFront,
@@ -186,11 +209,12 @@ fun NoteEditorScreen(
                         )
                     }
                     state.tool == EditorTool.PEN -> PenPresetBar(state, vm::selectPreset, onEditActive = { editingPen = true }, onAdd = vm::addPreset)
+                    state.tool == EditorTool.SHAPE -> ShapeBar(state, vm::selectShape, onEditPen = { editingPen = true })
                     state.tool == EditorTool.ERASER -> EraserBar(state, vm::setEraserMode, vm::setEraserSize)
                 }
-                EditorToolBar(
-                    state = state,
+                EditorToolBar(state, ToolbarActions(
                     onTool = vm::selectTool,
+                    onSticky = { currentPageId()?.let { vm.addStickyNote(it, 0.34f, visiblePageY(viewport), StickyColors.first()) } },
                     onPhoto = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                     onCamera = {
                         val dir = File(context.cacheDir, "camera").apply { mkdirs() }
@@ -198,8 +222,9 @@ fun NoteEditorScreen(
                         cameraFile = file.absolutePath
                         runCatching { camera.launch(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)) }
                             .onFailure { scope.launch { snackbar.showSnackbar("No camera app available") } }
-                    }
-                )
+                    },
+                    onAddPage = { templateSheet = TemplateSheet.ADD }
+                ))
             }
         }
     ) { padding ->
@@ -207,7 +232,7 @@ fun NoteEditorScreen(
             when {
                 state.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 state.notFound -> Text("This note no longer exists", Modifier.align(Alignment.Center))
-                else -> NoteCanvas(state, viewport, textStates, vm, onOpenSource)
+                else -> NoteCanvas(state, viewport, textStates, vm, onOpenSource, onAddPage = { templateSheet = TemplateSheet.ADD_AT_END })
             }
         }
     }
@@ -221,16 +246,30 @@ fun NoteEditorScreen(
         }
     }
 
-    if (backgroundSheet) {
-        ModalBottomSheet(onDismissRequest = { backgroundSheet = false }) {
+    templateSheet?.let { mode ->
+        ModalBottomSheet(onDismissRequest = { templateSheet = null }) {
             var applyAll by remember { mutableStateOf(false) }
-            Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                Text("Page background", style = MaterialTheme.typography.titleMedium)
-                PageBackground.entries.forEach { bg ->
-                    TextButton(onClick = { currentPageId()?.let { vm.setBackground(it, bg, applyAll) }; backgroundSheet = false }) { Text(bg.title) }
-                }
+            val pageIndex = viewport.currentPage()
+            val current = state.pages.getOrNull(if (mode == TemplateSheet.ADD_AT_END) state.pages.lastIndex else pageIndex)?.background
+            Text(if (mode == TemplateSheet.CHANGE) "Change page ${pageIndex + 1}" else "Add a page", style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(horizontal = 20.dp))
+            if (mode == TemplateSheet.CHANGE) {
                 DropdownMenuItem(text = { Text("Apply to all pages") }, trailingIcon = { Switch(checked = applyAll, onCheckedChange = null) }, onClick = { applyAll = !applyAll })
             }
+            PageTemplatePicker(selected = current, onPick = { template ->
+                templateSheet = null
+                when (mode) {
+                    TemplateSheet.CHANGE -> currentPageId()?.let { vm.setBackground(it, template, applyAll) }
+                    TemplateSheet.ADD -> { vm.addPage(pageIndex, template); pendingScroll = pageIndex + 1 }
+                    TemplateSheet.ADD_AT_END -> { val last = state.pages.lastIndex; vm.addPage(last, template); pendingScroll = last + 1 }
+                }
+            })
+        }
+    }
+
+    if (pagesSheet) {
+        ModalBottomSheet(onDismissRequest = { pagesSheet = false }) {
+            PageOverview(state.pages, viewport.currentPage(), onOpen = { index -> pagesSheet = false; viewport.scrollToPage(index) }, onMove = vm::movePage)
         }
     }
 

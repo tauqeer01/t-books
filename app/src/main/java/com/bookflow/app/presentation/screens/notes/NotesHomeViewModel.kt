@@ -7,6 +7,8 @@ import com.bookflow.app.notes.domain.NoteFolder
 import com.bookflow.app.notes.domain.NoteSort
 import com.bookflow.app.notes.domain.NoteSummary
 import com.bookflow.app.notes.domain.NotesRepository
+import com.bookflow.app.notes.domain.PageBackground
+import com.bookflow.app.presentation.screens.notes.editor.NotePenPreferences
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -34,7 +36,7 @@ data class NotesHomeUiState(
 private data class Filters(val folderId: String?, val tag: String?, val query: String, val sort: NoteSort, val grid: Boolean)
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class NotesHomeViewModel(private val repository: NotesRepository) : ViewModel() {
+class NotesHomeViewModel(private val repository: NotesRepository, private val prefs: NotePenPreferences) : ViewModel() {
     private val filters = MutableStateFlow(Filters(null, null, "", NoteSort.UPDATED, true))
 
     private val source = filters.flatMapLatest { f -> if (f.query.isBlank()) repository.notes() else repository.search(f.query) }
@@ -77,7 +79,12 @@ class NotesHomeViewModel(private val repository: NotesRepository) : ViewModel() 
     fun setSort(sort: NoteSort) = filters.value.let { filters.value = it.copy(sort = sort) }
     fun toggleGrid() = filters.value.let { filters.value = it.copy(grid = !it.grid) }
 
-    suspend fun createNote(): String = repository.createNote(folderId = filters.value.folderId)
+    val lastTemplate: PageBackground get() = prefs.lastTemplate()
+
+    suspend fun createNote(template: PageBackground): String {
+        prefs.setLastTemplate(template)
+        return repository.createNote(folderId = filters.value.folderId, background = template)
+    }
 
     fun createFolder(name: String, colorHex: String) = viewModelScope.launch { repository.createFolder(name, colorHex, filters.value.folderId) }
     fun renameFolder(id: String, name: String) = viewModelScope.launch { repository.renameFolder(id, name) }
@@ -92,8 +99,8 @@ class NotesHomeViewModel(private val repository: NotesRepository) : ViewModel() 
     fun move(note: NoteSummary, folderId: String?) = viewModelScope.launch { repository.moveNote(note.id, folderId) }
     fun delete(note: NoteSummary) = viewModelScope.launch { repository.deleteNote(note.id) }
 
-    class Factory(private val repository: NotesRepository) : ViewModelProvider.Factory {
+    class Factory(private val repository: NotesRepository, private val prefs: NotePenPreferences) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T = NotesHomeViewModel(repository) as T
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = NotesHomeViewModel(repository, prefs) as T
     }
 }

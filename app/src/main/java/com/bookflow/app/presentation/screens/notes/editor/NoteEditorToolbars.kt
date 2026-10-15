@@ -22,6 +22,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.FormatListBulleted
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.material.icons.outlined.CheckBox
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.ContentCopy
@@ -40,6 +44,8 @@ import androidx.compose.material.icons.outlined.PanTool
 import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material.icons.outlined.TextFields
 import androidx.compose.material.icons.outlined.Title
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -54,11 +60,17 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -69,32 +81,70 @@ import androidx.compose.ui.unit.sp
 import com.bookflow.app.notes.ink.InkBrushes
 import com.bookflow.app.notes.ink.PenPreset
 import com.bookflow.app.notes.ink.PenType
+import com.bookflow.app.notes.ink.ShapeKind
 import com.mohamedrejeb.richeditor.model.RichTextState
 
+data class ToolbarActions(
+    val onTool: (EditorTool) -> Unit,
+    val onSticky: () -> Unit,
+    val onPhoto: () -> Unit,
+    val onCamera: () -> Unit,
+    val onAddPage: () -> Unit
+)
+
+/** Every tool visible with a label, sized to fit a phone; inserts live in one menu. */
 @Composable
-fun EditorToolBar(state: NoteEditorUiState, onTool: (EditorTool) -> Unit, onPhoto: () -> Unit, onCamera: () -> Unit) {
+fun EditorToolBar(state: NoteEditorUiState, actions: ToolbarActions) {
+    var insertMenu by remember { mutableStateOf(false) }
     Surface(tonalElevation = 3.dp) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            ToolButton(Icons.Outlined.Create, "Pen", state.tool == EditorTool.PEN) { onTool(EditorTool.PEN) }
-            ToolButton(Icons.Outlined.CleaningServices, "Eraser", state.tool == EditorTool.ERASER) { onTool(EditorTool.ERASER) }
-            ToolButton(Icons.Outlined.HighlightAlt, "Lasso", state.tool == EditorTool.LASSO) { onTool(EditorTool.LASSO) }
-            ToolButton(Icons.Outlined.TextFields, "Text", state.tool == EditorTool.TEXT) { onTool(EditorTool.TEXT) }
-            ToolButton(Icons.Outlined.PanTool, "Select", state.tool == EditorTool.HAND) { onTool(EditorTool.HAND) }
-            IconButton(onClick = onPhoto) { Icon(Icons.Outlined.Image, "Insert photo") }
-            IconButton(onClick = onCamera) { Icon(Icons.Outlined.PhotoCamera, "Take photo") }
+        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+            ToolButton(Icons.Outlined.Create, "Pen", state.tool == EditorTool.PEN) { actions.onTool(EditorTool.PEN) }
+            ToolButton(Icons.Outlined.Category, "Shapes", state.tool == EditorTool.SHAPE) { actions.onTool(EditorTool.SHAPE) }
+            ToolButton(Icons.Outlined.CleaningServices, "Eraser", state.tool == EditorTool.ERASER) { actions.onTool(EditorTool.ERASER) }
+            ToolButton(Icons.Outlined.HighlightAlt, "Lasso", state.tool == EditorTool.LASSO) { actions.onTool(EditorTool.LASSO) }
+            ToolButton(Icons.Outlined.TextFields, "Text", state.tool == EditorTool.TEXT) { actions.onTool(EditorTool.TEXT) }
+            ToolButton(Icons.Outlined.PanTool, "Select", state.tool == EditorTool.HAND) { actions.onTool(EditorTool.HAND) }
+            Box {
+                ToolButton(Icons.Outlined.AddCircleOutline, "Insert", false) { insertMenu = true }
+                DropdownMenu(expanded = insertMenu, onDismissRequest = { insertMenu = false }) {
+                    DropdownMenuItem(text = { Text("Sticky note") }, leadingIcon = { Icon(Icons.Outlined.StickyNote2, null) }, onClick = { insertMenu = false; actions.onSticky() })
+                    DropdownMenuItem(text = { Text("Photo") }, leadingIcon = { Icon(Icons.Outlined.Image, null) }, onClick = { insertMenu = false; actions.onPhoto() })
+                    DropdownMenuItem(text = { Text("Camera") }, leadingIcon = { Icon(Icons.Outlined.PhotoCamera, null) }, onClick = { insertMenu = false; actions.onCamera() })
+                    DropdownMenuItem(text = { Text("Page…") }, leadingIcon = { Icon(Icons.Outlined.Add, null) }, onClick = { insertMenu = false; actions.onAddPage() })
+                }
+            }
         }
     }
 }
 
 @Composable
 private fun ToolButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
-    IconToggleButton(checked = selected, onCheckedChange = { onClick() }) {
+    Column(
+        Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).semantics { this.selected = selected }
+            .padding(horizontal = 2.dp, vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Box(
-            Modifier.size(40.dp).background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, RoundedCornerShape(12.dp)),
+            Modifier.size(width = 48.dp, height = 30.dp).background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent, RoundedCornerShape(15.dp)),
             contentAlignment = Alignment.Center
-        ) { Icon(icon, label, tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant) }
+        ) { Icon(icon, null, tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant) }
+        Text(label, fontSize = 11.sp, color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+
+@Composable
+fun ShapeBar(state: NoteEditorUiState, onShape: (ShapeKind) -> Unit, onEditPen: () -> Unit) {
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        ShapeKind.entries.forEach { kind -> FilterChip(selected = state.shapeKind == kind, onClick = { onShape(kind) }, label = { Text(kind.title) }) }
+        state.activePen?.let { pen ->
+            Box(Modifier.size(32.dp).background(Color(pen.colorArgb), CircleShape).border(1.dp, Color(0x33000000), CircleShape)
+                .clickable(onClickLabel = "Change shape color and width", onClick = onEditPen))
+        }
+    }
+}
+
+val StickyColors = listOf(0xFFFEF08A, 0xFFBBF7D0, 0xFFBFDBFE, 0xFFFBCFE8, 0xFFFED7AA, 0xFFE9D5FF).map { it.toInt() }
 
 /** Saved pens as one-tap chips; tapping the active pen again opens its editor. */
 @Composable
@@ -126,7 +176,7 @@ fun PenEditor(preset: PenPreset, canRemove: Boolean, onChange: ((PenPreset) -> P
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PenType.entries.forEach { type ->
                 FilterChip(selected = preset.type == type, onClick = {
-                    onChange { it.copy(type = type, size = if (type == PenType.HIGHLIGHTER) maxOf(it.size, 14f) else minOf(it.size, 14f)) }
+                    onChange { it.copy(type = type, size = if (type == PenType.HIGHLIGHTER) maxOf(it.size, 14f) else minOf(it.size, 24f)) }
                 }, label = { Text(type.title) })
             }
         }
@@ -169,6 +219,8 @@ fun EraserBar(state: NoteEditorUiState, onMode: (EraserMode) -> Unit, onSize: (F
 fun SelectionBar(
     canRecolor: Boolean,
     sourceAvailable: Boolean,
+    isSticky: Boolean,
+    onStickyColor: (Int) -> Unit,
     onDelete: () -> Unit,
     onDuplicate: () -> Unit,
     onFront: () -> Unit,
@@ -181,6 +233,13 @@ fun SelectionBar(
             IconButton(onClick = onDuplicate) { Icon(Icons.Outlined.ContentCopy, "Duplicate selection") }
             IconButton(onClick = onFront) { Icon(Icons.Outlined.FlipToFront, "Bring to front") }
             if (sourceAvailable) TextButton(onClick = onOpenSource) { Icon(Icons.Outlined.OpenInNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Open source page") }
+        }
+        if (isSticky) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StickyColors.forEach { color ->
+                    Box(Modifier.size(28.dp).background(Color(color), RoundedCornerShape(6.dp)).border(1.dp, Color(0x33000000), RoundedCornerShape(6.dp)).clickable { onStickyColor(color) })
+                }
+            }
         }
         if (canRecolor) {
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
