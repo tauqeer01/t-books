@@ -75,7 +75,19 @@ private class CanvasOverlay {
     var eraserCursor by mutableStateOf<Offset?>(null)
     /** Shape being dragged, in screen coordinates. */
     val shape = mutableStateListOf<Offset>()
+    /** Freehand auto-shape outline in page units, for recognition when the pen lifts. */
+    val freehand = mutableListOf<InkGeometry.Point>()
+    /** Tape being dragged out, in screen coordinates. */
+    var tape by mutableStateOf<Rect?>(null)
+    /** Laser trail: screen points with the time they were drawn; each stroke is its own list. */
+    val laser = mutableStateListOf<List<LaserPoint>>()
+    var now by mutableStateOf(0L)
 }
+
+private data class LaserPoint(val position: Offset, val time: Long)
+
+/** How long a laser trail stays visible after it is drawn. */
+private const val LASER_FADE_MS = 1100L
 
 @Composable
 fun NoteCanvas(
@@ -92,6 +104,18 @@ fun NoteCanvas(
     val latest by rememberUpdatedState(state)
     val renderer = remember { CanvasStrokeRenderer.create(InkBrushes.textures) }
     SideEffect { viewport.pageCount = state.pages.size.coerceAtLeast(1) }
+    if (state.tool == EditorTool.LASER) {
+        // Fades the trail; runs only while the laser is the active tool
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            while (true) {
+                if (overlay.laser.isEmpty()) { kotlinx.coroutines.delay(50); continue }
+                androidx.compose.runtime.withFrameMillis { }
+                overlay.now = android.os.SystemClock.uptimeMillis()
+                // A trail goes once its newest point has faded; the one being drawn always has a fresh point
+                overlay.laser.removeAll { trail -> trail.lastOrNull()?.let { overlay.now - it.time > LASER_FADE_MS } ?: true }
+            }
+        }
+    }
     val visible by remember { derivedStateOf { viewport.visiblePages() } }
 
     Box(
@@ -137,6 +161,21 @@ fun NoteCanvas(
                 val pen = latest.activePen
                 drawPath(path, Color(pen?.colorArgb ?: 0xFF111827.toInt()).copy(alpha = 0.7f), style = Stroke(((pen?.size ?: 4f) * viewport.pxPerUnit).coerceAtLeast(2f)))
             }
+            overlay.tape?.let { r ->
+                drawRoundRect(Color(latest.tapeColor).copy(alpha = 0.85f), r.topLeft, r.size, androidx.compose.ui.geometry.CornerRadius(3.dp.toPx()))
+            }
+            overlay.laser.forEach { trail ->
+                // One path per trail, so the translucent glow doesn't bead where segments overlap
+                val newest = trail.lastOrNull() ?: return@forEach
+                val fade = (1f - (overlay.now - newest.time).toFloat() / LASER_FADE_MS).coerceIn(0f, 1f)
+                if (fade <= 0f || trail.size < 2) return@forEach
+                val path = Path().apply { moveTo(trail[0].position.x, trail[0].position.y); trail.drop(1).forEach { lineTo(it.position.x, it.position.y) } }
+                fun line(color: Color, width: Float) = drawPath(path, color, style = Stroke(width, cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                    join = androidx.compose.ui.graphics.StrokeJoin.Round))
+                line(Color(0xFFFF1744).copy(alpha = 0.3f * fade), 14.dp.toPx())
+                line(Color(0xFFFF5252).copy(alpha = fade), 5.dp.toPx())
+                line(Color.White.copy(alpha = 0.9f * fade), 1.5.dp.toPx())
+            }
             overlay.eraserCursor?.let { c ->
                 drawCircle(Color(0x33000000), radius = latest.eraserSize / 2 * viewport.pxPerUnit, center = c)
                 drawCircle(Color(0xFF6B7280), radius = latest.eraserSize / 2 * viewport.pxPerUnit, center = c, style = Stroke(1.dp.toPx()))
@@ -177,12 +216,16 @@ private fun PageView(
         // Inside the page, 1.dp is one page unit, so text and elements stay crisp at every zoom level
         CompositionLocalProvider(LocalDensity provides Density(k, 1f)) {
             page.elements.forEach { element ->
-                key(element.id) { NoteElementView(element, page.id, state.editingElementId == element.id, textStates, vm) }
+                if (element.kind != ElementKind.TAPE) key(element.id) { NoteElementView(element, page.id, state.editingElementId == element.id, textStates, vm) }
             }
         }
 
         Canvas(Modifier.fillMaxSize()) {
-            drawIntoCanvas { canvas -> NotePageRenderer.drawStrokes(canvas.nativeCanvas, page, k, renderer) }
+            drawIntoCanvas { canvas ->
+                NotePageRenderer.drawStrokes(canvas.nativeCanvas, page, k, renderer)
+                // Tapes sit above the ink they cover
+                NotePageRenderer.drawTapes(canvas.nativeCanvas, page, k, revealed = state.revealedTapes)
+            }
             val selection = state.selection
             if (selection?.pageId == page.id) {
                 page.selectionBounds(selection, PAGE_WIDTH, PAGE_HEIGHT)?.let { b ->
@@ -208,7 +251,7 @@ private fun PageView(
 
 private const val HANDLE_RADIUS_DP = 9
 
-private enum class GestureMode { IDLE, INK, SHAPE, ERASE, LASSO, TRANSFORM, NAVIGATE, PASSTHROUGH }
+private enum class GestureMode { IDLE, INK, SHAPE, ERASE, LASSO, TRANSFORM, NAVIGATE, PASSTHROUGH, LASER, TAPE }
 
 private const val ADD_PAGE_TILE = NoteViewport.ADD_PAGE_TILE
 
@@ -290,13 +333,20 @@ private suspend fun PointerInputScope.routeGestures(
         val page = s.pages.getOrNull(index) ?: return null
         val fx = local.x / PAGE_WIDTH
         val fy = local.y / PAGE_HEIGHT
-        return page to page.elements.sortedByDescending { it.z }.firstOrNull { fx in it.x..it.right && fy in it.y..it.bottom }
+        // Tapes are drawn above everything else, so they are hit first
+        return page to page.elements.sortedWith(compareByDescending<NoteElement> { it.kind == ElementKind.TAPE }.thenByDescending { it.z })
+            .firstOrNull { fx in it.x..it.right && fy in it.y..it.bottom }
     }
 
     fun onTap(s: NoteEditorUiState, screen: Offset) {
         if (viewport.onAddPageTile(screen, s.pages.size)) { onAddPage(); return }
         val (page, element) = hitElement(s, screen) ?: run { vm.clearSelection(); if (s.editingElementId != null) vm.stopEditing(); return }
         val local = pagePoint(screen, s.pages.indexOf(page))
+        // Tapping a tape peels it back (or covers it again), whatever tool is active, unless it is selected for moving
+        if (element?.kind == ElementKind.TAPE && element.id !in s.selection?.elementIds.orEmpty()) {
+            if (s.editingElementId != null) vm.stopEditing()
+            vm.toggleTape(element.id); return
+        }
         when (s.tool) {
             EditorTool.TEXT -> when {
                 element != null && element.id == s.editingElementId -> Unit
@@ -319,14 +369,15 @@ private suspend fun PointerInputScope.routeGestures(
 
     fun reset() {
         mode = GestureMode.IDLE; activeId = null; nav.clear(); lastPagePoint = null; tapStart = null; navMoved = false
-        overlay.lasso.clear(); overlay.shape.clear(); overlay.eraserCursor = null; velocity.resetTracking()
+        overlay.lasso.clear(); overlay.shape.clear(); overlay.freehand.clear(); overlay.tape = null; overlay.eraserCursor = null; velocity.resetTracking()
     }
 
     fun cancelDrawing() {
         when (mode) {
             GestureMode.ERASE -> { vm.endErase(); overlay.eraserCursor = null }
             GestureMode.LASSO -> overlay.lasso.clear()
-            GestureMode.SHAPE -> overlay.shape.clear()
+            GestureMode.SHAPE -> { overlay.shape.clear(); overlay.freehand.clear() }
+            GestureMode.TAPE -> overlay.tape = null
             else -> Unit
         }
     }
@@ -354,10 +405,15 @@ private suspend fun PointerInputScope.routeGestures(
                     }
                     change.type == PointerType.Eraser -> GestureMode.ERASE
                     stylus && sideButton -> GestureMode.LASSO
+                    // Tape can't be written on: a tap peels it back, a drag scrolls (erasing and lasso still work on it)
+                    s.tool != EditorTool.TAPE && s.tool != EditorTool.ERASER && s.tool != EditorTool.LASSO &&
+                        hitElement(s, change.position)?.second?.kind == ElementKind.TAPE -> GestureMode.NAVIGATE
                     drawingTool && inks -> when (s.tool) {
                         EditorTool.PEN -> GestureMode.INK
                         EditorTool.SHAPE -> GestureMode.SHAPE
                         EditorTool.ERASER -> GestureMode.ERASE
+                        EditorTool.LASER -> GestureMode.LASER
+                        EditorTool.TAPE -> GestureMode.TAPE
                         else -> GestureMode.LASSO
                     }
                     s.tool == EditorTool.TEXT && editingRect(s)?.contains(change.position) == true -> GestureMode.PASSTHROUGH
@@ -371,11 +427,13 @@ private suspend fun PointerInputScope.routeGestures(
                     GestureMode.NAVIGATE -> { nav[change.id] = change.position; tapStart = change.position; velocity.resetTracking() }
                     GestureMode.LASSO -> overlay.lasso.add(change.position)
                     GestureMode.ERASE -> overlay.eraserCursor = change.position
+                    GestureMode.LASER -> overlay.laser.add(listOf(LaserPoint(change.position, android.os.SystemClock.uptimeMillis())))
+                    GestureMode.SHAPE -> lastPagePoint?.let { overlay.freehand.add(InkGeometry.Point(it.x, it.y)) }
                     else -> Unit
                 }
             } else if (change.type == PointerType.Touch) {
                 // A second finger turns finger drawing into a pan/zoom; the half-drawn stroke is canceled
-                if (activeIsTouch && (mode == GestureMode.INK || mode == GestureMode.SHAPE || mode == GestureMode.ERASE || mode == GestureMode.LASSO)) {
+                if (activeIsTouch && (mode == GestureMode.INK || mode == GestureMode.SHAPE || mode == GestureMode.ERASE || mode == GestureMode.LASSO || mode == GestureMode.TAPE)) {
                     cancelDrawing()
                     event.changes.firstOrNull { it.id == activeId }?.let { nav[it.id] = it.position }
                     mode = GestureMode.NAVIGATE
@@ -388,7 +446,20 @@ private suspend fun PointerInputScope.routeGestures(
         val active = event.changes.firstOrNull { it.id == activeId }
         when (mode) {
             GestureMode.INK -> event.changes.forEach { if (it.id != activeId) it.consume() }
-            GestureMode.SHAPE -> {
+            GestureMode.SHAPE -> if (s.autoShape) {
+                event.changes.forEach { it.consume() }
+                if (active != null) {
+                    val top = viewport.pageTop(gesturePage)
+                    if (active.pressed) {
+                        val point = pagePoint(active.position, gesturePage)
+                        overlay.freehand.add(InkGeometry.Point(point.x, point.y))
+                        overlay.shape.add(viewport.toScreen(Offset(point.x, top + point.y)))
+                    } else {
+                        s.pages.getOrNull(gesturePage)?.let { p -> vm.addRecognizedShape(p.id, overlay.freehand.toList()) }
+                        overlay.shape.clear(); overlay.freehand.clear()
+                    }
+                }
+            } else {
                 event.changes.forEach { it.consume() }
                 val start = lastPagePoint
                 if (active != null && start != null) {
@@ -404,6 +475,32 @@ private suspend fun PointerInputScope.routeGestures(
                     }
                 }
             }
+            GestureMode.LASER -> {
+                event.changes.forEach { it.consume() }
+                if (active != null && active.pressed && overlay.laser.isNotEmpty()) {
+                    val last = overlay.laser.lastIndex
+                    overlay.laser[last] = overlay.laser[last] + LaserPoint(active.position, android.os.SystemClock.uptimeMillis())
+                }
+            }
+            GestureMode.TAPE -> {
+                event.changes.forEach { it.consume() }
+                val start = lastPagePoint
+                if (active != null && start != null) {
+                    val top = viewport.pageTop(gesturePage)
+                    val end = pagePoint(active.position, gesturePage)
+                    if (active.pressed) {
+                        overlay.tape = Rect(viewport.toScreen(Offset(start.x, top + start.y)), viewport.toScreen(Offset(end.x, top + end.y))).let {
+                            Rect(minOf(it.left, it.right), minOf(it.top, it.bottom), maxOf(it.left, it.right), maxOf(it.top, it.bottom))
+                        }
+                    } else {
+                        val downAt = viewport.toScreen(Offset(start.x, top + start.y))
+                        // A tap (no drag) on a tape peels it back instead of starting a new one
+                        if ((active.position - downAt).getDistance() <= slop) onTap(s, active.position)
+                        else s.pages.getOrNull(gesturePage)?.let { p -> vm.addTape(p.id, InkGeometry.Point(start.x, start.y), InkGeometry.Point(end.x, end.y)) }
+                        overlay.tape = null
+                    }
+                }
+            }
             GestureMode.ERASE -> {
                 event.changes.forEach { it.consume() }
                 if (active != null && active.pressed) {
@@ -415,8 +512,12 @@ private suspend fun PointerInputScope.routeGestures(
             }
             GestureMode.LASSO -> {
                 event.changes.forEach { it.consume() }
+                val lassoStart = overlay.lasso.firstOrNull()
                 if (active != null && active.pressed) overlay.lasso.add(active.position)
-                else if (active != null && overlay.lasso.size > 2) {
+                // A tap rather than a loop: select what was tapped, or clear the selection
+                else if (active != null && lassoStart != null && overlay.lasso.all { (it - lassoStart).getDistance() <= slop }) {
+                    onTap(s, lassoStart); overlay.lasso.clear()
+                } else if (active != null && overlay.lasso.size > 2) {
                     val docPoints = overlay.lasso.map { viewport.toDocument(it) }
                     val pageIndex = viewport.pageIndexAt(docPoints.map { it.y }.average().toFloat())
                     s.pages.getOrNull(pageIndex)?.let { p -> vm.lassoSelect(p.id, docPoints.map { d -> viewport.toPage(d, pageIndex).let { InkGeometry.Point(it.x, it.y) } }) }

@@ -20,7 +20,8 @@ enum class PageBackground(val title: String, val description: String) {
     ISOMETRIC("Isometric", "30° grid for 3D drawing")
 }
 
-enum class ElementKind { TEXT, IMAGE, PDF_CLIP }
+/** [TAPE] is a study cover drawn over ink and text; tap it to reveal what is underneath. */
+enum class ElementKind { TEXT, IMAGE, PDF_CLIP, TAPE }
 
 data class NoteFolder(
     val id: String,
@@ -57,7 +58,7 @@ data class NoteElement(
     val quoteText: String? = null,
     val sourceBookId: String? = null,
     val sourcePage: Int? = null,
-    /** Background of a sticky note (ARGB); null for plain text boxes, images, and clips. */
+    /** Background of a sticky note or color of a tape (ARGB); null for plain text boxes, images, and clips. */
     val fillColor: Int? = null
 ) {
     val bottom: Float get() = y + height

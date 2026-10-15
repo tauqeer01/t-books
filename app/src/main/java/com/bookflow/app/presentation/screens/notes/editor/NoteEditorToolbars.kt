@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -29,6 +30,12 @@ import androidx.compose.material.icons.outlined.StickyNote2
 import androidx.compose.material.icons.outlined.CheckBox
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.LibraryAdd
+import androidx.compose.material.icons.outlined.AutoFixHigh
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material.icons.outlined.Flare
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.FlipToFront
@@ -89,7 +96,8 @@ data class ToolbarActions(
     val onSticky: () -> Unit,
     val onPhoto: () -> Unit,
     val onCamera: () -> Unit,
-    val onAddPage: () -> Unit
+    val onAddPage: () -> Unit,
+    val onPaste: () -> Unit
 )
 
 /** Every tool visible with a label, sized to fit a phone; inserts live in one menu. */
@@ -97,13 +105,11 @@ data class ToolbarActions(
 fun EditorToolBar(state: NoteEditorUiState, actions: ToolbarActions) {
     var insertMenu by remember { mutableStateOf(false) }
     Surface(tonalElevation = 3.dp) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-            ToolButton(Icons.Outlined.Create, "Pen", state.tool == EditorTool.PEN) { actions.onTool(EditorTool.PEN) }
-            ToolButton(Icons.Outlined.Category, "Shapes", state.tool == EditorTool.SHAPE) { actions.onTool(EditorTool.SHAPE) }
-            ToolButton(Icons.Outlined.CleaningServices, "Eraser", state.tool == EditorTool.ERASER) { actions.onTool(EditorTool.ERASER) }
-            ToolButton(Icons.Outlined.HighlightAlt, "Lasso", state.tool == EditorTool.LASSO) { actions.onTool(EditorTool.LASSO) }
-            ToolButton(Icons.Outlined.TextFields, "Text", state.tool == EditorTool.TEXT) { actions.onTool(EditorTool.TEXT) }
-            ToolButton(Icons.Outlined.PanTool, "Select", state.tool == EditorTool.HAND) { actions.onTool(EditorTool.HAND) }
+        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+            // Tools scroll on narrow phones; Insert stays pinned at the end
+            Row(Modifier.weight(1f).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                EditorToolEntries.forEach { (tool, entry) -> ToolButton(entry.first, entry.second, state.tool == tool) { actions.onTool(tool) } }
+            }
             Box {
                 ToolButton(Icons.Outlined.AddCircleOutline, "Insert", false) { insertMenu = true }
                 DropdownMenu(expanded = insertMenu, onDismissRequest = { insertMenu = false }) {
@@ -111,11 +117,25 @@ fun EditorToolBar(state: NoteEditorUiState, actions: ToolbarActions) {
                     DropdownMenuItem(text = { Text("Photo") }, leadingIcon = { Icon(Icons.Outlined.Image, null) }, onClick = { insertMenu = false; actions.onPhoto() })
                     DropdownMenuItem(text = { Text("Camera") }, leadingIcon = { Icon(Icons.Outlined.PhotoCamera, null) }, onClick = { insertMenu = false; actions.onCamera() })
                     DropdownMenuItem(text = { Text("Page…") }, leadingIcon = { Icon(Icons.Outlined.Add, null) }, onClick = { insertMenu = false; actions.onAddPage() })
+                    DropdownMenuItem(text = { Text("Paste") }, leadingIcon = { Icon(Icons.Outlined.ContentPaste, null) }, enabled = state.clipboardAvailable,
+                        onClick = { insertMenu = false; actions.onPaste() })
                 }
             }
         }
     }
 }
+
+/** Tool icons and labels, shared by the bottom bar and the floating toolbar. */
+val EditorToolEntries: List<Pair<EditorTool, Pair<ImageVector, String>>> = listOf(
+    EditorTool.PEN to (Icons.Outlined.Create to "Pen"),
+    EditorTool.SHAPE to (Icons.Outlined.Category to "Shapes"),
+    EditorTool.ERASER to (Icons.Outlined.CleaningServices to "Eraser"),
+    EditorTool.LASSO to (Icons.Outlined.HighlightAlt to "Lasso"),
+    EditorTool.TEXT to (Icons.Outlined.TextFields to "Text"),
+    EditorTool.TAPE to (Icons.Outlined.VisibilityOff to "Tape"),
+    EditorTool.LASER to (Icons.Outlined.Flare to "Laser"),
+    EditorTool.HAND to (Icons.Outlined.PanTool to "Select")
+)
 
 @Composable
 private fun ToolButton(icon: ImageVector, label: String, selected: Boolean, onClick: () -> Unit) {
@@ -133,10 +153,12 @@ private fun ToolButton(icon: ImageVector, label: String, selected: Boolean, onCl
 }
 
 @Composable
-fun ShapeBar(state: NoteEditorUiState, onShape: (ShapeKind) -> Unit, onEditPen: () -> Unit) {
+fun ShapeBar(state: NoteEditorUiState, onShape: (ShapeKind) -> Unit, onAuto: () -> Unit, onEditPen: () -> Unit) {
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        ShapeKind.entries.forEach { kind -> FilterChip(selected = state.shapeKind == kind, onClick = { onShape(kind) }, label = { Text(kind.title) }) }
+        // Auto: draw freely; circles, boxes, triangles, and lines snap to clean shapes
+        FilterChip(selected = state.autoShape, onClick = onAuto, label = { Text("Auto") }, leadingIcon = { Icon(Icons.Outlined.AutoFixHigh, null, Modifier.size(18.dp)) })
+        ShapeKind.entries.forEach { kind -> FilterChip(selected = !state.autoShape && state.shapeKind == kind, onClick = { onShape(kind) }, label = { Text(kind.title) }) }
         state.activePen?.let { pen ->
             Box(Modifier.size(32.dp).background(Color(pen.colorArgb), CircleShape).border(1.dp, Color(0x33000000), CircleShape)
                 .clickable(onClickLabel = "Change shape color and width", onClick = onEditPen))
@@ -170,8 +192,17 @@ fun PenPresetBar(state: NoteEditorUiState, onSelect: (Int) -> Unit, onEditActive
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun PenEditor(preset: PenPreset, canRemove: Boolean, onChange: ((PenPreset) -> PenPreset) -> Unit, onRemove: () -> Unit, onDone: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+fun PenEditor(
+    preset: PenPreset,
+    canRemove: Boolean,
+    recentColors: List<Int>,
+    onChange: ((PenPreset) -> PenPreset) -> Unit,
+    onCustomColor: (Int) -> Unit,
+    onRemove: () -> Unit,
+    onDone: () -> Unit
+) {
+    var picking by remember { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Pen", style = MaterialTheme.typography.titleMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PenType.entries.forEach { type ->
@@ -182,13 +213,19 @@ fun PenEditor(preset: PenPreset, canRemove: Boolean, onChange: ((PenPreset) -> P
         }
         Text("Color", style = MaterialTheme.typography.labelLarge)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            InkBrushes.palette.forEach { color ->
+            (InkBrushes.palette + recentColors.filterNot { c -> InkBrushes.palette.any { (it and 0xFFFFFF) == (c and 0xFFFFFF) } }).forEach { color ->
                 val selected = (color and 0xFFFFFF) == (preset.colorArgb and 0xFFFFFF)
                 Box(Modifier.size(32.dp).background(Color(color), CircleShape)
                     .border(if (selected) 3.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else Color(0x33000000), CircleShape)
                     .clickable { onChange { it.copy(colorArgb = color) } })
             }
+            // Custom color: a rainbow swatch that opens the picker
+            Box(Modifier.size(32.dp).clip(CircleShape)
+                .background(androidx.compose.ui.graphics.Brush.sweepGradient(listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red)))
+                .clickable(onClickLabel = "Custom color") { picking = !picking },
+                contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Add, null, tint = Color.White, modifier = Modifier.size(18.dp)) }
         }
+        if (picking) NoteColorPicker(preset.colorArgb) { color -> onCustomColor(color); picking = false }
         val sizes = if (preset.type == PenType.HIGHLIGHTER) InkBrushes.highlighterSizes else InkBrushes.sizes
         Text("Thickness", style = MaterialTheme.typography.labelLarge)
         Slider(value = preset.size, onValueChange = { v -> onChange { it.copy(size = v) } }, valueRange = sizes.first()..sizes.last())
@@ -201,18 +238,42 @@ fun PenEditor(preset: PenPreset, canRemove: Boolean, onChange: ((PenPreset) -> P
 }
 
 @Composable
-fun EraserBar(state: NoteEditorUiState, onMode: (EraserMode) -> Unit, onSize: (Float) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        SingleChoiceSegmentedButtonRow {
-            EraserMode.entries.forEachIndexed { i, mode ->
-                SegmentedButton(selected = state.eraserMode == mode, onClick = { onMode(mode) }, shape = SegmentedButtonDefaults.itemShape(i, EraserMode.entries.size)) {
-                    Text(mode.title, fontSize = 12.sp)
+fun EraserBar(state: NoteEditorUiState, onMode: (EraserMode) -> Unit, onSize: (Float) -> Unit, onClearPage: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) {
+                EraserMode.entries.forEachIndexed { i, mode ->
+                    SegmentedButton(selected = state.eraserMode == mode, onClick = { onMode(mode) }, shape = SegmentedButtonDefaults.itemShape(i, EraserMode.entries.size)) {
+                        Text(mode.title, fontSize = 12.sp, maxLines = 1)
+                    }
                 }
             }
+            TextButton(onClick = onClearPage) { Text("Clear page") }
         }
-        Spacer(Modifier.width(12.dp))
-        Slider(value = state.eraserSize, onValueChange = onSize, valueRange = 8f..80f, modifier = Modifier.weight(1f))
+        Slider(value = state.eraserSize, onValueChange = onSize, valueRange = 8f..80f, modifier = Modifier.fillMaxWidth().height(32.dp))
     }
+}
+
+/** Tape colors, plus showing or covering every tape at once for self-testing. */
+@Composable
+fun TapeBar(state: NoteEditorUiState, onColor: (Int) -> Unit, onRevealAll: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            TapeColors.forEach { color ->
+                val selected = state.tapeColor == color
+                Box(Modifier.size(width = 34.dp, height = 22.dp).background(Color(color), RoundedCornerShape(4.dp))
+                    .border(if (selected) 2.5.dp else 0.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
+                    .clickable(onClickLabel = "Tape color") { onColor(color) })
+            }
+        }
+        TextButton(onClick = { onRevealAll(true) }) { Text("Show all") }
+        TextButton(onClick = { onRevealAll(false) }) { Text("Hide all") }
+    }
+}
+
+@Composable
+fun HintBar(text: String) {
+    Text(text, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp))
 }
 
 @Composable
@@ -223,6 +284,8 @@ fun SelectionBar(
     onStickyColor: (Int) -> Unit,
     onDelete: () -> Unit,
     onDuplicate: () -> Unit,
+    onCopy: () -> Unit,
+    onCut: () -> Unit,
     onFront: () -> Unit,
     onRecolor: (Int) -> Unit,
     onOpenSource: () -> Unit
@@ -230,7 +293,9 @@ fun SelectionBar(
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, "Delete selection") }
-            IconButton(onClick = onDuplicate) { Icon(Icons.Outlined.ContentCopy, "Duplicate selection") }
+            IconButton(onClick = onDuplicate) { Icon(Icons.Outlined.LibraryAdd, "Duplicate selection") }
+            IconButton(onClick = onCopy) { Icon(Icons.Outlined.ContentCopy, "Copy selection") }
+            IconButton(onClick = onCut) { Icon(Icons.Outlined.ContentCut, "Cut selection") }
             IconButton(onClick = onFront) { Icon(Icons.Outlined.FlipToFront, "Bring to front") }
             if (sourceAvailable) TextButton(onClick = onOpenSource) { Icon(Icons.Outlined.OpenInNew, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Open source page") }
         }

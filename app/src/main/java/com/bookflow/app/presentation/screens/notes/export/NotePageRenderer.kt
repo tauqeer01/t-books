@@ -40,8 +40,37 @@ object NotePageRenderer {
     fun draw(context: Context, canvas: Canvas, page: EditorPage, scale: Float, renderer: CanvasStrokeRenderer) {
         canvas.drawColor(Color.WHITE)
         drawBackground(canvas, page.background, scale)
-        page.elements.sortedBy { it.z }.forEach { drawElement(context, canvas, it, scale) }
+        page.elements.filter { it.kind != ElementKind.TAPE }.sortedBy { it.z }.forEach { drawElement(context, canvas, it, scale) }
         drawStrokes(canvas, page, scale, renderer)
+        drawTapes(canvas, page, scale)
+    }
+
+    /**
+     * Study tapes, above ink and text. Covered tapes are opaque with a faint stripe; [revealed] ones (editor
+     * only) shrink to a tinted outline so the content shows while the tape stays visible.
+     */
+    fun drawTapes(canvas: Canvas, page: EditorPage, scale: Float, revealed: Set<String> = emptySet()) {
+        val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+        val stripe = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x26FFFFFF; strokeWidth = 6f * scale }
+        page.elements.filter { it.kind == ElementKind.TAPE }.sortedBy { it.z }.forEach { tape ->
+            val rect = RectF(tape.x * PAGE_WIDTH * scale, tape.y * PAGE_HEIGHT * scale, tape.right * PAGE_WIDTH * scale, tape.bottom * PAGE_HEIGHT * scale)
+            val color = tape.fillColor ?: 0xFFF59E0B.toInt()
+            val radius = 4f * scale
+            if (tape.id in revealed) {
+                fill.style = Paint.Style.FILL; fill.color = (color and 0x00FFFFFF) or 0x1F000000
+                canvas.drawRoundRect(rect, radius, radius, fill)
+                fill.style = Paint.Style.STROKE; fill.strokeWidth = 2f * scale; fill.color = (color and 0x00FFFFFF) or 0x99000000.toInt()
+                canvas.drawRoundRect(rect, radius, radius, fill)
+                return@forEach
+            }
+            fill.style = Paint.Style.FILL; fill.color = color or 0xFF000000.toInt()
+            canvas.drawRoundRect(rect, radius, radius, fill)
+            canvas.save()
+            canvas.clipRect(rect)
+            var x = rect.left - rect.height()
+            while (x < rect.right) { canvas.drawLine(x, rect.bottom, x + rect.height(), rect.top, stripe); x += 22f * scale }
+            canvas.restore()
+        }
     }
 
     /** The renderer's matrix only describes the transform for level of detail; the canvas must apply it too. */
@@ -65,6 +94,7 @@ object NotePageRenderer {
                 }
                 drawText(canvas, element.html.orEmpty(), rect, scale)
             }
+            ElementKind.TAPE -> Unit // drawn above the ink by drawTapes
             ElementKind.IMAGE, ElementKind.PDF_CLIP -> {
                 val path = element.imagePath
                 if (path != null) drawImage(canvas, path, rect)

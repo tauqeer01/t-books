@@ -7,12 +7,15 @@ import com.bookflow.app.notes.ink.InkStroke
 import com.bookflow.app.notes.ink.PenPreset
 import com.bookflow.app.notes.ink.ShapeKind
 
-enum class EditorTool { PEN, SHAPE, ERASER, LASSO, TEXT, HAND;
+enum class EditorTool { PEN, SHAPE, ERASER, LASSO, TEXT, HAND, LASER, TAPE;
     /** Tools whose stylus/finger drag produces ink-like input rather than navigation. */
-    val draws: Boolean get() = this == PEN || this == SHAPE || this == ERASER || this == LASSO
+    val draws: Boolean get() = this != TEXT && this != HAND
 }
 
-enum class EraserMode(val title: String) { STROKE("Stroke"), PARTIAL("Partial") }
+enum class EraserMode(val title: String) { STROKE("Stroke"), PARTIAL("Partial"), HIGHLIGHTER("Highlighter") }
+
+/** Study tape colors: opaque, so nothing shows through until the tape is tapped. */
+val TapeColors = listOf(0xFFF59E0B, 0xFF60A5FA, 0xFFF472B6, 0xFF34D399, 0xFF9CA3AF).map { it.toInt() }
 
 data class EditorPage(
     val id: String,
@@ -37,6 +40,15 @@ data class NoteEditorUiState(
     val presets: List<PenPreset> = emptyList(),
     val activePreset: Int = 0,
     val shapeKind: ShapeKind = ShapeKind.RECTANGLE,
+    /** Shape tool draws freehand and snaps what it recognizes to a clean shape. */
+    val autoShape: Boolean = true,
+    val tapeColor: Int = TapeColors.first(),
+    /** Tapes currently peeled back; not saved, so a reopened note starts covered. */
+    val revealedTapes: Set<String> = emptySet(),
+    val clipboardAvailable: Boolean = false,
+    val floatingToolbar: Boolean = true,
+    /** Custom colors picked in the pen editor, newest first. */
+    val recentColors: List<Int> = emptyList(),
     val eraserMode: EraserMode = EraserMode.STROKE,
     val eraserSize: Float = 24f,
     val selection: EditorSelection? = null,

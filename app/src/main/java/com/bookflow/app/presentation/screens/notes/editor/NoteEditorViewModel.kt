@@ -55,7 +55,10 @@ class NoteEditorViewModel(
     private var saveJob: Job? = null
 
     init {
-        _state.update { it.copy(presets = pens.presets(), activePreset = pens.activeIndex(), fingerDrawing = pens.fingerDrawing()) }
+        _state.update {
+            it.copy(presets = pens.presets(), activePreset = pens.activeIndex(), fingerDrawing = pens.fingerDrawing(),
+                floatingToolbar = pens.floatingToolbar(), recentColors = pens.recentColors(), clipboardAvailable = !NoteClipboard.isEmpty)
+        }
         viewModelScope.launch { load() }
     }
 
@@ -102,13 +105,51 @@ class NoteEditorViewModel(
         s.copy(presets = presets, activePreset = active)
     }
 
-    fun selectShape(kind: ShapeKind) = _state.update { it.copy(shapeKind = kind, tool = EditorTool.SHAPE) }
+    fun selectShape(kind: ShapeKind) = _state.update { it.copy(shapeKind = kind, autoShape = false, tool = EditorTool.SHAPE) }
+    fun selectAutoShape() = _state.update { it.copy(autoShape = true, tool = EditorTool.SHAPE) }
+
+    /** Picks the first highlighter pen, adding one if the user has none. */
+    fun selectHighlighter() {
+        val index = _state.value.presets.indexOfFirst { it.type == PenType.HIGHLIGHTER }
+        if (index >= 0) { selectPreset(index); return }
+        _state.update { s ->
+            val presets = s.presets + InkBrushes.defaultPresets.first { it.type == PenType.HIGHLIGHTER }
+            pens.save(presets); pens.setActive(presets.lastIndex)
+            s.copy(presets = presets, activePreset = presets.lastIndex, tool = EditorTool.PEN)
+        }
+    }
+
+    fun floatingPosition() = pens.floatingPosition()
+    fun setFloatingPosition(x: Float, y: Float) = pens.setFloatingPosition(x, y)
+
+    fun setFloatingToolbar(enabled: Boolean) { pens.setFloatingToolbar(enabled); _state.update { it.copy(floatingToolbar = enabled) } }
+
+    /** A custom color from the picker: applied to the active pen and remembered for next time. */
+    fun useCustomColor(colorArgb: Int) {
+        updateActivePreset { it.copy(colorArgb = colorArgb) }
+        val recent = (listOf(colorArgb) + _state.value.recentColors.filterNot { it == colorArgb }).take(MAX_RECENT_COLORS)
+        pens.setRecentColors(recent)
+        _state.update { it.copy(recentColors = recent) }
+    }
 
     /** A shape dragged from [a] to [b] in page units, drawn with the active pen's color and width. */
     fun addShape(pageId: String, a: InkGeometry.Point, b: InkGeometry.Point) {
         if (kotlin.math.hypot(b.x - a.x, b.y - a.y) < 4f) return
+        addOutline(pageId, NoteShapes.points(_state.value.shapeKind, a, b))
+    }
+
+    /**
+     * Auto shape: a hand-drawn outline (page units) becomes the clean shape it resembles; anything else stays
+     * as the freehand line that was drawn.
+     */
+    fun addRecognizedShape(pageId: String, drawn: List<InkGeometry.Point>) {
+        if (drawn.size < 2) return
+        val recognized = com.bookflow.app.notes.ink.ShapeRecognizer.recognize(drawn)
+        addOutline(pageId, recognized?.points ?: drawn)
+    }
+
+    private fun addOutline(pageId: String, points: List<InkGeometry.Point>) {
         val pen = _state.value.activePen ?: return
-        val points = NoteShapes.points(_state.value.shapeKind, a, b)
         val batch = MutableStrokeInputBatch()
         points.forEachIndexed { i, p -> batch.add(InputToolType.STYLUS, p.x, p.y, i * 4L) }
         // Shapes use the solid pen of the same type unless the active pen is a highlighter or dashed line
@@ -145,6 +186,8 @@ class NoteEditorViewModel(
         val radius = _state.value.eraserSize / 2
         val updated = when (_state.value.eraserMode) {
             EraserMode.STROKE -> page.strokes.filterNot { s -> near(s, a, b, radius) && InkGeometry.touches(s.points, a, b, radius + s.size / 2) }
+            // Clears highlighting without touching the handwriting under it
+            EraserMode.HIGHLIGHTER -> page.strokes.filterNot { s -> s.pen == PenType.HIGHLIGHTER && near(s, a, b, radius) && InkGeometry.touches(s.points, a, b, radius + s.size / 2) }
             EraserMode.PARTIAL -> page.strokes.flatMap { s ->
                 val runs = if (near(s, a, b, radius)) InkGeometry.splitRuns(s.points, a, b, radius + s.size / 2) else null
                 if (runs == null) listOf(s) else s.slices(runs)
@@ -160,6 +203,14 @@ class NoteEditorViewModel(
         val box = stroke.bounds ?: return false
         return maxOf(a.x, b.x) + radius >= box.left && minOf(a.x, b.x) - radius <= box.right &&
             maxOf(a.y, b.y) + radius >= box.top && minOf(a.y, b.y) - radius <= box.bottom
+    }
+
+    /** Removes all ink on the page (text, images, and tapes stay). One undo step. */
+    fun clearPageInk(pageId: String) {
+        val page = _state.value.page(pageId) ?: return
+        if (page.strokes.isEmpty()) { _state.update { it.copy(message = "No handwriting on this page") }; return }
+        editPage(pageId) { it.copy(strokes = emptyList()) }
+        _state.update { it.copy(message = "Page cleared · Undo restores it") }
     }
 
     fun endErase() {
@@ -235,6 +286,67 @@ class NoteEditorViewModel(
             page.copy(strokes = page.strokes + strokes, elements = page.elements + elements)
         }
         _state.update { it.copy(selection = newSelection) }
+    }
+
+    fun copySelection() {
+        val selection = _state.value.selection ?: return
+        val page = _state.value.page(selection.pageId) ?: return
+        NoteClipboard.put(page.strokes.filter { it.id in selection.strokeIds }, page.elements.filter { it.id in selection.elementIds })
+        _state.update { it.copy(clipboardAvailable = !NoteClipboard.isEmpty, message = "Copied") }
+    }
+
+    fun cutSelection() { copySelection(); deleteSelection(); _state.update { it.copy(message = "Cut") } }
+
+    /** Pastes the clipboard with its top-left at ([x], [y]) page fractions, and selects it for moving. */
+    fun paste(pageId: String, x: Float, y: Float) {
+        val clip = NoteClipboard.content ?: return
+        viewModelScope.launch {
+            val strokeBounds = clip.strokes.mapNotNull { it.bounds }
+            val elementBounds = clip.elements.map { InkGeometry.Bounds(it.x * PAGE_WIDTH, it.y * PAGE_HEIGHT, it.right * PAGE_WIDTH, it.bottom * PAGE_HEIGHT) }
+            val bounds = (strokeBounds + elementBounds).reduceOrNull { a, b -> a.union(b) } ?: return@launch
+            val dx = (x * PAGE_WIDTH).coerceIn(0f, (PAGE_WIDTH - bounds.width).coerceAtLeast(0f)) - bounds.left
+            val dy = (y * PAGE_HEIGHT).coerceIn(0f, (PAGE_HEIGHT - bounds.height).coerceAtLeast(0f)) - bounds.top
+            // Images get their own copy in this note, so deleting either one never breaks the other
+            val elements = withContext(Dispatchers.IO) {
+                clip.elements.mapNotNull { e ->
+                    val image = e.imagePath?.let { path -> runCatching { files.duplicate(noteId, path) }.getOrNull() ?: return@mapNotNull null }
+                    e.copy(id = UUID.randomUUID().toString(), x = e.x + dx / PAGE_WIDTH, y = e.y + dy / PAGE_HEIGHT, imagePath = image)
+                }
+            }
+            val strokes = clip.strokes.map { it.transformed { px, py -> (px + dx) to (py + dy) }.copy(id = UUID.randomUUID().toString()) }
+            editPage(pageId) { page ->
+                var z = page.elements.maxOfOrNull { it.z } ?: 0
+                page.copy(strokes = page.strokes + strokes, elements = page.elements + elements.map { it.copy(z = ++z) })
+            }
+            _state.update {
+                it.copy(selection = EditorSelection(pageId, strokes.map { s -> s.id }.toSet(), elements.map { e -> e.id }.toSet()), tool = EditorTool.LASSO,
+                    editingElementId = null)
+            }
+        }
+    }
+
+    // --- Tape ----------------------------------------------------------------------------------------------
+
+    fun setTapeColor(color: Int) = _state.update { it.copy(tapeColor = color, tool = EditorTool.TAPE) }
+
+    /** Tape over the box dragged from [a] to [b] (page units); a thin drag makes a strip one line tall. */
+    fun addTape(pageId: String, a: InkGeometry.Point, b: InkGeometry.Point) {
+        if (kotlin.math.hypot(b.x - a.x, b.y - a.y) < 12f) return
+        var top = minOf(a.y, b.y); var bottom = maxOf(a.y, b.y)
+        if (bottom - top < MIN_TAPE_HEIGHT) { val mid = (top + bottom) / 2; top = mid - MIN_TAPE_HEIGHT / 2; bottom = mid + MIN_TAPE_HEIGHT / 2 }
+        val left = minOf(a.x, b.x).coerceAtLeast(0f); val right = maxOf(a.x, b.x).coerceAtMost(PAGE_WIDTH)
+        val element = NoteElement(UUID.randomUUID().toString(), ElementKind.TAPE, left / PAGE_WIDTH, (top / PAGE_HEIGHT).coerceIn(0f, 1f),
+            (right - left) / PAGE_WIDTH, (bottom - top) / PAGE_HEIGHT, fillColor = _state.value.tapeColor)
+        editPage(pageId) { page -> page.copy(elements = page.elements + element.copy(z = (page.elements.maxOfOrNull { it.z } ?: 0) + 1)) }
+    }
+
+    fun toggleTape(elementId: String) = _state.update { s ->
+        s.copy(revealedTapes = if (elementId in s.revealedTapes) s.revealedTapes - elementId else s.revealedTapes + elementId)
+    }
+
+    /** Reveals every tape in the note, or covers them all again. */
+    fun revealAllTapes(reveal: Boolean) = _state.update { s ->
+        s.copy(revealedTapes = if (reveal) s.pages.flatMap { p -> p.elements.filter { it.kind == ElementKind.TAPE }.map { it.id } }.toSet() else emptySet())
     }
 
     fun setStickyColor(color: Int) {
@@ -394,7 +506,9 @@ class NoteEditorViewModel(
         val ids = synchronized(dirtyPages) { dirtyPages.toList().also { dirtyPages.clear() } }
         if (ids.isEmpty()) return@withLock
         val pages = _state.value.pages.filter { it.id in ids }
-        withContext(Dispatchers.IO) {
+        // A new edit cancels the pending debounce, never a write already under way: these pages are no longer
+        // marked dirty, so an interrupted write would drop them until their next edit
+        withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
             pages.forEach { page ->
                 try {
                     if (!page.inkUnavailable) InkSerializer.write(files.inkFile(noteId, page.id), page.strokes)
@@ -449,5 +563,8 @@ class NoteEditorViewModel(
     private companion object {
         const val SAVE_DEBOUNCE_MS = 500L
         const val MAX_PRESETS = 10
+        const val MAX_RECENT_COLORS = 8
+        /** About one ruled line. */
+        const val MIN_TAPE_HEIGHT = 40f
     }
 }

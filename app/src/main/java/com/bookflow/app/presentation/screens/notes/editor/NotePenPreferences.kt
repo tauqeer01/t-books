@@ -33,7 +33,21 @@ class NotePenPreferences(context: Context) {
     fun fingerDrawing() = prefs.getBoolean(KEY_FINGER, true)
     fun setFingerDrawing(enabled: Boolean) = prefs.edit().putBoolean(KEY_FINGER, enabled).apply()
 
+    fun floatingToolbar() = prefs.getBoolean(KEY_FLOATING, true)
+    fun setFloatingToolbar(enabled: Boolean) = prefs.edit().putBoolean(KEY_FLOATING, enabled).apply()
+
+    /** Floating toolbar position as fractions of the canvas, so it survives rotation. */
+    fun floatingPosition(): Pair<Float, Float> = prefs.getFloat(KEY_FLOAT_X, 1f) to prefs.getFloat(KEY_FLOAT_Y, 0.35f)
+    fun setFloatingPosition(x: Float, y: Float) = prefs.edit().putFloat(KEY_FLOAT_X, x).putFloat(KEY_FLOAT_Y, y).apply()
+
+    fun recentColors(): List<Int> = prefs.getString(KEY_RECENT_COLORS, null)?.split(',')?.mapNotNull { it.toLongOrNull()?.toInt() }.orEmpty()
+    fun setRecentColors(colors: List<Int>) = prefs.edit().putString(KEY_RECENT_COLORS, colors.joinToString(",") { (it.toLong() and 0xFFFFFFFFL).toString() }).apply()
+
     private companion object {
+        const val KEY_FLOATING = "floating_toolbar"
+        const val KEY_FLOAT_X = "floating_x"
+        const val KEY_FLOAT_Y = "floating_y"
+        const val KEY_RECENT_COLORS = "recent_colors"
         const val KEY_PRESETS = "presets"
         const val KEY_ACTIVE = "active"
         const val KEY_FINGER = "finger_drawing"

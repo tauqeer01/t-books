@@ -105,6 +105,7 @@ fun NoteEditorScreen(
     var cameraFile by rememberSaveable { mutableStateOf<String?>(null) }
 
     fun currentPageId() = state.pages.getOrNull(viewport.currentPage())?.id
+    val paste = { currentPageId()?.let { vm.paste(it, 0.08f, visiblePageY(viewport)) }; Unit }
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
         val pageId = currentPageId()
@@ -189,6 +190,11 @@ fun NoteEditorScreen(
                             })
                             HorizontalDivider()
                             DropdownMenuItem(
+                                text = { Text("Floating toolbar") },
+                                trailingIcon = { Switch(checked = state.floatingToolbar, onCheckedChange = null) },
+                                onClick = { vm.setFloatingToolbar(!state.floatingToolbar) }
+                            )
+                            DropdownMenuItem(
                                 text = { Text("Draw with finger") },
                                 trailingIcon = { Switch(checked = state.fingerInks, onCheckedChange = null) },
                                 onClick = { vm.setFingerDrawing(!state.fingerInks) }
@@ -218,14 +224,18 @@ fun NoteEditorScreen(
                             onStickyColor = vm::setStickyColor,
                             onDelete = vm::deleteSelection,
                             onDuplicate = vm::duplicateSelection,
+                            onCopy = vm::copySelection,
+                            onCut = vm::cutSelection,
                             onFront = vm::bringSelectionToFront,
                             onRecolor = vm::recolorSelection,
                             onOpenSource = { source?.let { onOpenSource(it.sourceBookId!!, it.sourcePage!!) } }
                         )
                     }
                     state.tool == EditorTool.PEN -> PenPresetBar(state, vm::selectPreset, onEditActive = { editingPen = true }, onAdd = vm::addPreset)
-                    state.tool == EditorTool.SHAPE -> ShapeBar(state, vm::selectShape, onEditPen = { editingPen = true })
-                    state.tool == EditorTool.ERASER -> EraserBar(state, vm::setEraserMode, vm::setEraserSize)
+                    state.tool == EditorTool.SHAPE -> ShapeBar(state, vm::selectShape, onAuto = vm::selectAutoShape, onEditPen = { editingPen = true })
+                    state.tool == EditorTool.ERASER -> EraserBar(state, vm::setEraserMode, vm::setEraserSize, onClearPage = { currentPageId()?.let(vm::clearPageInk) })
+                    state.tool == EditorTool.TAPE -> TapeBar(state, vm::setTapeColor, vm::revealAllTapes)
+                    state.tool == EditorTool.LASER -> HintBar("Point with your finger or stylus; the trail fades and is never saved.")
                 }
                 EditorToolBar(state, ToolbarActions(
                     onTool = vm::selectTool,
@@ -238,7 +248,8 @@ fun NoteEditorScreen(
                         runCatching { camera.launch(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)) }
                             .onFailure { scope.launch { snackbar.showSnackbar("No camera app available") } }
                     },
-                    onAddPage = { templateSheet = TemplateSheet.ADD }
+                    onAddPage = { templateSheet = TemplateSheet.ADD },
+                    onPaste = paste
                 ))
             }
         }
@@ -249,14 +260,28 @@ fun NoteEditorScreen(
                 state.notFound -> Text("This note no longer exists", Modifier.align(Alignment.Center))
                 else -> NoteCanvas(state, viewport, textStates, vm, onOpenSource, onAddPage = { templateSheet = TemplateSheet.ADD_AT_END })
             }
+            if (state.floatingToolbar && !state.isLoading && !state.notFound && state.editingElementId == null) {
+                val position = remember { vm.floatingPosition() }
+                NoteFloatingToolbar(state, FloatingToolbarActions(
+                    onTool = vm::selectTool,
+                    onPreset = vm::selectPreset,
+                    onEditPen = { editingPen = true },
+                    onHighlighter = vm::selectHighlighter,
+                    onUndo = vm::undo,
+                    onRedo = vm::redo,
+                    onPaste = paste,
+                    initialPosition = position,
+                    onMoved = vm::setFloatingPosition
+                ))
+            }
         }
     }
 
     if (editingPen) {
         state.activePen?.let { pen ->
             ModalBottomSheet(onDismissRequest = { editingPen = false }) {
-                PenEditor(pen, canRemove = state.presets.size > 1, onChange = vm::updateActivePreset,
-                    onRemove = { vm.removeActivePreset(); editingPen = false }, onDone = { editingPen = false })
+                PenEditor(pen, canRemove = state.presets.size > 1, recentColors = state.recentColors, onChange = vm::updateActivePreset,
+                    onCustomColor = vm::useCustomColor, onRemove = { vm.removeActivePreset(); editingPen = false }, onDone = { editingPen = false })
             }
         }
     }
