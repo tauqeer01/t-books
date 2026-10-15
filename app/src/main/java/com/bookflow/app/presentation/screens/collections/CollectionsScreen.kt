@@ -27,7 +27,8 @@ import com.bookflow.app.presentation.screens.home.collectionTint
 import com.bookflow.app.presentation.screens.home.collectionIcon
 
 @Composable
-fun CollectionsScreen(viewModel: CollectionsViewModel, onBookClick: (String, Int) -> Unit, onBookInformation: (String) -> Unit, modifier: Modifier = Modifier) {
+fun CollectionsScreen(viewModel: CollectionsViewModel, onBookClick: (String, Int) -> Unit, onBookInformation: (String) -> Unit, modifier: Modifier = Modifier,
+    header: @Composable () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var searching by remember { mutableStateOf(false) }
     var descending by remember { mutableStateOf(false) }
@@ -45,6 +46,7 @@ fun CollectionsScreen(viewModel: CollectionsViewModel, onBookClick: (String, Int
         ) {
             BookFlowTopBarAction(Icons.Default.Search, "Search collections", { searching = !searching }, selected = searching)
         }
+        header()
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val columns = if (maxWidth >= 1000.dp) 4 else if (maxWidth >= 700.dp) 3 else 2
             LazyVerticalGrid(columns = GridCells.Fixed(columns), contentPadding = PaddingValues(20.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

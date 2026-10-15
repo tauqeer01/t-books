@@ -34,6 +34,10 @@ interface FlashcardDao {
     @Query("SELECT * FROM cards WHERE deckId IN (:deckIds)")
     suspend fun cardsIn(deckIds: List<String>): List<CardEntity>
 
+    /** Plain substring match over both faces; cards are short, so this stays fast. */
+    @Query("SELECT * FROM cards WHERE frontJson LIKE :pattern OR backJson LIKE :pattern ORDER BY updatedAt DESC LIMIT 50")
+    fun search(pattern: String): Flow<List<CardEntity>>
+
     @Query("SELECT * FROM cards WHERE id = :id")
     suspend fun card(id: String): CardEntity?
 

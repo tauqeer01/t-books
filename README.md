@@ -13,6 +13,10 @@ Implementation status and verification evidence are maintained in [progress.md](
 - Vertical continuous, horizontal paging, and single-page reading; zoom/pan; global and per-book preferences for spacing, brightness, orientation, keep-awake, volume navigation, and immersive reading.
 - Optional PDF dimming preserves image colors rather than inverting diagrams.
 - Pen/highlighter/eraser, saved page-relative strokes, undo/redo, stylus-only mode, and annotated-copy export.
+- Large PDFs open at any page count, read in place; text features degrade gracefully instead of crashing on huge scans.
+- Notes: A4 notebooks with nine page templates (drawing canvas, ruled, math graph, Cornell, music, isometric…), low-latency stylus ink (Jetpack Ink), pens, shapes, lasso, eraser, rich text, sticky notes, photos, folders, tags, full-text search, and PDF/PNG export.
+- Reader capture: select text (long-press drag or Select tool) or clip any region, send it to a note, or study it beside the book in a notes panel (side by side on tablets).
+- Flashcards: decks, basic/reversed/cloze cards with pictures and handwriting, SM-2 spaced repetition with daily limits, review statistics, and cards created straight from a book selection.
 
 The first-run sample is an actual two-page Aircraft Systems PDF. Imported documents retain their own artwork, metadata, page counts, and annotations. Sample book counts and unrelated document titles are not fabricated to populate the reference layout.
 

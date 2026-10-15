@@ -187,12 +187,13 @@ User feedback: only one ruled sheet was visible and tools felt limited. Template
 - [x] Tests: `SchedulerTest` (9, incl. cloze), `FlashcardTest` (3, on-device: ICU cloze parsing, sides/queue/undo/edit, daily limit + stats + deck deletion), entity normalization unit test. Suite: 35 instrumented (1 stress skipped) + 38 unit; lint passes.
 - Navigation: bottom bar is now Home · Library · Notes · Cards · Settings (Collections tab replaced; Collections remain reachable from Home until Phase 20 adds them to Library).
 
-## Phase 20 — Navigation, global search, Home
+## Phase 20 — Navigation, global search, Home (complete, 2026-10-15)
 
-- [x] Bottom bar: Home · Library · Notes · Cards · Settings (done with Phase 19).
-- [ ] Collections inside Library (Books | Collections switch).
-- [ ] Top-bar global search across books, book text, notes, and cards.
-- [ ] Home: "Due today" flashcards card and "Recent notes" shelf.
+- [x] Bottom bar: Home · Library · Notes · Cards · Settings.
+- [x] Library has a Books | Collections switch; Home's collection links open the Collections side.
+- [x] Search (Home top bar) covers books, highlights, book notes, notebooks (full-text index), and flashcards (front/back text), with scope chips.
+- [x] Home: “N flashcards to study” banner (opens Cards) and a Recent Notes shelf with cover thumbnails.
+- [x] Suite: 35 instrumented (1 stress skipped) + unit; lint passes.
 
 ## Verification
 

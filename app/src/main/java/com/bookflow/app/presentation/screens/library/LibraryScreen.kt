@@ -25,7 +25,9 @@ import com.bookflow.app.presentation.components.*
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun LibraryScreen(viewModel: LibraryViewModel, onBookClick: (String, Int) -> Unit, onBookDetailsClick: (String) -> Unit, modifier: Modifier = Modifier) {
+fun LibraryScreen(viewModel: LibraryViewModel, onBookClick: (String, Int) -> Unit, onBookDetailsClick: (String) -> Unit, modifier: Modifier = Modifier,
+    /** Shown under the top bar (the Books | Collections switch). */
+    header: @Composable () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
@@ -39,6 +41,7 @@ fun LibraryScreen(viewModel: LibraryViewModel, onBookClick: (String, Int) -> Uni
         ExtendedFloatingActionButton(onClick = { importer.launch(arrayOf("application/pdf")) }, icon = { Icon(Icons.Default.Add, null) }, text = { Text(if (state.isImporting) "Importing…" else "Import PDF") })
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
+            header()
             Column(Modifier.padding(horizontal = 20.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(state.searchQuery, viewModel::onSearchQueryChanged, placeholder = { Text("Search books and authors") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true, shape = CircleShape, modifier = Modifier.fillMaxWidth())
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

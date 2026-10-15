@@ -1,6 +1,7 @@
 package com.bookflow.app.presentation.screens.home
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import java.io.File
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -36,7 +37,9 @@ import com.bookflow.app.domain.model.Book
 import com.bookflow.app.presentation.components.*
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onNavigateToCollections: () -> Unit, onLibrary: (String) -> Unit, onBookInformation: (String) -> Unit, onSearch: () -> Unit = {}, modifier: Modifier = Modifier) {
+fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onNavigateToCollections: () -> Unit, onLibrary: (String) -> Unit, onBookInformation: (String) -> Unit, onSearch: () -> Unit = {}, modifier: Modifier = Modifier,
+    dueCards: Int = 0, recentNotes: List<com.bookflow.app.notes.domain.NoteSummary> = emptyList(),
+    onStudyCards: () -> Unit = {}, onOpenNote: (String) -> Unit = {}, onSeeNotes: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val readingStats by viewModel.readingStats.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -86,12 +89,21 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             if (state.isImporting) item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) }
+            if (dueCards > 0) item { DueCardsBanner(dueCards, onStudyCards) }
             item { SectionHeader("Continue Reading") { onLibrary("Reading") } }
             item {
                 if (state.continueReadingBooks.isEmpty()) EmptyShelf("Open a PDF to start your next chapter.")
                 else LazyRow(state = rememberShelfState(state.continueReadingBooks.first().id), contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(state.continueReadingBooks, key = { it.id }) { book ->
                         CompactBookCard(book, { onBookClick(book.id, book.currentPage) }, { actions = book }, width = 112.dp, showProgress = true)
+                    }
+                }
+            }
+            if (recentNotes.isNotEmpty()) {
+                item { SectionHeader("Recent Notes", onSeeNotes) }
+                item {
+                    LazyRow(contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(recentNotes.take(10), key = { it.id }) { note -> RecentNoteCard(note) { onOpenNote(note.id) } }
                     }
                 }
             }
@@ -130,6 +142,35 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
 }
 
 private val CompactCoverWidth = 92.dp
+
+@Composable
+private fun DueCardsBanner(count: Int, onStudy: () -> Unit) {
+    Surface(onClick = onStudy, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Style, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(if (count == 1) "1 flashcard to study" else "$count flashcards to study", fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                Text("A few minutes now keeps them in memory", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .8f))
+            }
+            Text("Study", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+        }
+    }
+}
+
+@Composable
+private fun RecentNoteCard(note: com.bookflow.app.notes.domain.NoteSummary, onClick: () -> Unit) {
+    Column(Modifier.width(CompactCoverWidth).clickable(onClick = onClick)) {
+        Box(Modifier.width(CompactCoverWidth).height(CompactCoverWidth * 1.3f).clip(RoundedCornerShape(8.dp)).background(Color.White)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)), contentAlignment = Alignment.Center) {
+            val thumb = note.thumbnailPath?.let { path -> File(path) }?.takeIf { it.exists() }
+            if (thumb != null) coil.compose.AsyncImage(model = thumb, contentDescription = null, contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize())
+            else Icon(Icons.Default.EditNote, null, tint = MaterialTheme.colorScheme.outlineVariant)
+        }
+        Text(note.title.ifBlank { "Untitled note" }, fontSize = 13.sp, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp))
+    }
+}
 
 /**
  * Shelf scroll state that returns to the start when a different book moves to the front (e.g. the one just read).

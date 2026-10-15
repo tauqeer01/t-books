@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -77,6 +80,9 @@ fun BookFlowNavGraph(
 
     // Tablets, foldables and landscape get a side rail instead of a stretched bottom bar
     val useNavigationRail = androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 600
+    // Library shows Books or Collections; Home's collection links open the Collections side
+    var libraryShowsCollections by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(false) }
+
     val navigateToTab: (String) -> Unit = { route ->
         if (route == Screen.Home.route) {
             val popped = navController.popBackStack(Screen.Home.route, inclusive = false)
@@ -153,24 +159,50 @@ fun BookFlowNavGraph(
                             navController.navigate(Screen.Reader.createRoute(bookId, page))
                         },
                         onNavigateToCollections = {
-                            navController.navigate(Screen.Collections.route)
+                            libraryShowsCollections = true
+                            navigateToTab(Screen.Library.route)
                         },
                         onLibrary = { filter -> libraryViewModel.onCategorySelected(filter); navController.navigate(Screen.Library.route) },
                         onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
-                        onSearch = { navController.navigate(Screen.Search.route) { launchSingleTop = true } }
+                        onSearch = { navController.navigate(Screen.Search.route) { launchSingleTop = true } },
+                        dueCards = remember { container.flashcardRepository.dueToday() }.collectAsStateWithLifecycle(0).value,
+                        recentNotes = remember { container.notesRepository.notes() }.collectAsStateWithLifecycle(emptyList()).value
+                            .sortedByDescending { it.updatedAt },
+                        onStudyCards = { navigateToTab(Screen.Cards.route) },
+                        onOpenNote = { navController.navigate(Screen.NoteEditor.createRoute(it)) },
+                        onSeeNotes = { navigateToTab(Screen.Notes.route) }
                     )
                 }
 
                 // 2. Library Tab
                 composable(Screen.Library.route) {
-                    LibraryScreen(
+                    val switch: @Composable () -> Unit = {
+                        com.bookflow.app.presentation.screens.library.LibrarySwitch(libraryShowsCollections) { libraryShowsCollections = it }
+                    }
+                    if (libraryShowsCollections) {
+                        val collectionsViewModel: CollectionsViewModel = viewModel(
+                            factory = CollectionsViewModel.Factory(
+                                getCollectionsUseCase = container.getCollectionsUseCase,
+                                saveCollectionUseCase = container.saveCollectionUseCase,
+                                collectionRepository = container.collectionRepository,
+                                bookRepository = container.bookRepository
+                            )
+                        )
+                        CollectionsScreen(
+                            viewModel = collectionsViewModel,
+                            onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
+                            onBookClick = { bookId, page -> navController.navigate(Screen.Reader.createRoute(bookId, page)) },
+                            header = switch
+                        )
+                    } else LibraryScreen(
                         viewModel = libraryViewModel,
                         onBookClick = { bookId, page ->
                             navController.navigate(Screen.Reader.createRoute(bookId, page))
                         },
                         onBookDetailsClick = { bookId ->
                             navController.navigate(Screen.BookDetails.createRoute(bookId))
-                        }
+                        },
+                        header = switch
                     )
                 }
 
@@ -195,11 +227,18 @@ fun BookFlowNavGraph(
 
                 // 4. Search Tab
                 composable(Screen.Search.route) {
+                    val query = homeViewModel.uiState.collectAsStateWithLifecycle().value.searchQuery
+                    val notebookResults by remember(query) { container.notesRepository.search(query) }.collectAsStateWithLifecycle(emptyList())
+                    val cardResults by remember(query) { container.flashcardRepository.search(query) }.collectAsStateWithLifecycle(emptyList())
                     SearchScreen(
                         homeViewModel = homeViewModel,
                         onBookClick = { bookId, page ->
                             navController.navigate(Screen.Reader.createRoute(bookId, page))
-                        }
+                        },
+                        notebookResults = notebookResults,
+                        cardResults = cardResults,
+                        onOpenNote = { navController.navigate(Screen.NoteEditor.createRoute(it)) },
+                        onOpenCard = { navController.navigate(Screen.CardEditor.createRoute(cardId = it)) }
                     )
                 }
 
@@ -287,7 +326,7 @@ fun BookFlowNavGraph(
                     )
                     SettingsScreen(
                         viewModel = settingsViewModel,
-                        onCollections = { navController.navigate(Screen.Collections.route) },
+                        onCollections = { libraryShowsCollections = true; navigateToTab(Screen.Library.route) },
                         onLibrary = { navController.navigate(Screen.Library.route) },
                         onOpenLegal = { navController.navigate(Screen.Legal.createRoute(it.route)) },
                         onOpenLicenses = { navController.navigate(Screen.Licenses.route) }

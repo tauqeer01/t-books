@@ -1,5 +1,9 @@
 package com.bookflow.app.presentation.screens.search
 
+import androidx.compose.foundation.rememberScrollState
+
+import androidx.compose.foundation.horizontalScroll
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,7 +78,12 @@ import com.bookflow.app.presentation.screens.home.HomeViewModel
 fun SearchScreen(
     homeViewModel: HomeViewModel,
     onBookClick: (String, Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Notebook notes matching the query (full-text index). */
+    notebookResults: List<com.bookflow.app.notes.domain.NoteSummary> = emptyList(),
+    cardResults: List<com.bookflow.app.flashcards.domain.Card> = emptyList(),
+    onOpenNote: (String) -> Unit = {},
+    onOpenCard: (String) -> Unit = {}
 ) {
     val state by homeViewModel.uiState.collectAsStateWithLifecycle()
     var searchScope by remember { mutableStateOf("All") }
@@ -118,7 +127,7 @@ fun SearchScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = { BookFlowTopBar(title = "Search", subtitle = "Book titles, highlights and notes") },
+        topBar = { BookFlowTopBar(title = "Search", subtitle = "Books, highlights, notes, and flashcards") },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
@@ -166,15 +175,16 @@ fun SearchScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf("All", "Books", "Highlights", "Notes").forEach { scope ->
+                listOf("All", "Books", "Highlights", "Notes", "Notebooks", "Cards").forEach { scope ->
                     val isSelected = searchScope == scope
                     FilterChip(
                         selected = isSelected,
                         onClick = { searchScope = scope },
-                        label = { Text(scope, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                        label = { Text(scope, fontSize = 12.sp, maxLines = 1, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = BrandPurple,
                             selectedLabelColor = Color.White
@@ -286,8 +296,10 @@ fun SearchScreen(
                     val showBooks = searchScope in listOf("All", "Books") && matchedBooks.isNotEmpty()
                     val showHighlights = searchScope in listOf("All", "Highlights") && matchedHighlights.isNotEmpty()
                     val showNotes = searchScope in listOf("All", "Notes") && matchedNotes.isNotEmpty()
+                    val showNotebooks = searchScope in listOf("All", "Notebooks") && notebookResults.isNotEmpty()
+                    val showCards = searchScope in listOf("All", "Cards") && cardResults.isNotEmpty()
 
-                    if (!showBooks && !showHighlights && !showNotes) {
+                    if (!showBooks && !showHighlights && !showNotes && !showNotebooks && !showCards) {
                         item {
                             Box(
                                 modifier = Modifier
@@ -379,6 +391,23 @@ fun SearchScreen(
                                 bookTitle = book?.title ?: "Document",
                                 onClick = { onBookClick(ann.bookId, ann.pageIndex) }
                             )
+                        }
+                    }
+
+                    // 4. Notebooks (Notes tab)
+                    if (showNotebooks) {
+                        item { SectionTitle("Notebooks (${notebookResults.size})") }
+                        items(notebookResults, key = { "notebook_${it.id}" }) { note ->
+                            SimpleResultRow(note.title.ifBlank { "Untitled note" }, note.tags.joinToString(" ") { "#$it" }.ifBlank { "Note" }) { onOpenNote(note.id) }
+                        }
+                    }
+
+                    // 5. Flashcards
+                    if (showCards) {
+                        item { SectionTitle("Cards (${cardResults.size})") }
+                        items(cardResults, key = { "card_${it.id}" }) { card ->
+                            val front = com.bookflow.app.flashcards.domain.Cloze.preview(com.bookflow.app.notes.domain.HtmlText.toPlain(card.front.html))
+                            SimpleResultRow(front.ifBlank { "[Picture]" }, com.bookflow.app.notes.domain.HtmlText.toPlain(card.back.html).ifBlank { card.type.title }) { onOpenCard(card.id) }
                         }
                     }
 
@@ -650,6 +679,24 @@ private fun SearchNoteResultCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(text: String) {
+    Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = 6.dp))
+}
+
+@Composable
+private fun SimpleResultRow(title: String, subtitle: String, onClick: () -> Unit) {
+    androidx.compose.material3.Surface(onClick = onClick, shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainer, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(14.dp)) {
+            Text(title, fontWeight = FontWeight.Medium, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
         }
     }
 }

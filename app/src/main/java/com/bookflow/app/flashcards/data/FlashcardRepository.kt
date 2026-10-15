@@ -35,6 +35,16 @@ class FlashcardRepository(
     fun decks(): Flow<List<Deck>> = dao.decks().map { list -> list.map { it.toDomain() } }
     fun cards(deckId: String): Flow<List<Card>> = dao.cards(deckId).map { list -> list.map { it.toDomain() } }
 
+    fun search(query: String): Flow<List<Card>> {
+        val q = query.trim()
+        if (q.isEmpty()) return kotlinx.coroutines.flow.flowOf(emptyList())
+        val pattern = "%" + q.replace("%", "").replace("_", "") + "%"
+        // Matched on stored JSON, then confirmed on the visible text so markup and keys never match
+        return dao.search(pattern).map { list -> list.map { it.toDomain() }.filter { c ->
+            com.bookflow.app.notes.domain.HtmlText.toPlain(c.front.html + " " + c.back.html).contains(q, ignoreCase = true)
+        } }
+    }
+
     /** Counts per deck, including its sub-decks, refreshed whenever cards are studied or edited. */
     fun deckCounts(): Flow<Map<String, DeckCounts>> = combine(dao.decks(), dao.scheduleSummaries(), dao.logsSince(scheduler.reviewDayStart(clock()))) { decks, summaries, logs ->
         val now = clock()
