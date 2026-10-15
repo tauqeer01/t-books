@@ -1,0 +1,246 @@
+package com.bookflow.app.presentation.screens.notes.editor
+
+import android.net.Uri
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Redo
+import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.bookflow.app.notes.domain.PageBackground
+import com.bookflow.app.presentation.screens.notes.export.NoteExporter
+import kotlinx.coroutines.launch
+import java.io.File
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NoteEditorScreen(
+    vm: NoteEditorViewModel,
+    onBack: () -> Unit,
+    onOpenSource: (bookId: String, page: Int) -> Unit
+) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val gutter = with(LocalDensity.current) { 12.dp.toPx() }
+    val viewport = remember { NoteViewport(gutter) }
+    val textStates = remember { RichTextStates() }
+    val snackbar = remember { SnackbarHostState() }
+    var menuOpen by remember { mutableStateOf(false) }
+    var editingPen by remember { mutableStateOf(false) }
+    var confirmDeletePage by remember { mutableStateOf<String?>(null) }
+    var backgroundSheet by remember { mutableStateOf(false) }
+    var cameraFile by rememberSaveable { mutableStateOf<String?>(null) }
+
+    fun currentPageId() = state.pages.getOrNull(viewport.currentPage())?.id
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri: Uri? ->
+        val pageId = currentPageId()
+        if (uri != null && pageId != null) vm.insertImage(pageId, uri)
+    }
+    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        val file = cameraFile?.let(::File)
+        val pageId = currentPageId()
+        if (saved && file != null && pageId != null) vm.insertImage(pageId, Uri.fromFile(file))
+        cameraFile = null
+    }
+
+    LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(it); vm.consumeMessage() } }
+    BackHandler(enabled = state.editingElementId != null || state.selection != null) {
+        if (state.editingElementId != null) vm.stopEditing() else vm.clearSelection()
+    }
+    DisposableEffect(Unit) { onDispose { if (vm.state.value.editingElementId != null) vm.stopEditing() } }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event -> if (event == androidx.lifecycle.Lifecycle.Event.ON_STOP) vm.saveNow() }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                navigationIcon = { IconButton(onClick = { if (state.editingElementId != null) vm.stopEditing(); onBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                title = {
+                    var title by remember(state.isLoading) { mutableStateOf(state.title) }
+                    TextField(
+                        value = title, onValueChange = { title = it; vm.rename(it) }, singleLine = true,
+                        placeholder = { Text("Untitled note") },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        colors = TextFieldDefaults.colors(focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
+                            focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent),
+                        textStyle = MaterialTheme.typography.titleMedium
+                    )
+                },
+                actions = {
+                    IconButton(onClick = vm::undo, enabled = state.canUndo) { Icon(Icons.AutoMirrored.Outlined.Undo, "Undo") }
+                    IconButton(onClick = vm::redo, enabled = state.canRedo) { Icon(Icons.AutoMirrored.Outlined.Redo, "Redo") }
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) { Icon(Icons.Outlined.MoreVert, "More") }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            val pageIndex = viewport.currentPage()
+                            DropdownMenuItem(text = { Text("Add page after ${pageIndex + 1}") }, onClick = { menuOpen = false; vm.addPage(pageIndex) })
+                            DropdownMenuItem(text = { Text("Page background…") }, onClick = { menuOpen = false; backgroundSheet = true })
+                            DropdownMenuItem(text = { Text("Move page up") }, enabled = pageIndex > 0, onClick = { menuOpen = false; currentPageId()?.let { vm.movePage(it, -1) } })
+                            DropdownMenuItem(text = { Text("Move page down") }, enabled = pageIndex < state.pages.lastIndex, onClick = { menuOpen = false; currentPageId()?.let { vm.movePage(it, 1) } })
+                            DropdownMenuItem(text = { Text("Delete page ${pageIndex + 1}") }, onClick = { menuOpen = false; confirmDeletePage = currentPageId() })
+                            HorizontalDivider()
+                            DropdownMenuItem(text = { Text("Share as PDF") }, onClick = {
+                                menuOpen = false
+                                scope.launch {
+                                    runCatching { NoteExporter.exportPdf(context, state.title, state.pages) }
+                                        .onSuccess { context.startActivity(NoteExporter.shareIntent(it, "application/pdf")) }
+                                        .onFailure { snackbar.showSnackbar("Couldn't export: ${it.message.orEmpty()}") }
+                                }
+                            })
+                            DropdownMenuItem(text = { Text("Share page as image") }, onClick = {
+                                menuOpen = false
+                                val page = state.pages.getOrNull(pageIndex) ?: return@DropdownMenuItem
+                                scope.launch {
+                                    runCatching { NoteExporter.exportPng(context, state.title, page, pageIndex + 1) }
+                                        .onSuccess { context.startActivity(NoteExporter.shareIntent(it, "image/png")) }
+                                        .onFailure { snackbar.showSnackbar("Couldn't export: ${it.message.orEmpty()}") }
+                                }
+                            })
+                            HorizontalDivider()
+                            DropdownMenuItem(
+                                text = { Text("Draw with finger") },
+                                trailingIcon = { Switch(checked = state.fingerInks, onCheckedChange = null) },
+                                onClick = { vm.setFingerDrawing(!state.fingerInks) }
+                            )
+                        }
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbar) },
+        bottomBar = {
+            Column(Modifier.imePadding().navigationBarsPadding()) {
+                val editing = state.editingElementId?.let { id -> state.pages.flatMap { it.elements }.firstOrNull { it.id == id } }
+                val selection = state.selection
+                when {
+                    editing != null -> {
+                        val rich = textStates.get(editing)
+                        TextFormatBar(rich) { color -> rich.toggleSpanStyle(SpanStyle(color = color)) }
+                    }
+                    selection != null -> {
+                        val page = state.page(selection.pageId)
+                        val source = page?.elements?.firstOrNull { it.id in selection.elementIds && it.sourceBookId != null && it.sourcePage != null }
+                        SelectionBar(
+                            canRecolor = selection.strokeIds.isNotEmpty(),
+                            sourceAvailable = source != null,
+                            onDelete = vm::deleteSelection,
+                            onDuplicate = vm::duplicateSelection,
+                            onFront = vm::bringSelectionToFront,
+                            onRecolor = vm::recolorSelection,
+                            onOpenSource = { source?.let { onOpenSource(it.sourceBookId!!, it.sourcePage!!) } }
+                        )
+                    }
+                    state.tool == EditorTool.PEN -> PenPresetBar(state, vm::selectPreset, onEditActive = { editingPen = true }, onAdd = vm::addPreset)
+                    state.tool == EditorTool.ERASER -> EraserBar(state, vm::setEraserMode, vm::setEraserSize)
+                }
+                EditorToolBar(
+                    state = state,
+                    onTool = vm::selectTool,
+                    onPhoto = { photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                    onCamera = {
+                        val dir = File(context.cacheDir, "camera").apply { mkdirs() }
+                        val file = File(dir, "note_${System.currentTimeMillis()}.jpg")
+                        cameraFile = file.absolutePath
+                        runCatching { camera.launch(FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)) }
+                            .onFailure { scope.launch { snackbar.showSnackbar("No camera app available") } }
+                    }
+                )
+            }
+        }
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            when {
+                state.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                state.notFound -> Text("This note no longer exists", Modifier.align(Alignment.Center))
+                else -> NoteCanvas(state, viewport, textStates, vm, onOpenSource)
+            }
+        }
+    }
+
+    if (editingPen) {
+        state.activePen?.let { pen ->
+            ModalBottomSheet(onDismissRequest = { editingPen = false }) {
+                PenEditor(pen, canRemove = state.presets.size > 1, onChange = vm::updateActivePreset,
+                    onRemove = { vm.removeActivePreset(); editingPen = false }, onDone = { editingPen = false })
+            }
+        }
+    }
+
+    if (backgroundSheet) {
+        ModalBottomSheet(onDismissRequest = { backgroundSheet = false }) {
+            var applyAll by remember { mutableStateOf(false) }
+            Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                Text("Page background", style = MaterialTheme.typography.titleMedium)
+                PageBackground.entries.forEach { bg ->
+                    TextButton(onClick = { currentPageId()?.let { vm.setBackground(it, bg, applyAll) }; backgroundSheet = false }) { Text(bg.title) }
+                }
+                DropdownMenuItem(text = { Text("Apply to all pages") }, trailingIcon = { Switch(checked = applyAll, onCheckedChange = null) }, onClick = { applyAll = !applyAll })
+            }
+        }
+    }
+
+    confirmDeletePage?.let { pageId ->
+        AlertDialog(
+            onDismissRequest = { confirmDeletePage = null },
+            title = { Text("Delete this page?") },
+            text = { Text("Its handwriting, text, and images are removed. This can't be undone.") },
+            confirmButton = { TextButton(onClick = { vm.deletePage(pageId); confirmDeletePage = null }) { Text("Delete") } },
+            dismissButton = { TextButton(onClick = { confirmDeletePage = null }) { Text("Cancel") } }
+        )
+    }
+}

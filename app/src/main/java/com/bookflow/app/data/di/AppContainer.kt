@@ -53,6 +53,17 @@ class AppContainer(private val context: Context) {
         )
     }
 
+    /** Work that must outlive a screen, such as saving a note when its editor closes. */
+    val applicationScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+
+    val notePenPreferences by lazy { com.bookflow.app.presentation.screens.notes.editor.NotePenPreferences(context) }
+
+    val noteFileStore by lazy { com.bookflow.app.notes.data.NoteFileStore(context) }
+
+    val notesRepository: com.bookflow.app.notes.domain.NotesRepository by lazy {
+        com.bookflow.app.notes.data.NotesRepositoryImpl(database.notesDao(), noteFileStore)
+    }
+
     val collectionRepository: CollectionRepository by lazy {
         CollectionRepositoryImpl(
             collectionDao = database.collectionDao()

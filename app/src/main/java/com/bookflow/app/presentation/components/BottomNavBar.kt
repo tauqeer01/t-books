@@ -23,12 +23,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MenuBook
-import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -76,18 +76,18 @@ val NavTabs = listOf(
         testTag = "nav_library_tab"
     ),
     NavTabItem(
+        route = Screen.Notes.route,
+        labelRes = R.string.nav_notes,
+        filledIcon = Icons.Filled.EditNote,
+        outlinedIcon = Icons.Outlined.EditNote,
+        testTag = "nav_notes_tab"
+    ),
+    NavTabItem(
         route = Screen.Collections.route,
         labelRes = R.string.nav_collections,
         filledIcon = Icons.Filled.Folder,
         outlinedIcon = Icons.Outlined.Folder,
         testTag = "nav_collections_tab"
-    ),
-    NavTabItem(
-        route = Screen.Search.route,
-        labelRes = R.string.nav_search,
-        filledIcon = Icons.Filled.Search,
-        outlinedIcon = Icons.Outlined.Search,
-        testTag = "nav_search_tab"
     ),
     NavTabItem(
         route = Screen.Settings.route,

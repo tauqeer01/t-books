@@ -126,17 +126,29 @@ Any PDF, regardless of page count, opens in BookFlow, read in place from device 
 - [x] Regression tests: `LargePdfRegressionTest` (150/500/1,500 pages, scanned, and a larger-than-heap stress file when present). Full suite 19/19 (stress skipped unless pushed; passed 415 MB run separately). Lint passes.
 - Known limitation: full-text search is linear (~50 ms/page; ~74 s for 1,500 pages) and outline on very large files takes several seconds because PDFBox parses the whole file; both run in the background and are cancellable.
 
-## Phase 17 — Notes (Samsung Notes–class)
+## Phase 17 — Notes (complete, 2026-10-15)
 
-Fixed A4-ratio pages; free-positioned text/image/clip elements; ink on top. Engine: `androidx.ink` 1.0.0 + `compose-rich-editor`.
+Fixed A4-ratio pages; free-positioned text/image/clip elements; ink on top. Engine: `androidx.ink` 1.0.0 (low-latency `InProgressStrokes`) + `compose-rich-editor` 1.0.0-rc11.
 
-- [ ] Add dependencies and any required toolchain bumps.
-- [ ] Room schema: folders, notes, pages, elements, FTS index; migration + tests.
-- [ ] Shared ink wrapper: pen, pencil, fountain pen, highlighter; pressure/tilt; partial/whole eraser; ink storage.
-- [ ] Editor: page list, zoom/pan, lasso move/resize/recolor, text boxes with rich formatting, photo/camera insert, page backgrounds, undo/redo, autosave.
-- [ ] Input rules: stylus draws / finger navigates; finger draws when no stylus; S Pen button lasso; eraser end.
-- [ ] Notes home: nested folders, pinned, grid/list, sort, full-text search, tags.
-- [ ] Export note to PDF and page to PNG; share.
+- [x] Dependencies added without toolchain bumps. Rich editor pinned to 1.0.0-rc11 (newest built for Kotlin 2.1/Compose 1.7; 1.0.0+ needs Kotlin 2.3+).
+- [x] Room v4 (auto-migration 3→4): `note_folders`, `notes`, `note_pages`, `note_elements`, FTS4 `notes_fts`. Parent rows use `@Upsert` — `REPLACE` deleted pages' elements via `ON DELETE CASCADE` (caught on device, regression-tested).
+- [x] Ink: pen, fountain pen, pencil, highlighter; pressure/tilt from stylus input; whole-stroke and partial eraser; one compact ink file per page (atomic writes).
+- [x] Editor: custom pan/zoom viewport (50–400%, fling), lasso select → move/resize/recolor/duplicate/delete/bring to front, rich text boxes (bold, italic, underline, strike, heading, bullets, numbers, checklist, color) on ruled-line rhythm, photos from Photo Picker/camera (downscaled WebP, EXIF-rotated), page backgrounds, add/move/delete pages, 100-step note-wide undo/redo, debounced autosave plus save on background/close.
+- [x] Input rules: stylus draws, fingers navigate once a stylus is seen; fingers draw on stylus-less devices ("Draw with finger" toggle); two fingers always pan/zoom and cancel a finger stroke; S Pen side button = lasso; stylus eraser end = eraser.
+- [x] Notes home: nested folders with breadcrumbs, pinned section, grid/list, sort, full-text search (titles, text, tags, clip quotes), tag filter, rename/tag/move/delete.
+- [x] Export: whole note as PDF (A4, vector text/ink) and page as PNG via the share sheet.
+- [x] Navigation (interim until Phase 20): bottom bar Home · Library · Notes · Collections · Settings; Search moved to a Home top-bar action.
+- [x] Tests: `NotesLogicTest` (11 JVM: placement, HTML→text, FTS query, eraser/lasso geometry, undo history) and `NotesRegressionTest` (8 instrumented: page add/reorder keeps elements, capture placement, FTS + cascade delete, folder delete, ink file round-trip, PDF export with ink at page scale, photo import, 3→4 migration). Full suite 27 instrumented (1 stress skipped) + 23 unit; lint passes.
+- Backup: device-to-device transfer includes `files/notes/`; cloud backup stays database-only (25 MB quota), so restored notes keep text but show missing ink/images as unavailable.
+- Deviations: Pencil is a soft graphite marker (Ink's textured pencil and forced path rendering are restricted APIs in 1.0). Strokes use stock brushes only.
+
+### Manual stylus checklist (real hardware; the emulator cannot verify these)
+
+- [ ] Ink appears under the nib with no visible lag on a Samsung S Pen and a USI stylus.
+- [ ] Line width follows pressure with the fountain pen; tilt shading is visible.
+- [ ] Resting the palm while writing leaves no marks; a finger swipe scrolls once the stylus has been used.
+- [ ] Holding the S Pen side button draws a lasso; the stylus eraser end erases.
+- [ ] On a phone with no stylus, a finger draws; two fingers pan/zoom and cancel the half-drawn stroke.
 
 ## Phase 18 — Reader capture into Notes and Flashcards
 

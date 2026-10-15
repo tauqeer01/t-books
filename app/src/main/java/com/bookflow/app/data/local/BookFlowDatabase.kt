@@ -1,6 +1,7 @@
 package com.bookflow.app.data.local
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -13,6 +14,12 @@ import com.bookflow.app.data.local.entity.BookCollectionCrossRef
 import com.bookflow.app.data.local.entity.BookEntity
 import com.bookflow.app.data.local.entity.BookmarkEntity
 import com.bookflow.app.data.local.entity.CollectionEntity
+import com.bookflow.app.notes.data.NoteElementEntity
+import com.bookflow.app.notes.data.NoteEntity
+import com.bookflow.app.notes.data.NoteFolderEntity
+import com.bookflow.app.notes.data.NoteFtsEntity
+import com.bookflow.app.notes.data.NotePageEntity
+import com.bookflow.app.notes.data.NotesDao
 
 @Database(
     entities = [
@@ -20,18 +27,26 @@ import com.bookflow.app.data.local.entity.CollectionEntity
         CollectionEntity::class,
         BookCollectionCrossRef::class,
         AnnotationEntity::class,
-        BookmarkEntity::class
+        BookmarkEntity::class,
+        NoteFolderEntity::class,
+        NoteEntity::class,
+        NotePageEntity::class,
+        NoteElementEntity::class,
+        NoteFtsEntity::class
     ],
     // Version 3 is the first Play Store release schema (exported to app/schemas).
-    // Any future change must bump the version and add a Migration to MIGRATIONS.
-    version = 3,
-    exportSchema = true
+    // Any future change must bump the version and add a migration (auto or in MIGRATIONS).
+    version = 4,
+    exportSchema = true,
+    // 4: Notes (folders, notes, pages, elements, full-text index) — new tables only.
+    autoMigrations = [AutoMigration(from = 3, to = 4)]
 )
 abstract class BookFlowDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao
     abstract fun collectionDao(): CollectionDao
     abstract fun annotationDao(): AnnotationDao
     abstract fun bookmarkDao(): BookmarkDao
+    abstract fun notesDao(): NotesDao
 
     companion object {
         @Volatile

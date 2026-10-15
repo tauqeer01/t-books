@@ -36,7 +36,7 @@ import com.bookflow.app.domain.model.Book
 import com.bookflow.app.presentation.components.*
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onNavigateToCollections: () -> Unit, onLibrary: (String) -> Unit, onBookInformation: (String) -> Unit, modifier: Modifier = Modifier) {
+fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onNavigateToCollections: () -> Unit, onLibrary: (String) -> Unit, onBookInformation: (String) -> Unit, onSearch: () -> Unit = {}, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val readingStats by viewModel.readingStats.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -63,6 +63,7 @@ fun HomeScreen(viewModel: HomeViewModel, onBookClick: (String, Int) -> Unit, onN
                     Text(greeting(), fontSize = 22.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.3).sp)
                 },
                 actions = {
+                    BookFlowTopBarAction(icon = Icons.Default.Search, contentDescription = "Search", onClick = onSearch)
                     ReadingGoalBadge(readingStats, onClick = { showReadingGoal = true })
                     // Quick light/dark switch; the full System/Light/Dark choice lives in Settings › App Theme
                     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f

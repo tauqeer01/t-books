@@ -18,6 +18,9 @@ aboutLibraries = "11.6.3"
 baselineprofile = "1.4.0"
 uiautomator = "2.3.0"
 androidxTestExt = "1.2.1"
+ink = "1.0.0"
+# 1.0.0-rc11 is the newest release built for Kotlin 2.1 / Compose 1.7; later ones require Kotlin 2.3+
+richEditor = "1.0.0-rc11"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -46,6 +49,14 @@ androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchm
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExt" }
 aboutlibraries-compose-m3 = { group = "com.mikepenz", name = "aboutlibraries-compose-m3", version.ref = "aboutLibraries" }
+androidx-ink-authoring-compose = { group = "androidx.ink", name = "ink-authoring-compose", version.ref = "ink" }
+androidx-ink-brush = { group = "androidx.ink", name = "ink-brush", version.ref = "ink" }
+androidx-ink-geometry = { group = "androidx.ink", name = "ink-geometry", version.ref = "ink" }
+androidx-ink-rendering = { group = "androidx.ink", name = "ink-rendering", version.ref = "ink" }
+androidx-ink-strokes = { group = "androidx.ink", name = "ink-strokes", version.ref = "ink" }
+androidx-ink-storage = { group = "androidx.ink", name = "ink-storage", version.ref = "ink" }
+richeditor-compose = { group = "com.mohamedrejeb.richeditor", name = "richeditor-compose", version.ref = "richEditor" }
+androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

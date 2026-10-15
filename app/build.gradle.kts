@@ -72,6 +72,8 @@ android {
         compose = true
         buildConfig = true
     }
+    // Migration tests read the exported Room schemas
+    sourceSets.getByName("androidTest").assets.srcDir("$projectDir/schemas")
 }
 
 ksp {
@@ -120,9 +122,17 @@ dependencies {
     "baselineProfile"(project(":baselineprofile"))
     implementation(libs.aboutlibraries.compose.m3)
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
+    implementation(libs.androidx.ink.authoring.compose)
+    implementation(libs.androidx.ink.brush)
+    implementation(libs.androidx.ink.geometry)
+    implementation(libs.androidx.ink.rendering)
+    implementation(libs.androidx.ink.strokes)
+    implementation(libs.androidx.ink.storage)
+    implementation(libs.richeditor.compose)
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

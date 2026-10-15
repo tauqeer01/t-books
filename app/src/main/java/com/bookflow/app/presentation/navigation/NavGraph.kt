@@ -70,7 +70,8 @@ fun BookFlowNavGraph(
         Screen.Library.route,
         Screen.Collections.route,
         Screen.Search.route,
-        Screen.Settings.route
+        Screen.Settings.route,
+        Screen.Notes.route
     )
 
     // Tablets, foldables and landscape get a side rail instead of a stretched bottom bar
@@ -154,7 +155,8 @@ fun BookFlowNavGraph(
                             navController.navigate(Screen.Collections.route)
                         },
                         onLibrary = { filter -> libraryViewModel.onCategorySelected(filter); navController.navigate(Screen.Library.route) },
-                        onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) }
+                        onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
+                        onSearch = { navController.navigate(Screen.Search.route) { launchSingleTop = true } }
                     )
                 }
 
@@ -197,6 +199,34 @@ fun BookFlowNavGraph(
                         onBookClick = { bookId, page ->
                             navController.navigate(Screen.Reader.createRoute(bookId, page))
                         }
+                    )
+                }
+
+                composable(Screen.Notes.route) {
+                    val notesViewModel: com.bookflow.app.presentation.screens.notes.NotesHomeViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.notes.NotesHomeViewModel.Factory(container.notesRepository)
+                    )
+                    com.bookflow.app.presentation.screens.notes.NotesHomeScreen(
+                        viewModel = notesViewModel,
+                        onOpenNote = { navController.navigate(Screen.NoteEditor.createRoute(it)) }
+                    )
+                }
+
+                composable(
+                    route = Screen.NoteEditor.route,
+                    arguments = listOf(navArgument("noteId") { type = NavType.StringType })
+                ) { entry ->
+                    val noteId = entry.arguments?.getString("noteId").orEmpty()
+                    val editorViewModel: com.bookflow.app.presentation.screens.notes.editor.NoteEditorViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.notes.editor.NoteEditorViewModel.Factory(
+                            noteId, container.notesRepository, container.noteFileStore, container.notePenPreferences,
+                            container.applicationScope, context.applicationContext
+                        )
+                    )
+                    com.bookflow.app.presentation.screens.notes.editor.NoteEditorScreen(
+                        vm = editorViewModel,
+                        onBack = { navController.popBackStack() },
+                        onOpenSource = { bookId, page -> navController.navigate(Screen.Reader.createRoute(bookId, page)) }
                     )
                 }
 

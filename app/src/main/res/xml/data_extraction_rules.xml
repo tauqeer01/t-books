@@ -12,5 +12,7 @@
         <include domain="database" path="." />
         <include domain="file" path="datastore/" />
         <include domain="sharedpref" path="." />
+        <!-- Note ink and images. Not in cloud backup: its 25 MB quota would stop all backups once notes have photos. -->
+        <include domain="file" path="notes/" />
     </device-transfer>
 </data-extraction-rules>
