@@ -22,7 +22,10 @@ import com.bookflow.app.pdf.engine.PdfEngineFactory
 import com.bookflow.app.pdf.engine.PdfSource
 import com.bookflow.app.pdf.engine.RenderQuality
 import com.bookflow.app.pdf.generator.SamplePdfGenerator
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -39,6 +42,9 @@ class BookRepositoryImpl(
     private val bookmarkDao: BookmarkDao,
     private val pdfEngineFactory: PdfEngineFactory
 ) : BookRepository {
+
+    // Embedded title/author need a full PDFBox parse, which is slow for large textbooks; it runs after import.
+    private val metadataScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun getAllBooks(): Flow<List<Book>> {
         return combine(bookDao.getAllBooks(), bookDao.getAllCrossRefs()) { books, refs ->
@@ -105,9 +111,12 @@ class BookRepositoryImpl(
                 return@withContext Result.failure(DuplicateBookException(existingByUri.id, "Book \"${existingByUri.title}\" is already in your library."))
             }
 
-            val existingByNameAndSize = bookDao.findDuplicate(metadata.fileName.removeSuffix(".pdf"), metadata.fileSizeBytes)
-            if (existingByNameAndSize != null && metadata.fileSizeBytes > 0) {
-                return@withContext Result.failure(DuplicateBookException(existingByNameAndSize.id, "Duplicate document \"${metadata.fileName}\" detected."))
+            // Titles change once embedded metadata is applied and copies have no source URI, so match on content
+            val existingBySize = if (metadata.fileSizeBytes > 0) {
+                bookDao.findBySize(metadata.fileSizeBytes).firstOrNull { sameLeadingBytes(it, uri) }
+            } else null
+            if (existingBySize != null) {
+                return@withContext Result.failure(DuplicateBookException(existingBySize.id, "Duplicate document \"${metadata.fileName}\" detected."))
             }
 
             val bookId = UUID.randomUUID().toString()
@@ -117,7 +126,7 @@ class BookRepositoryImpl(
             val readUri = localCopy?.let { Uri.fromFile(it) } ?: uri
             val bookTitle = metadata.fileName.removeSuffix(".pdf").replace("_", " ").replace("-", " ")
 
-            // 4. Inspect PDF without copying to local disk
+            // 4. Inspect PDF in place: PdfRenderer only, so import cost does not grow with document size
             val engine = pdfEngineFactory.createEngine()
             val source = if (localCopy != null) PdfSource.FileSource(localCopy) else PdfSource.UriSource(readUri, context)
             val openResult = engine.openDocument(source)
@@ -127,7 +136,6 @@ class BookRepositoryImpl(
             }
 
             val pageCount = engine.getPageCount().coerceAtLeast(1)
-            val pdfMetadata = try { engine.documentMetadata() } catch (_: Exception) { null to null }
 
             // 5. Generate lightweight first-page thumbnail
             val thumbBitmap = engine.renderPage(0, scale = 0.4f, quality = RenderQuality.FAST)
@@ -140,8 +148,8 @@ class BookRepositoryImpl(
             // 6. Save in Room
             val bookEntity = BookEntity(
                 id = bookId,
-                title = pdfMetadata.first?.takeIf { it.isNotBlank() } ?: bookTitle,
-                author = pdfMetadata.second?.takeIf { it.isNotBlank() } ?: "Unknown author",
+                title = bookTitle,
+                author = "Unknown author",
                 // SAF imports read in place from the persisted URI; temporary grants read the private copy
                 filePath = localCopy?.absolutePath ?: "",
                 uriString = if (localCopy != null) null else uriStr,
@@ -159,10 +167,38 @@ class BookRepositoryImpl(
             )
 
             bookDao.insertOrUpdateBook(bookEntity)
+            metadataScope.launch { applyEmbeddedMetadata(bookEntity, source) }
             Result.success(bookEntity.toDomain())
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    /** Same size plus identical leading bytes: a cheap, reliable content match without hashing whole textbooks. */
+    private fun sameLeadingBytes(existing: BookEntity, uri: Uri): Boolean = try {
+        fun head(open: () -> java.io.InputStream?) = open()?.use { input ->
+            val buffer = ByteArray(DUPLICATE_PROBE_BYTES)
+            var read = 0
+            while (read < buffer.size) { val n = input.read(buffer, read, buffer.size - read); if (n < 0) break; read += n }
+            buffer.copyOf(read)
+        }
+        val existingHead = head {
+            existing.uriString?.let { context.contentResolver.openInputStream(Uri.parse(it)) }
+                ?: File(existing.filePath).takeIf { it.isFile }?.inputStream()
+        }
+        existingHead != null && existingHead.contentEquals(head { context.contentResolver.openInputStream(uri) })
+    } catch (_: Exception) { false }
+
+    private suspend fun applyEmbeddedMetadata(book: BookEntity, source: PdfSource) {
+        val engine = pdfEngineFactory.createEngine()
+        try {
+            if (engine.openDocument(source) !is com.bookflow.app.pdf.engine.PdfDocumentResult.Success) return
+            val (title, author) = engine.documentMetadata()
+            if (title.isNullOrBlank() && author.isNullOrBlank()) return
+            bookDao.updateMetadata(book.id, title?.takeIf { it.isNotBlank() } ?: book.title, author?.takeIf { it.isNotBlank() } ?: book.author)
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (_: Exception) { /* The filename title remains; the book is fully readable without metadata. */ }
+        finally { engine.close() }
     }
 
     /** Copies a PDF into the app's private books folder (the folder FileProvider shares from). */
@@ -306,3 +342,5 @@ class BookRepositoryImpl(
         ))
     }
 }
+
+private const val DUPLICATE_PROBE_BYTES = 64 * 1024

@@ -3,7 +3,9 @@ package com.bookflow.app.pdf.engine
 import android.content.Context
 import android.os.ParcelFileDescriptor
 import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
+import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.io.RandomAccessRead
+import com.tom_roush.pdfbox.io.ScratchFile
 import com.tom_roush.pdfbox.pdfparser.PDFParser
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode
@@ -14,16 +16,24 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.io.EOFException
+import java.io.File
 import java.io.FileInputStream
+import java.io.IOException
 import java.nio.ByteBuffer
 
 /** Text/outline companion to Android's renderer, including Android 10–14.
  * Reads seekable SAF descriptors in place. Only the last eight text pages are cached.
+ *
+ * PDFBox 2 parses every object reachable from the catalog up front, including image streams.
+ * Stream bytes are buffered in a temp file rather than the heap, so the Java heap stays bounded
+ * regardless of file size; if the text layer still cannot be loaded, it is marked unavailable and
+ * callers degrade to render-only reading.
  */
 internal class PdfTextIndex(private val context: Context) {
     private val lock = Any()
     private var document: PDDocument? = null
     private var source: PdfSource? = null
+    @Volatile private var unavailable: IOException? = null
     private val pages = object : LinkedHashMap<Int, TextPage>(8, .75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, TextPage>?) = size > 8
     }
@@ -33,8 +43,12 @@ internal class PdfTextIndex(private val context: Context) {
     // Parse lazily: importing/rendering a scan must not depend on text extraction.
     fun open(source: PdfSource) = synchronized(lock) { close(); this.source = source }
 
+    /** True once parsing has failed for this document; text features are then disabled. */
+    val isUnavailable: Boolean get() = unavailable != null
+
     private fun doc(): PDDocument {
         document?.let { return it }
+        unavailable?.let { throw it }
         // Heavy I/O: intentionally NOT inside synchronized(lock) to avoid blocking
         // other callers. The double-check pattern below is safe because PDDocument
         // assignment is an atomic reference write, and duplicate parses are harmless
@@ -49,28 +63,39 @@ internal class PdfTextIndex(private val context: Context) {
             is PdfSource.AssetSource -> error("Text extraction requires a seekable document")
         }
         val access = DescriptorAccess(input)
+        val scratch = ScratchFile(MemoryUsageSetting.setupMixed(SCRATCH_HEAP_BYTES).setTempDir(scratchDir()))
         try {
-            val parser = PDFParser(access)
+            val parser = PDFParser(access, scratch)
             parser.parse()
             val parsed = parser.pdDocument
             synchronized(lock) {
                 // Double-check: another thread may have parsed while we were working
-                document?.let { access.close(); return it }
+                document?.let { parsed.close(); access.close(); return it }
                 document = parsed
                 return parsed
             }
-        } catch (e: Exception) { access.close(); throw e }
+        } catch (e: Exception) {
+            access.close(); runCatching { scratch.close() }; throw e
+        } catch (e: OutOfMemoryError) {
+            access.close(); runCatching { scratch.close() }
+            throw IOException("Text layer is too large to load on this device", e).also { unavailable = it }
+        }
     }
+
+    private fun scratchDir() = File(context.cacheDir, "pdfbox").apply { mkdirs() }
 
     suspend fun outline(): List<PdfOutlineItem> = withContext(Dispatchers.IO) {
         synchronized(lock) {
             val doc = doc()
+            // One walk of the page tree; indexOf() per entry is O(pages) and dominates large textbooks.
+            val pageIndex = HashMap<com.tom_roush.pdfbox.cos.COSDictionary, Int>(doc.numberOfPages * 2)
+            doc.pages.forEachIndexed { index, page -> pageIndex[page.cosObject] = index }
             val result = mutableListOf<PdfOutlineItem>()
             fun visit(node: PDOutlineNode, level: Int) {
                 if (level > 32 || result.size >= 10000) return
                 node.children().forEach { child ->
                     val page = child.findDestinationPage(doc)
-                    val index = page?.let { doc.pages.indexOf(it) } ?: -1
+                    val index = page?.let { pageIndex[it.cosObject] } ?: -1
                     if (index >= 0) result += PdfOutlineItem(child.title ?: "Untitled", index, level)
                     visit(child, level + 1)
                 }
@@ -116,6 +141,13 @@ internal class PdfTextIndex(private val context: Context) {
 
     private fun page(index: Int): TextPage {
         pages[index]?.let { return it }
+        return try { extractPage(index) } catch (e: OutOfMemoryError) {
+            pages.clear()
+            throw IOException("Page ${index + 1} text is too large to load", e)
+        }
+    }
+
+    private fun extractPage(index: Int): TextPage {
         val doc = doc()
         val page = doc.getPage(index)
         val text = StringBuilder()
@@ -228,9 +260,12 @@ internal class PdfTextIndex(private val context: Context) {
         runCatching { document?.close() }
         document = null
         source = null
+        unavailable = null
         pages.clear()
     }
 }
+
+private const val SCRATCH_HEAP_BYTES = 4L * 1024 * 1024
 
 /** Small read buffer avoids a syscall for every PDF parser byte without copying the PDF. */
 internal class DescriptorAccess(private val input: FileInputStream) : RandomAccessRead {

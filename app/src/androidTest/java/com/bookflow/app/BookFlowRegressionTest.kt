@@ -34,7 +34,7 @@ class BookFlowRegressionTest {
 
     private fun fixture(rotations: List<Int> = List(12) { 0 }, blank: Boolean = false): File {
         PDFBoxResourceLoader.init(context)
-        val file = File.createTempFile("bookflow_test_", ".pdf", context.cacheDir)
+        val file = File.createTempFile("bookflow_test_", ".pdf", File(context.cacheDir, "exports").apply { mkdirs() })
         PDDocument().use { doc ->
             rotations.forEachIndexed { index, rotation ->
                 val page = PDPage(PDRectangle(400f, 600f)).apply { this.rotation = rotation }
@@ -163,11 +163,13 @@ class BookFlowRegressionTest {
         try {
             val repository = BookRepositoryImpl(context, db.bookDao(), db.collectionDao(), db.annotationDao(), db.bookmarkDao(), PdfEngineFactory(context))
             val imported = repository.importPdf(uri).getOrThrow()
-            assertEquals("Regression fixture", imported.title)
-            assertEquals("BookFlow tests", imported.author)
+            // Embedded metadata is applied after import so large documents import instantly
+            val withMetadata = withTimeout(10_000) { repository.getBookById(imported.id).first { it?.author == "BookFlow tests" } }
+            assertEquals("Regression fixture", withMetadata!!.title)
             assertEquals(2, imported.pageCount)
-            assertEquals("", imported.filePath)
-            assertEquals(uri.toString(), imported.uriString)
+            // A FileProvider grant is temporary (like "Open with"), so the library keeps a private copy
+            assertTrue(File(imported.filePath).exists())
+            assertNull(imported.uriString)
             assertTrue(File(requireNotNull(imported.thumbnailPath)).exists())
             val duplicate = repository.importMultiplePdfs(listOf(uri))
             assertEquals(0, duplicate.importedCount)

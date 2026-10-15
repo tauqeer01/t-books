@@ -20,6 +20,9 @@ class AndroidPdfRendererEngine(private val context: Context) : PdfEngine {
     private var descriptor: ParcelFileDescriptor? = null
     private var renderer: PdfRenderer? = null
     private var temporaryFile: File? = null
+    /** Where [renderer] was opened from, so it can be reopened to release pdfium's document cache. */
+    private var rendererSource: PdfSource? = null
+    private var pagesSinceReopen = 0
     private val textIndex = PdfTextIndex(context)
     private val dimensions = ConcurrentHashMap<Int, PdfPageDimensions>()
     @Volatile private var pageCount = 0
@@ -34,22 +37,17 @@ class AndroidPdfRendererEngine(private val context: Context) : PdfEngine {
         synchronized(lock) {
             close()
             try {
-                var textSource = source
-                descriptor = when (source) {
-                    is PdfSource.FileSource -> ParcelFileDescriptor.open(source.file, ParcelFileDescriptor.MODE_READ_ONLY)
-                    is PdfSource.UriSource -> requireNotNull(source.context.contentResolver.openFileDescriptor(source.uri, "r")) { "Document is no longer available" }
-                    is PdfSource.AssetSource -> {
-                        val file = File.createTempFile("bookflow_asset_", ".pdf", context.cacheDir)
-                        temporaryFile = file
-                        source.context.assets.open(source.assetPath).use { input -> file.outputStream().use { input.copyTo(it) } }
-                        textSource = PdfSource.FileSource(file)
-                        ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-                    }
-                }
-                renderer = PdfRenderer(requireNotNull(descriptor))
+                val seekable = if (source is PdfSource.AssetSource) {
+                    val file = File.createTempFile("bookflow_asset_", ".pdf", context.cacheDir)
+                    temporaryFile = file
+                    source.context.assets.open(source.assetPath).use { input -> file.outputStream().use { input.copyTo(it) } }
+                    PdfSource.FileSource(file)
+                } else source
+                rendererSource = seekable
+                openRenderer(seekable)
                 pageCount = requireNotNull(renderer).pageCount
                 check(pageCount > 0) { "This PDF has no pages" }
-                textIndex.open(textSource)
+                textIndex.open(seekable)
                 PdfDocumentResult.Success(pageCount)
             } catch (e: Exception) {
                 close()
@@ -57,33 +55,58 @@ class AndroidPdfRendererEngine(private val context: Context) : PdfEngine {
             }
         }
     }
+    private fun openRenderer(source: PdfSource) {
+        descriptor = when (source) {
+            is PdfSource.FileSource -> ParcelFileDescriptor.open(source.file, ParcelFileDescriptor.MODE_READ_ONLY)
+            is PdfSource.UriSource -> requireNotNull(source.context.contentResolver.openFileDescriptor(source.uri, "r")) { "Document is no longer available" }
+            is PdfSource.AssetSource -> error("Assets are copied to a file before opening")
+        }
+        renderer = PdfRenderer(requireNotNull(descriptor))
+        pagesSinceReopen = 0
+    }
+
+    /**
+     * pdfium keeps every object and stream it has parsed until the document closes, so native memory
+     * grows with the pages visited — hundreds of MB across a large scanned textbook. Reopening every
+     * few dozen pages keeps it bounded; an open costs only a few milliseconds.
+     */
+    private fun activeRenderer(): PdfRenderer? {
+        val source = rendererSource
+        if (source != null && pagesSinceReopen >= PAGES_PER_RENDERER) {
+            runCatching { renderer?.close() }; renderer = null
+            runCatching { descriptor?.close() }; descriptor = null
+            runCatching { openRenderer(source) }
+        }
+        return renderer
+    }
+
     override fun getPageCount() = pageCount
     // Synchronous UI queries only touch the dimension cache, never a live PDF page.
     override fun getPageDimensions(pageIndex: Int) = dimensions[pageIndex] ?: PdfPageDimensions(595f, 842f)
     override suspend fun loadPageDimensions(pageIndex: Int): PdfPageDimensions = withContext(Dispatchers.IO) {
         synchronized(lock) {
-            dimensions[pageIndex] ?: requireNotNull(renderer).openPage(pageIndex).use { page ->
+            dimensions[pageIndex] ?: requireNotNull(activeRenderer()).also { pagesSinceReopen++ }.openPage(pageIndex).use { page ->
                 PdfPageDimensions(page.width.toFloat(), page.height.toFloat()).also { dimensions[pageIndex] = it }
             }
         }
     }
     override suspend fun renderPage(pageIndex: Int, scale: Float, quality: RenderQuality): Bitmap? = withContext(Dispatchers.IO) {
         synchronized(lock) {
-            val active = renderer ?: return@synchronized null
             if (pageIndex !in 0 until pageCount) return@synchronized null
             val key = "${pageIndex}_${scale}_${quality.name}"
             cache.get(key)?.let { return@synchronized it }
+            val active = activeRenderer() ?: return@synchronized null
             render(active, pageIndex, scale * quality.scaleMultiplier, 4_000_000)?.also { cache.put(key, it) }
         }
     }
     override suspend fun renderThumbnail(pageIndex: Int): Bitmap? = withContext(Dispatchers.IO) {
         synchronized(lock) {
-            val active = renderer ?: return@synchronized null
             if (pageIndex !in 0 until pageCount) return@synchronized null
-            thumbnails.get(pageIndex) ?: render(active, pageIndex, .22f, 160_000)?.also { thumbnails.put(pageIndex, it) }
+            thumbnails.get(pageIndex) ?: render(activeRenderer() ?: return@synchronized null, pageIndex, .22f, 160_000)?.also { thumbnails.put(pageIndex, it) }
         }
     }
     private fun render(active: PdfRenderer, index: Int, requestedScale: Float, maxPixels: Int): Bitmap? = try {
+        pagesSinceReopen++
         active.openPage(index).use { page ->
             dimensions[index] = PdfPageDimensions(page.width.toFloat(), page.height.toFloat())
             val scale = minOf(requestedScale.coerceIn(.05f, 4f), sqrt(maxPixels.toFloat() / (page.width.toFloat() * page.height)))
@@ -111,8 +134,11 @@ class AndroidPdfRendererEngine(private val context: Context) : PdfEngine {
         cache.evictAll(); thumbnails.evictAll(); dimensions.clear()
         runCatching { renderer?.close() }; renderer = null
         runCatching { descriptor?.close() }; descriptor = null
+        rendererSource = null
         textIndex.close()
         temporaryFile?.delete(); temporaryFile = null
         pageCount = 0
     }
 }
+
+private const val PAGES_PER_RENDERER = 24

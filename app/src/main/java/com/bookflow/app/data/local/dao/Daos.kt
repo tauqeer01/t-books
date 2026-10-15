@@ -26,8 +26,8 @@ interface BookDao {
     @Query("SELECT * FROM books WHERE uriString = :uriString LIMIT 1")
     suspend fun getBookByUri(uriString: String): BookEntity?
 
-    @Query("SELECT * FROM books WHERE title = :title AND fileSizeBytes = :fileSizeBytes LIMIT 1")
-    suspend fun findDuplicate(title: String, fileSizeBytes: Long): BookEntity?
+    @Query("SELECT * FROM books WHERE fileSizeBytes = :fileSizeBytes")
+    suspend fun findBySize(fileSizeBytes: Long): List<BookEntity>
 
     @Query("SELECT * FROM books WHERE isFavorite = 1 ORDER BY lastReadTimestamp DESC")
     fun getFavoriteBooks(): Flow<List<BookEntity>>
@@ -43,6 +43,9 @@ interface BookDao {
 
     @Query("UPDATE books SET isFavorite = :isFavorite WHERE id = :bookId")
     suspend fun updateFavorite(bookId: String, isFavorite: Boolean)
+
+    @Query("UPDATE books SET title = :title, author = :author WHERE id = :bookId")
+    suspend fun updateMetadata(bookId: String, title: String, author: String)
 
     @Query("DELETE FROM books WHERE id = :id")
     suspend fun deleteBookById(id: String)

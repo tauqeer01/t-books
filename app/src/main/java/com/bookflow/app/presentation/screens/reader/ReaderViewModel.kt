@@ -200,7 +200,12 @@ class ReaderViewModel(
                     val outline = engine.getTableOfContents()
                     _uiState.value = _uiState.value.copy(outline = outline)
                 } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                catch (_: Exception) { /* Rendering remains available for image-only or unsupported text. */ }
+                catch (e: Exception) {
+                    // Rendering remains available for image-only or unsupported text.
+                    if (e.cause is OutOfMemoryError) {
+                        _uiState.value = _uiState.value.copy(toastMessage = "Text features unavailable for this file. Pages still display normally.")
+                    }
+                }
             } else if (result is com.bookflow.app.pdf.engine.PdfDocumentResult.Error) {
                 _uiState.value = _uiState.value.copy(
                     isLoadingPage = false,

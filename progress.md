@@ -111,6 +111,54 @@ Updated: 2026-10-01
 - [x] Correct misleading built-in sample metadata/data without deleting user documents.
 - [ ] Validate import, duplicate detection, collections, favorites, sharing, and removal on emulator.
 
+## Phase 16 — Large PDFs (complete, 2026-10-15)
+
+Any PDF, regardless of page count, opens in BookFlow, read in place from device storage (no hand-off to another viewer).
+
+- [x] Reproduce with generated 150/500/1,500-page PDFs and a 300-page, 436 MB scanned PDF. Root cause: import called `documentMetadata()`, and PDFBox 2 `initialParse` loads every stream reachable from the catalog into an unbounded in-heap scratch buffer → `OutOfMemoryError` (192 MB heap) crashed the app. Second cause: pdfium inside `PdfRenderer` retains parsed objects for every visited page, so native memory grew ~200 MB+ while reading a large scan.
+- [x] Import uses `PdfRenderer` only (page count + cover); title/author applied afterwards in the background. Import: 1,500 pages 5,244 → 45 ms; 300-page scan 3,869 → 584 ms; 415 MB scan 177 ms.
+- [x] PDFBox buffers stream data in a temp file (`cache/pdfbox`, 4 MB heap cap) instead of the heap.
+- [x] Build the outline in one pass over the page tree instead of `pages.indexOf()` per entry.
+- [x] PDFBox paths convert `OutOfMemoryError` to `IOException`; text failures degrade to render-only with a one-time notice.
+- [x] "Open with" imports try a persistable grant first; a private copy is made only when the grant is temporary (otherwise the book could not be reopened after restart).
+- [x] Reader memory bounded: `PdfRenderer` is reopened every 24 rendered pages to release pdfium's document cache. Native heap over a full 300-page scroll stays 80–120 MB (mostly collectable bitmaps) instead of climbing past 260 MB.
+- [x] Duplicate detection matches by file size + leading 64 KB of content (titles change when metadata is applied; copies have no source URI).
+- [x] Regression tests: `LargePdfRegressionTest` (150/500/1,500 pages, scanned, and a larger-than-heap stress file when present). Full suite 19/19 (stress skipped unless pushed; passed 415 MB run separately). Lint passes.
+- Known limitation: full-text search is linear (~50 ms/page; ~74 s for 1,500 pages) and outline on very large files takes several seconds because PDFBox parses the whole file; both run in the background and are cancellable.
+
+## Phase 17 — Notes (Samsung Notes–class)
+
+Fixed A4-ratio pages; free-positioned text/image/clip elements; ink on top. Engine: `androidx.ink` 1.0.0 + `compose-rich-editor`.
+
+- [ ] Add dependencies and any required toolchain bumps.
+- [ ] Room schema: folders, notes, pages, elements, FTS index; migration + tests.
+- [ ] Shared ink wrapper: pen, pencil, fountain pen, highlighter; pressure/tilt; partial/whole eraser; ink storage.
+- [ ] Editor: page list, zoom/pan, lasso move/resize/recolor, text boxes with rich formatting, photo/camera insert, page backgrounds, undo/redo, autosave.
+- [ ] Input rules: stylus draws / finger navigates; finger draws when no stylus; S Pen button lasso; eraser end.
+- [ ] Notes home: nested folders, pinned, grid/list, sort, full-text search, tags.
+- [ ] Export note to PDF and page to PNG; share.
+
+## Phase 18 — Reader capture into Notes and Flashcards
+
+- [ ] Selection toolbar actions: Add to note, Flashcard, Cloze (finger long-press and stylus select).
+- [ ] Clip tool: drag a region on any page (including scans), render at 2× (≤ 4 MP), save as WebP.
+- [ ] Destination sheet: last used / choose / new (note or deck); quote attribution; source book/page link.
+- [ ] Side panel: reader + note side by side on tablets (≥ 840 dp), bottom sheet on phones, drag-and-drop.
+
+## Phase 19 — Flashcards
+
+- [ ] Room schema: decks, cards, schedule, review log; migration + tests.
+- [ ] SM-2 scheduler (pure Kotlin) with unit tests for every state × rating.
+- [ ] Card editor: text, image, ink faces; basic, reversed, cloze (`{{c1::…}}`).
+- [ ] Review screen with interval labels, undo, show source page.
+- [ ] Deck home with due counts; stats (30-day reviews, retention, 7-day forecast).
+
+## Phase 20 — Navigation, global search, Home
+
+- [ ] Bottom bar: Home · Library · Notes · Cards · Settings; Collections moves into Library.
+- [ ] Top-bar global search across books, book text, notes, and cards.
+- [ ] Home: "Due today" flashcards card and "Recent notes" shelf.
+
 ## Verification
 
 - [x] Baseline build attempted; found JVM target mismatch.
