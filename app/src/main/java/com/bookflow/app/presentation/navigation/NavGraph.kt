@@ -75,7 +75,8 @@ fun BookFlowNavGraph(
         Screen.Collections.route,
         Screen.Search.route,
         Screen.Notes.route,
-        Screen.Cards.route
+        Screen.Cards.route,
+        Screen.ESign.route
     )
 
     // Tablets, foldables and landscape get a side rail instead of a stretched bottom bar
@@ -321,6 +322,34 @@ fun BookFlowNavGraph(
                         key = "stats_${deckId.orEmpty()}",
                         factory = com.bookflow.app.presentation.screens.cards.StatsViewModel.Factory(deckId, container.flashcardRepository))
                     com.bookflow.app.presentation.screens.cards.CardStatsScreen(vm, onBack = { navController.popBackStack() })
+                }
+
+                composable(Screen.ESign.route) {
+                    val vm: com.bookflow.app.presentation.screens.esign.ESignHomeViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.esign.ESignHomeViewModel.Factory(context.applicationContext, container.signatureStore, container.bookRepository))
+                    val creator: com.bookflow.app.presentation.screens.esign.SignatureCreatorViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.esign.SignatureCreatorViewModel.Factory(container.signatureStore))
+                    com.bookflow.app.presentation.screens.esign.ESignHomeScreen(vm, creator,
+                        onSignBook = { navController.navigate(Screen.SignEditor.createRoute(bookId = it)) },
+                        onSignFile = { navController.navigate(Screen.SignEditor.createRoute(uri = it)) },
+                        onOpenBook = { navController.navigate(Screen.Reader.createRoute(it)) })
+                }
+                composable(Screen.SignEditor.route, arguments = listOf(
+                    navArgument("bookId") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("uri") { type = NavType.StringType; defaultValue = "" }
+                )) { entry ->
+                    val bookId = entry.arguments?.getString("bookId")?.takeIf { it.isNotEmpty() }
+                    val uri = entry.arguments?.getString("uri")?.takeIf { it.isNotEmpty() }?.let(android.net.Uri::parse)
+                    val vm: com.bookflow.app.presentation.screens.esign.SignEditorViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.esign.SignEditorViewModel.Factory(context.applicationContext, bookId, uri,
+                            container.bookRepository, container.pdfEngineFactory, container.signatureStore, container.pdfSigner))
+                    val creator: com.bookflow.app.presentation.screens.esign.SignatureCreatorViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.esign.SignatureCreatorViewModel.Factory(container.signatureStore))
+                    com.bookflow.app.presentation.screens.esign.SignEditorScreen(vm, creator,
+                        onClose = { navController.popBackStack() },
+                        onOpenSigned = { id ->
+                            navController.navigate(Screen.Reader.createRoute(id)) { popUpTo(Screen.ESign.route) }
+                        })
                 }
 
                 // 5. Settings Tab (Matching Settings Screenshot)

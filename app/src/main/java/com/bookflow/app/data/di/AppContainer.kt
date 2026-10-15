@@ -71,6 +71,10 @@ class AppContainer(private val context: Context) {
         com.bookflow.app.notes.data.NotesRepositoryImpl(database.notesDao(), noteFileStore)
     }
 
+    val signatureStore by lazy { com.bookflow.app.esign.data.SignatureStore(context) }
+
+    val pdfSigner by lazy { com.bookflow.app.esign.data.PdfSigner(context) }
+
     val collectionRepository: CollectionRepository by lazy {
         CollectionRepositoryImpl(
             collectionDao = database.collectionDao()

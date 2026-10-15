@@ -7,5 +7,6 @@
     <string name="nav_search">Search</string>
     <string name="nav_notes">Notes</string>
     <string name="nav_cards">Cards</string>
+    <string name="nav_esign">eSign</string>
     <string name="nav_settings">Settings</string>
 </resources>

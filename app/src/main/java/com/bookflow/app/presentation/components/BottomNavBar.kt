@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Style
+import androidx.compose.material.icons.filled.Draw
+import androidx.compose.material.icons.outlined.Draw
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.EditNote
@@ -86,6 +88,13 @@ val NavTabs = listOf(
         filledIcon = Icons.Filled.Style,
         outlinedIcon = Icons.Outlined.Style,
         testTag = "nav_cards_tab"
+    ),
+    NavTabItem(
+        route = Screen.ESign.route,
+        labelRes = R.string.nav_esign,
+        filledIcon = Icons.Filled.Draw,
+        outlinedIcon = Icons.Outlined.Draw,
+        testTag = "nav_esign_tab"
     )
 )
 

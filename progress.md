@@ -194,6 +194,17 @@ User feedback: only one ruled sheet was visible and tools felt limited. Template
 - [x] Search (Home top bar) covers books, highlights, book notes, notebooks (full-text index), and flashcards (front/back text), with scope chips.
 - [x] Home: “N flashcards to study” banner (opens Cards) and a Recent Notes shelf with cover thumbnails.
 - [x] Suite: 35 instrumented (1 stress skipped) + unit; lint passes.
+- [x] Later: Home quick actions (compact 4-up tiles), Settings gear in the Home header, Settings trimmed to 7 rows and removed from the bottom bar.
+
+## Phase 21 — eSign: Fill & Sign (complete, 2026-10-15)
+
+- [x] Bottom bar: Home · Library · Notes · Cards · eSign. Fully offline.
+- [x] Saved signature and initials (`esign/data/SignatureStore`, `filesDir/signatures/`): draw with finger or stylus (Jetpack Ink), type in a script/elegant/plain style, or photograph ink on paper (paper removed by a luminance threshold). Black or blue ink; stored as transparent PNGs trimmed to the ink, and saving replaces the previous one of that kind.
+- [x] Sign a PDF from the library or from files (`SignEditorScreen`): Signature, Initials, Text, Date, ✓, ✗; tap to place, drag to move, use the corner handle to resize, double-tap text to edit; undo; discard warning.
+- [x] Save (`esign/data/PdfSigner`) flattens the fields into each page's content stream (PDFBox, temp-file scratch for big files) and writes `filesDir/books/signed/<id>/<Title> (signed).pdf`, imported into the library; the original is only read. After saving: Open signed copy or Share. The eSign tab lists signed documents with Share.
+- [x] Placement is stored as fractions of the displayed page and mapped through `/Rotate` and the crop box (`PdfPlacement`, unit-tested).
+- [x] Fixed on device: text and date were drawn at size² (the font size and the text matrix both scaled them); the test now requires text to stay inside its field.
+- [x] Tests: `PdfPlacementTest` (4 unit tests), `ESignTest` (4 on-device: placement on 0°/90°/180° pages, text bounds, signature trim/replace, ink extraction). Suite: 40 instrumented + unit; lint passes.
 
 ## Verification
 
