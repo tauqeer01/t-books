@@ -206,6 +206,18 @@ User feedback: only one ruled sheet was visible and tools felt limited. Template
 - [x] Fixed on device: text and date were drawn at size² (the font size and the text matrix both scaled them); the test now requires text to stay inside its field.
 - [x] Tests: `PdfPlacementTest` (4 unit tests), `ESignTest` (4 on-device: placement on 0°/90°/180° pages, text bounds, signature trim/replace, ink extraction). Suite: 40 instrumented + unit; lint passes.
 
+## Phase 22 — More Notes tools (complete, 2026-10-15)
+
+- [x] Floating toolbar: a pencil button at the bottom right (draggable, settles against the nearer edge, position remembered) opens a palette of pens, highlighter, every tool, undo/redo, and paste; picking a pen or tool closes it. On/off in the editor's ⋮ menu. The bottom toolbar is unchanged apart from the new tools (it scrolls on narrow phones; Insert stays pinned).
+- [x] Auto shape (default in Shapes): rough lines, triangles, rectangles, and ellipses snap to clean shapes (`ShapeRecognizer`); anything else stays freehand. New shapes: diamond, pentagon, hexagon, star.
+- [x] Study tape (`ElementKind.TAPE`): drag to cover; tap to peel back or cover again in any tool; Show all / Hide all; drawn above ink in the editor and in exports; reopened notes start covered. Tape can't be written on.
+- [x] Laser pointer: fading trail, never saved.
+- [x] Lasso copy / cut / paste, including between notes (`NoteClipboard`); pasted items land in view and stay selected. A tap with the lasso selects or clears.
+- [x] Eraser: Highlighter-only mode and Clear page (one undo step).
+- [x] Pen editor: custom color picker (saturation/brightness square and hue strip) and recent custom colors.
+- [x] Fixed: a new edit could cancel a save already under way ("Couldn't save changes: StandaloneCoroutine was cancelled"), leaving those pages unsaved until edited again; writes are now non-cancellable.
+- [x] Tests: `ShapeRecognizerTest` (7 unit tests), `NoteToolsTest` (5 on-device: tape size/toggle/save, tape over ink in export, cross-note paste, highlighter eraser + undo, auto shape vs scribble). Suite: 45 instrumented + unit; lint passes.
+
 ## Verification
 
 - [x] Baseline build attempted; found JVM target mismatch.

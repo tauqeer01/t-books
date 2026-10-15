@@ -81,7 +81,7 @@ private class CanvasOverlay {
     var tape by mutableStateOf<Rect?>(null)
     /** Laser trail: screen points with the time they were drawn; each stroke is its own list. */
     val laser = mutableStateListOf<List<LaserPoint>>()
-    var now by mutableStateOf(0L)
+    var now by androidx.compose.runtime.mutableLongStateOf(0L)
 }
 
 private data class LaserPoint(val position: Offset, val time: Long)

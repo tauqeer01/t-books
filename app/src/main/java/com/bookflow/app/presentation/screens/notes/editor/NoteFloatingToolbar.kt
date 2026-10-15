@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.BorderColor
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.DragIndicator
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.UnfoldLess
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -69,12 +70,13 @@ class FloatingToolbarActions(
 )
 
 /**
- * A palette that floats over the page: collapsed it is one round button showing the current tool; expanded it
- * lists pens and tools. Drag it anywhere; it settles against the nearer side so it never covers the middle.
+ * A pencil button that floats over the page (bottom right at first) and opens a palette of pens and tools.
+ * Picking a pen or tool closes the palette again. Drag the button or the palette's handle anywhere; it settles
+ * against the nearer side so it never covers the middle of the page.
  */
 @Composable
 fun NoteFloatingToolbar(state: NoteEditorUiState, actions: FloatingToolbarActions, modifier: Modifier = Modifier) {
-    var expanded by rememberSaveable { mutableStateOf(true) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val margin = with(LocalDensity.current) { 8.dp.toPx() }
     BoxWithConstraints(modifier.fillMaxSize()) {
@@ -115,15 +117,17 @@ fun NoteFloatingToolbar(state: NoteEditorUiState, actions: FloatingToolbarAction
                 .onSizeChanged { barW = it.width; barH = it.height }
         ) {
             if (!expanded) {
-                val active = EditorToolEntries.firstOrNull { it.first == state.tool }?.second
-                val tint = if (state.tool == EditorTool.PEN) state.activePen?.let { Color(it.colorArgb) } else null
+                val active = EditorToolEntries.firstOrNull { it.first == state.tool }?.second?.second.orEmpty()
+                // The bar under the pencil shows the current pen color while a pen is in use
+                val penColor = if (state.tool == EditorTool.PEN) state.activePen?.let { Color(it.colorArgb) } else null
                 Box(
-                    Modifier.size(52.dp).then(drag).clickable(onClickLabel = "Show tools") { expanded = true }
-                        .semantics { contentDescription = "Tools: ${active?.second ?: ""}" },
+                    Modifier.size(56.dp).background(MaterialTheme.colorScheme.primaryContainer).then(drag)
+                        .clickable(onClickLabel = "Open tools") { expanded = true }
+                        .semantics { contentDescription = "Tools, current: $active" },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(active?.first ?: Icons.Outlined.DragIndicator, null, tint = tint ?: MaterialTheme.colorScheme.primary)
-                    if (tint != null) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp).size(width = 18.dp, height = 3.dp).background(tint, CircleShape))
+                    Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    if (penColor != null) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 9.dp).size(width = 18.dp, height = 3.dp).background(penColor, CircleShape))
                 }
             } else {
                 Column(
@@ -141,7 +145,7 @@ fun NoteFloatingToolbar(state: NoteEditorUiState, actions: FloatingToolbarAction
                         Box(
                             Modifier.size(36.dp).clip(CircleShape)
                                 .border(if (active) 2.5.dp else 0.dp, if (active) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
-                                .clickable(onClickLabel = if (active) "Edit pen" else "Use pen") { if (active) actions.onEditPen() else actions.onPreset(index) }
+                                .clickable(onClickLabel = if (active) "Edit pen" else "Use pen") { if (active) actions.onEditPen() else { actions.onPreset(index); expanded = false } }
                                 .semantics { contentDescription = "${pen.type.title} ${index + 1}"; selected = active },
                             contentAlignment = Alignment.Center
                         ) {
@@ -152,9 +156,9 @@ fun NoteFloatingToolbar(state: NoteEditorUiState, actions: FloatingToolbarAction
                     }
                     HorizontalDivider(Modifier.width(28.dp).padding(vertical = 2.dp))
                     val highlighting = state.tool == EditorTool.PEN && state.activePen?.type == PenType.HIGHLIGHTER
-                    FloatingTool(Icons.Outlined.BorderColor, "Highlighter", highlighting, onClick = actions.onHighlighter)
+                    FloatingTool(Icons.Outlined.BorderColor, "Highlighter", highlighting) { actions.onHighlighter(); expanded = false }
                     EditorToolEntries.filter { it.first != EditorTool.PEN }.forEach { (tool, entry) ->
-                        FloatingTool(entry.first, entry.second, state.tool == tool) { actions.onTool(tool) }
+                        FloatingTool(entry.first, entry.second, state.tool == tool) { actions.onTool(tool); expanded = false }
                     }
                     HorizontalDivider(Modifier.width(28.dp).padding(vertical = 2.dp))
                     FloatingTool(Icons.AutoMirrored.Outlined.Undo, "Undo", false, enabled = state.canUndo, onClick = actions.onUndo)
