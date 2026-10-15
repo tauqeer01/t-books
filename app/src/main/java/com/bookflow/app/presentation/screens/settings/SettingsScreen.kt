@@ -47,15 +47,11 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     var editorSection by remember { mutableStateOf<String?>(null) }
-    var showPrivacyDialog by remember { mutableStateOf(false) }
     var showAboutDialog by remember { mutableStateOf(false) }
     var showReportDialog by remember { mutableStateOf(false) }
     var showThemeDialog by remember { mutableStateOf(false) }
     val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
     var showStorageDialog by remember { mutableStateOf(false) }
-
-    var searchQuery by remember { mutableStateOf("") }
-    var isSearching by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -68,17 +64,7 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            BookFlowTopBar(title = "Settings", subtitle = "Customize your reading experience") {
-                BookFlowTopBarAction(
-                    icon = if (isSearching) Icons.Default.Close else Icons.Default.Search,
-                    contentDescription = "Search settings",
-                    selected = isSearching,
-                    onClick = {
-                        isSearching = !isSearching
-                        if (!isSearching) searchQuery = ""
-                    }
-                )
-            }
+            BookFlowTopBar(title = "Settings", subtitle = "Customize your reading experience")
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
@@ -99,246 +85,73 @@ fun SettingsScreen(
                 contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Settings search (toggled from the header)
-                if (isSearching) item {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search settings...", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedBorderColor = BrandPurple,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
-                        ),
-                        leadingIcon = {
-                            Icon(Icons.Default.Search, null, tint = BrandPurple, modifier = Modifier.size(20.dp))
-                        }
-                    )
-                }
-
-                // App Profile Card
-                if (searchQuery.isBlank()) {
-                    item {
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            shadowElevation = 0.5.dp,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showAboutDialog = true }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                BookFlowEmblem(Modifier.size(50.dp))
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .padding(start = 14.dp)
-                                ) {
-                                    Text(
-                                        text = "BookFlow",
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "Version ${com.bookflow.app.BuildConfig.VERSION_NAME}\nYour Reading Companion",
-                                        fontSize = 12.5.sp,
-                                        lineHeight = 16.sp,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.Default.ChevronRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
                 // Groups of working, redesigned settings
+                // Only settings people actually look for. Detailed options live inside each sheet; Library's grid/list and
+                // sort are on the Library screen itself; privacy, terms, and licenses are reached from About.
                 val groups = listOf(
                     SettingGroup(
-                        title = "Reading Preferences",
+                        title = "Reading",
                         items = listOf(
                             SettingRowData(
                                 icon = Icons.AutoMirrored.Filled.MenuBook,
                                 iconTint = Color(0xFF5935FF),
                                 iconBg = Color(0xFFEDE9FE),
-                                title = "Reading Mode",
-                                subtitle = "Vertical, Horizontal, Single Page",
+                                title = "Reading preferences",
+                                subtitle = "Scroll mode, page colors, spacing, orientation, screen",
                                 value = prefs.scrollMode.displayName,
-                                onClick = { editorSection = "Reading Mode" }
+                                onClick = { editorSection = "Reading Preferences" }
                             ),
                             SettingRowData(
                                 icon = Icons.Default.DarkMode,
                                 iconTint = Color(0xFF6366F1),
                                 iconBg = Color(0xFFE0E7FF),
-                                title = "App Theme",
+                                title = "App theme",
                                 subtitle = "Light or dark app appearance",
                                 value = appTheme.displayName,
                                 onClick = { showThemeDialog = true }
                             ),
                             SettingRowData(
-                                icon = Icons.Default.LightMode,
-                                iconTint = Color(0xFF10B981),
-                                iconBg = Color(0xFFD1FAE5),
-                                title = "Page Theme",
-                                subtitle = "Reader page colors: Light, Dark, Sepia, Mint",
-                                value = prefs.readerTheme.displayName,
-                                onClick = { editorSection = "Appearance" }
-                            ),
-                            SettingRowData(
-                                icon = Icons.Default.TextFields,
-                                iconTint = Color(0xFF3B82F6),
-                                iconBg = Color(0xFFDBEAFE),
-                                title = "Text & Display",
-                                subtitle = "Page spacing, rendering quality",
-                                value = "${prefs.pageSpacing} dp",
-                                onClick = { editorSection = "Text & Display" }
-                            ),
-                            SettingRowData(
-                                icon = Icons.Default.Description,
-                                iconTint = Color(0xFFF59E0B),
-                                iconBg = Color(0xFFFEF3C7),
-                                title = "Page Navigation",
-                                subtitle = "Volume keys, screen orientation",
-                                value = prefs.orientation.displayName,
-                                onClick = { editorSection = "Page Navigation" }
-                            ),
-                            SettingRowData(
-                                icon = Icons.Default.Visibility,
-                                iconTint = Color(0xFF8B5CF6),
-                                iconBg = Color(0xFFEDE9FE),
-                                title = "Screen & Auto Lock",
-                                subtitle = "Keep screen awake, brightness",
-                                value = if (prefs.keepScreenOn) "Always On" else "System",
-                                onClick = { editorSection = "Screen & Auto Lock" }
-                            )
-                        )
-                    ),
-                    SettingGroup(
-                        title = "Annotations",
-                        items = listOf(
-                            SettingRowData(
                                 icon = Icons.Default.BorderColor,
                                 iconTint = Color(0xFFEAB308),
                                 iconBg = Color(0xFFFEF3C7),
-                                title = "Highlight Colors",
-                                subtitle = "Manage highlight color palette",
+                                title = "Highlight & pen",
+                                subtitle = "Default highlight color, pen color and thickness",
                                 isColorPalette = true,
-                                onClick = { editorSection = "Highlight Colors" }
-                            ),
-                            SettingRowData(
-                                icon = Icons.Default.Create,
-                                iconTint = Color(0xFFF43F5E),
-                                iconBg = Color(0xFFFFE4E6),
-                                title = "Pen & Drawing",
-                                subtitle = "Stroke size, color, stylus settings",
-                                value = "${"%.1f".format(prefs.penWidth)} dp",
-                                onClick = { editorSection = "Pen & Drawing" }
+                                onClick = { editorSection = ANNOTATIONS_SECTION }
                             )
                         )
                     ),
                     SettingGroup(
-                        title = "Library & Files",
+                        title = "Storage",
                         items = listOf(
-                            SettingRowData(
-                                icon = Icons.Default.Layers,
-                                iconTint = Color(0xFF6366F1),
-                                iconBg = scheme.primaryContainer,
-                                title = "Library View",
-                                subtitle = "Grid/List view, sort order",
-                                value = if (prefs.libraryGrid) "Grid" else "List",
-                                onClick = { editorSection = "Library View" }
-                            ),
                             SettingRowData(
                                 icon = Icons.Default.DeleteOutline,
                                 iconTint = Color(0xFF0D9488),
                                 iconBg = Color(0xFFCCFBF1),
-                                title = "Storage & Cache",
-                                subtitle = "Free up temporary PDF render cache",
+                                title = "Clear cache",
+                                subtitle = "Free space used by page previews. Books and notes are kept",
                                 value = formatBytes(state.cacheSizeBytes),
                                 onClick = { showStorageDialog = true }
                             )
                         )
                     ),
                     SettingGroup(
-                        title = "Privacy & Security",
+                        title = "Help & about",
                         items = listOf(
-                            SettingRowData(
-                                icon = Icons.Default.Lock,
-                                iconTint = Color(0xFFE11D48),
-                                iconBg = Color(0xFFFFE4E6),
-                                title = "Privacy",
-                                subtitle = "Your data stays on your device",
-                                value = "100% Offline",
-                                onClick = { showPrivacyDialog = true }
-                            )
-                        )
-                    ),
-                    SettingGroup(
-                        title = "About",
-                        items = listOf(
-                            SettingRowData(
-                                icon = Icons.Default.Info,
-                                iconTint = Color(0xFF7C3AED),
-                                iconBg = Color(0xFFEDE9FE),
-                                title = "About BookFlow",
-                                subtitle = "Version and app information",
-                                value = "v${com.bookflow.app.BuildConfig.VERSION_NAME}",
-                                onClick = { showAboutDialog = true }
-                            ),
-                            SettingRowData(
-                                icon = Icons.Default.Lock,
-                                iconTint = Color(0xFF2563EB),
-                                iconBg = Color(0xFFDBEAFE),
-                                title = "Privacy policy",
-                                subtitle = "How BookFlow handles your data",
-                                onClick = { onOpenLegal(com.bookflow.app.presentation.screens.legal.LegalDocument.PRIVACY) }
-                            ),
-                            SettingRowData(
-                                icon = Icons.Default.Description,
-                                iconTint = scheme.onSurfaceVariant,
-                                iconBg = scheme.surfaceVariant,
-                                title = "Terms of use",
-                                subtitle = "Rules for using BookFlow",
-                                onClick = { onOpenLegal(com.bookflow.app.presentation.screens.legal.LegalDocument.TERMS) }
-                            ),
-                            SettingRowData(
-                                icon = Icons.Default.Code,
-                                iconTint = Color(0xFF0891B2),
-                                iconBg = Color(0xFFCFFAFE),
-                                title = "Open-source licenses",
-                                subtitle = "Libraries that BookFlow is built with",
-                                onClick = onOpenLicenses
-                            ),
                             SettingRowData(
                                 icon = Icons.Default.BugReport,
                                 iconTint = Color(0xFFD97706),
                                 iconBg = Color(0xFFFEF3C7),
                                 title = "Report a problem",
-                                subtitle = "Share a crash report or describe an issue",
+                                subtitle = "Send a description or crash report",
                                 onClick = { showReportDialog = true }
                             ),
                             SettingRowData(
                                 icon = Icons.Default.Share,
                                 iconTint = Color(0xFF059669),
                                 iconBg = Color(0xFFD1FAE5),
-                                title = "Share App",
-                                subtitle = "Share BookFlow with friends",
+                                title = "Share BookFlow",
+                                subtitle = "Send the Play Store link to a friend",
                                 onClick = {
                                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
@@ -349,6 +162,15 @@ fun SettingsScreen(
                                     }
                                     context.startActivity(Intent.createChooser(shareIntent, "Share BookFlow"))
                                 }
+                            ),
+                            SettingRowData(
+                                icon = Icons.Default.Info,
+                                iconTint = Color(0xFF7C3AED),
+                                iconBg = Color(0xFFEDE9FE),
+                                title = "About BookFlow",
+                                subtitle = "Version, privacy, terms, and licenses",
+                                value = "v${com.bookflow.app.BuildConfig.VERSION_NAME}",
+                                onClick = { showAboutDialog = true }
                             )
                         )
                     )
@@ -356,12 +178,7 @@ fun SettingsScreen(
 
                 // Render groups
                 groups.forEach { group ->
-                    val filteredItems = group.items.filter {
-                        searchQuery.isBlank() ||
-                                it.title.contains(searchQuery, ignoreCase = true) ||
-                                it.subtitle.contains(searchQuery, ignoreCase = true)
-                    }
-
+                    val filteredItems = group.items
                     if (filteredItems.isNotEmpty()) {
                         item {
                             Column(modifier = Modifier.fillMaxWidth()) {
@@ -428,48 +245,6 @@ fun SettingsScreen(
             icon = Icons.Default.DeleteOutline,
             onConfirm = { viewModel.clearCache() }
         )
-    }
-
-    // Privacy Bottom Sheet
-    if (showPrivacyDialog) {
-        BookFlowBottomSheet(
-            onDismissRequest = { showPrivacyDialog = false },
-            title = "Your Books Stay With You",
-            titleIcon = {
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = Color(0xFFE11D48).copy(alpha = 0.12f),
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = Color(0xFFE11D48),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { showPrivacyDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPurple),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Understood", fontWeight = FontWeight.SemiBold)
-                }
-            }
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.padding(vertical = 4.dp)
-            ) {
-                PrivacyBulletPoint("100% On-Device", "No account required, no server uploads, and no cloud database. Everything is stored locally.")
-                PrivacyBulletPoint("Zero Telemetry", "No background tracking, analytics, or behavioral logging.")
-                PrivacyBulletPoint("Safe File Management", "Removing a book from BookFlow only deletes the app's local record — your original PDF document is never deleted or modified.")
-            }
-        }
     }
 
     if (showThemeDialog) {
@@ -569,19 +344,30 @@ fun SettingsScreen(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(vertical = 4.dp)) {
                 Text(
-                    "BookFlow is a modern, high-performance Android PDF reader built for smooth document reading, text selection, annotation, and organization.",
+                    "BookFlow is a PDF reader for studying: read books of any size, annotate, take notes, and learn with flashcards.",
                     fontSize = 13.5.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 19.sp
                 )
+                PrivacyBulletPoint("Private by design", "No account, no uploads, no tracking. Books, notes, and cards stay on this device.")
+                PrivacyBulletPoint("Your files are safe", "Removing a book from BookFlow never deletes or changes the original PDF.")
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
+                TextButton(onClick = { showAboutDialog = false; onOpenLegal(com.bookflow.app.presentation.screens.legal.LegalDocument.PRIVACY) }) {
+                    Text("Privacy policy", color = BrandPurple, fontWeight = FontWeight.SemiBold)
+                }
+                TextButton(onClick = { showAboutDialog = false; onOpenLegal(com.bookflow.app.presentation.screens.legal.LegalDocument.TERMS) }) {
+                    Text("Terms of use", color = BrandPurple, fontWeight = FontWeight.SemiBold)
+                }
                 TextButton(onClick = { showAboutDialog = false; onOpenLicenses() }) {
-                    Text("View open-source licenses", color = BrandPurple, fontWeight = FontWeight.SemiBold)
+                    Text("Open-source licenses", color = BrandPurple, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
     }
 }
+
+/** Editor section showing both the highlight color and the pen defaults. */
+const val ANNOTATIONS_SECTION = "Highlight & pen"
 
 private data class SettingRowData(
     val icon: ImageVector,

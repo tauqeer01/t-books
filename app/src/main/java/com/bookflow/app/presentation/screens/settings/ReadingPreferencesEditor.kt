@@ -209,7 +209,7 @@ fun ReadingPreferencesEditor(
                     }
                 }
 
-                if (section == "Highlight Colors") {
+                if (section == "Highlight Colors" || section == ANNOTATIONS_SECTION) {
                     Text(
                         "Default Highlight Palette",
                         fontSize = 13.sp,
@@ -265,7 +265,7 @@ fun ReadingPreferencesEditor(
                     }
                 }
 
-                if (section == "Pen & Drawing") {
+                if (section == "Pen & Drawing" || section == ANNOTATIONS_SECTION) {
                     Text(
                         "Pen Stroke Width: ${"%.1f".format(prefs.penWidth)} dp",
                         fontSize = 14.sp,
