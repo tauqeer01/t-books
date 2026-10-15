@@ -26,6 +26,10 @@ class NotePenPreferences(context: Context) {
     fun lastTemplate(): PageBackground = runCatching { PageBackground.valueOf(prefs.getString(KEY_TEMPLATE, null)!!) }.getOrDefault(PageBackground.BLANK)
     fun setLastTemplate(template: PageBackground) = prefs.edit().putString(KEY_TEMPLATE, template.name).apply()
 
+    /** Note that reader captures go to by default. */
+    fun lastCaptureNoteId(): String? = prefs.getString(KEY_CAPTURE_NOTE, null)
+    fun setLastCaptureNoteId(id: String) = prefs.edit().putString(KEY_CAPTURE_NOTE, id).apply()
+
     fun fingerDrawing() = prefs.getBoolean(KEY_FINGER, true)
     fun setFingerDrawing(enabled: Boolean) = prefs.edit().putBoolean(KEY_FINGER, enabled).apply()
 
@@ -34,5 +38,6 @@ class NotePenPreferences(context: Context) {
         const val KEY_ACTIVE = "active"
         const val KEY_FINGER = "finger_drawing"
         const val KEY_TEMPLATE = "last_template"
+        const val KEY_CAPTURE_NOTE = "last_capture_note"
     }
 }

@@ -48,8 +48,9 @@ data class NoteEditorUiState(
     val canUndo: Boolean = false,
     val canRedo: Boolean = false,
     val message: String? = null,
-    val pendingSourceBookId: String? = null,
-    val pendingSourcePage: Int? = null
+    /** Page and vertical position (page fraction) to scroll into view, e.g. a reader capture; cleared once shown. */
+    val revealPageId: String? = null,
+    val revealY: Float = 0f
 ) {
     val activePen: PenPreset? get() = presets.getOrNull(activePreset)
     /** Whether a finger touch should ink in drawing tools. */

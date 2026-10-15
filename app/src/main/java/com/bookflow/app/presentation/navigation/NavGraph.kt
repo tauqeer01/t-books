@@ -290,10 +290,43 @@ fun BookFlowNavGraph(
                         )
                     )
 
-                    ReaderScreen(
-                        viewModel = readerViewModel,
-                        onBackClick = { navController.popBackStack() }
+                    val captureViewModel: com.bookflow.app.presentation.screens.reader.ReaderCaptureViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.reader.ReaderCaptureViewModel.Factory(
+                            container.notesRepository, container.noteCapture, container.notePenPreferences
+                        )
                     )
+                    com.bookflow.app.presentation.screens.reader.ReaderCaptureHost(
+                        readerViewModel = readerViewModel,
+                        captureViewModel = captureViewModel,
+                        onOpenNote = { navController.navigate(Screen.NoteEditor.createRoute(it)) },
+                        notesPanel = { noteId, inbox, onClose, panelModifier ->
+                            val panelViewModel: com.bookflow.app.presentation.screens.notes.editor.NoteEditorViewModel = viewModel(
+                                key = "notes_panel_$noteId",
+                                factory = com.bookflow.app.presentation.screens.notes.editor.NoteEditorViewModel.Factory(
+                                    noteId, container.notesRepository, container.noteFileStore, container.notePenPreferences,
+                                    container.applicationScope, context.applicationContext
+                                )
+                            )
+                            LaunchedEffect(panelViewModel) { inbox.collect { panelViewModel.appendCaptured(it) } }
+                            com.bookflow.app.presentation.screens.notes.editor.NoteEditorScreen(
+                                vm = panelViewModel,
+                                onBack = onClose,
+                                // A clip from this book jumps the reader beside it; other books open normally
+                                onOpenSource = { sourceBook, sourcePage ->
+                                    if (sourceBook == bookId) readerViewModel.jumpToPage(sourcePage)
+                                    else navController.navigate(Screen.Reader.createRoute(sourceBook, sourcePage))
+                                },
+                                modifier = panelModifier,
+                                inPanel = true
+                            )
+                        }
+                    ) { onNotesClick ->
+                        ReaderScreen(
+                            viewModel = readerViewModel,
+                            onBackClick = { navController.popBackStack() },
+                            onNotesClick = onNotesClick
+                        )
+                    }
                 }
 
                 // Book Details & Annotation Hub Screen (Phase 5)

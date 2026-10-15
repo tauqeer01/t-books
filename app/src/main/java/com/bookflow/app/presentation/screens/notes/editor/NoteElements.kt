@@ -102,7 +102,7 @@ fun NoteElementView(element: NoteElement, pageId: String, editing: Boolean, text
                     textStyle = noteTextStyle,
                     cursorBrush = SolidColor(Color(0xFF6D28D9)),
                     modifier = Modifier.fillMaxWidth().padding(start = if (quote) 12.dp else if (sticky != null) 14.dp else 4.dp, end = if (sticky != null) 14.dp else 4.dp,
-                        top = if (sticky != null) 14.dp else 4.dp, bottom = if (element.sourcePage != null) 22.dp else 4.dp)
+                        top = if (sticky != null) 14.dp else 4.dp, bottom = if (element.sourcePage != null) 40.dp else 4.dp)
                         .focusRequester(focus)
                 )
                 SourceChip(element, Modifier.align(Alignment.BottomStart))
@@ -127,7 +127,7 @@ fun NoteElementView(element: NoteElement, pageId: String, editing: Boolean, text
 private fun SourceChip(element: NoteElement, modifier: Modifier) {
     val page = element.sourcePage ?: return
     Text(
-        "p. ${page + 1}", fontSize = 11.sp, color = Color(0xFF5B21B6),
-        modifier = modifier.padding(4.dp).background(Color(0xFFEDE9FE), RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp)
+        "p. ${page + 1}", fontSize = 18.sp, color = Color(0xFF5B21B6),
+        modifier = modifier.padding(6.dp).background(Color(0xFFEDE9FE), RoundedCornerShape(8.dp)).padding(horizontal = 10.dp, vertical = 3.dp)
     )
 }

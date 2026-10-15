@@ -16,6 +16,8 @@ import androidx.compose.material.icons.filled.FormatColorText
 import androidx.compose.material.icons.filled.FormatStrikethrough
 import androidx.compose.material.icons.filled.FormatUnderlined
 import androidx.compose.material.icons.filled.PanTool
+import androidx.compose.material.icons.filled.TextFields
+import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.automirrored.filled.StickyNote2
 import androidx.compose.material.icons.filled.CropSquare
 import androidx.compose.material.icons.filled.HorizontalRule
@@ -177,6 +179,8 @@ private fun DrawingTool.icon(): ImageVector = when (this) {
     DrawingTool.TEXT_UNDERLINE -> Icons.Default.FormatUnderlined
     DrawingTool.TEXT_STRIKETHROUGH -> Icons.Default.FormatStrikethrough
     DrawingTool.STICKY_NOTE -> Icons.AutoMirrored.Filled.StickyNote2
+    DrawingTool.SELECT_TEXT -> Icons.Default.TextFields
+    DrawingTool.CLIP -> Icons.Default.Crop
     DrawingTool.HAND -> Icons.Default.PanTool
 }
 
@@ -262,6 +266,8 @@ fun AnnotationToolRail(
                         val tool = state.drawingTool
                         fun select(t: DrawingTool) { viewModel.setDrawingTool(t); flyout = null }
                         RailButton(DrawingTool.HAND.icon(), "Scroll", tool == DrawingTool.HAND, "tool_hand") { select(DrawingTool.HAND) }
+                        RailButton(DrawingTool.SELECT_TEXT.icon(), "Select text", tool == DrawingTool.SELECT_TEXT, "tool_select_text") { select(DrawingTool.SELECT_TEXT) }
+                        RailButton(DrawingTool.CLIP.icon(), "Clip to note", tool == DrawingTool.CLIP, "tool_clip") { select(DrawingTool.CLIP) }
                         RailButton(DrawingTool.PEN.icon(), "Pen", tool == DrawingTool.PEN, "tool_pen") { select(DrawingTool.PEN) }
                         RailButton(DrawingTool.HIGHLIGHTER.icon(), "Highlighter", tool == DrawingTool.HIGHLIGHTER, "tool_highlighter") {
                             select(DrawingTool.HIGHLIGHTER)
@@ -516,6 +522,8 @@ fun DrawingPageCanvas(
     var eraserPosition by remember { mutableStateOf<Offset?>(null) }
     // Live word-snapped preview for the text markup tools
     var markupPreview by remember { mutableStateOf<PdfTextSelection?>(null) }
+    // Rectangle being dragged by the clip tool, normalized
+    var clipRect by remember { mutableStateOf<Pair<Offset, Offset>?>(null) }
     val scope = rememberCoroutineScope()
 
     // Collect persisted drawing strokes for this page
@@ -583,6 +591,36 @@ fun DrawingPageCanvas(
                                         viewModel.commitTextMarkup(selection, tool)
                                         markupPreview = null
                                     }
+                                }
+                            }
+                            DrawingTool.SELECT_TEXT -> {
+                                if (change.pressed) {
+                                    val start = markStart ?: Offset(normX, normY).also { markStart = it }
+                                    previewJob?.cancel()
+                                    previewJob = scope.launch { markupPreview = viewModel.selectTextRange(pageIndex, start.x, start.y, normX, normY) }
+                                } else {
+                                    val start = markStart
+                                    previewJob?.cancel()
+                                    markStart = null
+                                    if (start != null) scope.launch {
+                                        viewModel.setTextSelection(viewModel.selectTextRange(pageIndex, start.x, start.y, normX, normY))
+                                        markupPreview = null
+                                    }
+                                }
+                            }
+                            DrawingTool.CLIP -> {
+                                if (change.pressed) {
+                                    val start = clipRect?.first ?: Offset(normX, normY)
+                                    clipRect = start to Offset(normX, normY)
+                                } else {
+                                    clipRect?.let { (a, b) ->
+                                        val rect = com.bookflow.app.pdf.engine.PdfRect(minOf(a.x, b.x), minOf(a.y, b.y), maxOf(a.x, b.x), maxOf(a.y, b.y))
+                                        // Ignore taps; a clip needs a visible area
+                                        if ((rect.right - rect.left) * size.width > 24 && (rect.bottom - rect.top) * size.height > 24) {
+                                            viewModel.requestClip(pageIndex, rect, maxOf(size.width, size.height))
+                                        }
+                                    }
+                                    clipRect = null
                                 }
                             }
                             DrawingTool.STICKY_NOTE -> {
@@ -666,7 +704,19 @@ fun DrawingPageCanvas(
             val pageW = size.width
             val pageH = size.height
 
+            clipRect?.let { (a, b) ->
+                val topLeft = Offset(minOf(a.x, b.x) * pageW, minOf(a.y, b.y) * pageH)
+                val clipSize = androidx.compose.ui.geometry.Size(kotlin.math.abs(b.x - a.x) * pageW, kotlin.math.abs(b.y - a.y) * pageH)
+                drawRect(Color(0x226D28D9), topLeft, clipSize)
+                drawRect(Color(0xFF6D28D9), topLeft, clipSize, style = Stroke(2.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(16f, 10f))))
+            }
             markupPreview?.let { preview ->
+                if (state.drawingTool == DrawingTool.SELECT_TEXT) {
+                    preview.highlightRects.forEach { r ->
+                        drawRect(Color(0x553B82F6), Offset(r.left * pageW, r.top * pageH), androidx.compose.ui.geometry.Size((r.right - r.left) * pageW, (r.bottom - r.top) * pageH))
+                    }
+                    return@let
+                }
                 val type = when (state.drawingTool) {
                     DrawingTool.TEXT_UNDERLINE -> AnnotationType.UNDERLINE
                     DrawingTool.TEXT_STRIKETHROUGH -> AnnotationType.STRIKETHROUGH

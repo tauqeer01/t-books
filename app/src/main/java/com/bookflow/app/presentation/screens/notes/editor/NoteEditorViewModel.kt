@@ -309,6 +309,18 @@ class NoteEditorViewModel(
         }
     }
 
+    /** Adds a reader capture below existing content, saving pending edits first so nothing is overwritten. */
+    fun appendCaptured(element: NoteElement) {
+        viewModelScope.launch {
+            flush()
+            val (pageId, placed) = repository.appendElement(noteId, element)
+            load()
+            _state.update { it.copy(revealPageId = pageId, revealY = placed.y, message = "Added to note") }
+        }
+    }
+
+    fun consumeReveal() = _state.update { it.copy(revealPageId = null) }
+
     // --- Pages -------------------------------------------------------------------------------------------
 
     fun addPage(afterIndex: Int, background: PageBackground = _state.value.pages.getOrNull(afterIndex)?.background ?: PageBackground.BLANK) {

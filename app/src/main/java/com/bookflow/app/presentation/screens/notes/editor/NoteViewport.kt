@@ -81,7 +81,12 @@ class NoteViewport(private val gutterPx: Float) {
         clamp()
     }
 
-    fun scrollToPage(index: Int) { offsetY = gutterPx - pageTop(index) * pxPerUnit; clamp() }
+    /** Brings page [index] into view with [yFraction] of the page (0 = top) near the top of the screen. */
+    fun scrollToPage(index: Int, yFraction: Float = 0f) {
+        val target = pageTop(index) + (yFraction * PAGE_HEIGHT - 40f).coerceAtLeast(0f)
+        offsetY = gutterPx - target * pxPerUnit
+        clamp()
+    }
 
     suspend fun fling(velocity: Offset) {
         var lastX = 0f

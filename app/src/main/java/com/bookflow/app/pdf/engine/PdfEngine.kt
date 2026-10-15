@@ -95,6 +95,19 @@ interface PdfEngine {
     }
 
     /**
+     * Renders only [region] (normalized 0..1 page coordinates) so the clip is sharp: the output's longest
+     * side is about [targetLongEdgePx], capped at [maxPixels]. Default crops a full-page render.
+     */
+    suspend fun renderRegion(pageIndex: Int, region: PdfRect, targetLongEdgePx: Int, maxPixels: Int = 4_000_000): Bitmap? {
+        val page = renderPage(pageIndex, scale = 2f, quality = RenderQuality.HIGH_DPI) ?: return null
+        val left = (region.left * page.width).toInt().coerceIn(0, page.width - 1)
+        val top = (region.top * page.height).toInt().coerceIn(0, page.height - 1)
+        val width = ((region.right - region.left) * page.width).toInt().coerceIn(1, page.width - left)
+        val height = ((region.bottom - region.top) * page.height).toInt().coerceIn(1, page.height - top)
+        return Bitmap.createBitmap(page, left, top, width, height)
+    }
+
+    /**
      * Optional hint to evict specific page resources from cache.
      */
     fun evictPage(pageIndex: Int) {}

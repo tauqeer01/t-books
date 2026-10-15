@@ -164,12 +164,16 @@ User feedback: only one ruled sheet was visible and tools felt limited. Template
 - [ ] Holding the S Pen side button draws a lasso; the stylus eraser end erases.
 - [ ] On a phone with no stylus, a finger draws; two fingers pan/zoom and cancel the half-drawn stroke.
 
-## Phase 18 — Reader capture into Notes and Flashcards
+## Phase 18 — Reader capture into Notes (complete, 2026-10-15)
 
-- [ ] Selection toolbar actions: Add to note, Flashcard, Cloze (finger long-press and stylus select).
-- [ ] Clip tool: drag a region on any page (including scans), render at 2× (≤ 4 MP), save as WebP.
-- [ ] Destination sheet: last used / choose / new (note or deck); quote attribution; source book/page link.
-- [ ] Side panel: reader + note side by side on tablets (≥ 840 dp), bottom sheet on phones, drag-and-drop.
+- [x] Finger: long-press selects a word; keep dragging to extend word by word (works with a stylus too). Rail tool **Select text** drags out a selection directly.
+- [x] Selection bar leads with **To note** (plus a drag handle while the notes panel is open); highlight/underline/strike/note/copy unchanged.
+- [x] Rail tool **Clip to note**: drag a rectangle on any page (including scans); only that region is rendered by `PdfRenderer` at ~2× display size (≤ 4 MP) and saved as WebP.
+- [x] Destination sheet: Last used note, New note (named after the book), or any note. Quotes keep “…” plus “— Book, p. N”; every capture links back to its page. Snackbar offers Undo and Open.
+- [x] Notes panel (header button): reader and note side by side on screens ≥ 840 dp, stacked on phones, with a draggable divider. Captures go straight into the open panel and scroll into view; text can be dragged from the selection handle onto the panel; tapping a clip's page chip jumps the reader beside it.
+- [x] Tests: `ReaderCaptureTest` (quote escaping/attribution, clip aspect + file, region render size/content, capture → note → undo). Suite: 32 instrumented (1 stress skipped) + unit; lint passes.
+- Flashcard and cloze actions from the selection bar arrive with Phase 19.
+- Known limitations: range selection follows the PDF's reading order, so it can pick up a neighbouring column or side box; drag-and-drop into the panel was verified to compile and wire up but needs a manual check on a real device (adb cannot drive a cross-window drag).
 
 ## Phase 19 — Flashcards
 

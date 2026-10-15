@@ -60,6 +60,8 @@ class AppContainer(private val context: Context) {
 
     val noteFileStore by lazy { com.bookflow.app.notes.data.NoteFileStore(context) }
 
+    val noteCapture by lazy { com.bookflow.app.notes.data.NoteCapture(noteFileStore) }
+
     val notesRepository: com.bookflow.app.notes.domain.NotesRepository by lazy {
         com.bookflow.app.notes.data.NotesRepositoryImpl(database.notesDao(), noteFileStore)
     }

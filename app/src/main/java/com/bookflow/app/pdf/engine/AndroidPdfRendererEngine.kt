@@ -99,6 +99,32 @@ class AndroidPdfRendererEngine(private val context: Context) : PdfEngine {
             render(active, pageIndex, scale * quality.scaleMultiplier, 4_000_000)?.also { cache.put(key, it) }
         }
     }
+    override suspend fun renderRegion(pageIndex: Int, region: PdfRect, targetLongEdgePx: Int, maxPixels: Int): Bitmap? = withContext(Dispatchers.IO) {
+        synchronized(lock) {
+            if (pageIndex !in 0 until pageCount) return@synchronized null
+            val active = activeRenderer() ?: return@synchronized null
+            try {
+                pagesSinceReopen++
+                active.openPage(pageIndex).use { page ->
+                    val regionWidth = (region.right - region.left).coerceIn(0.01f, 1f) * page.width
+                    val regionHeight = (region.bottom - region.top).coerceIn(0.01f, 1f) * page.height
+                    val scale = minOf(targetLongEdgePx / maxOf(regionWidth, regionHeight), sqrt(maxPixels / (regionWidth * regionHeight)), 8f)
+                    val width = (regionWidth * scale).toInt().coerceAtLeast(1)
+                    val height = (regionHeight * scale).toInt().coerceAtLeast(1)
+                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    bitmap.eraseColor(Color.WHITE)
+                    // Scale the page, then shift the region's top-left corner to the bitmap origin
+                    val matrix = Matrix().apply {
+                        postScale(scale, scale)
+                        postTranslate(-region.left * page.width * scale, -region.top * page.height * scale)
+                    }
+                    page.render(bitmap, null, matrix, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    bitmap
+                }
+            } catch (_: Exception) { null }
+        }
+    }
+
     override suspend fun renderThumbnail(pageIndex: Int): Bitmap? = withContext(Dispatchers.IO) {
         synchronized(lock) {
             if (pageIndex !in 0 until pageCount) return@synchronized null

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Redo
 import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.AlertDialog
@@ -77,7 +78,10 @@ private fun visiblePageY(viewport: NoteViewport): Float {
 fun NoteEditorScreen(
     vm: NoteEditorViewModel,
     onBack: () -> Unit,
-    onOpenSource: (bookId: String, page: Int) -> Unit
+    onOpenSource: (bookId: String, page: Int) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Shown beside a book: the back arrow becomes a close button. */
+    inPanel: Boolean = false
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -114,6 +118,10 @@ fun NoteEditorScreen(
     }
 
     LaunchedEffect(state.message) { state.message?.let { snackbar.showSnackbar(it); vm.consumeMessage() } }
+    LaunchedEffect(state.revealPageId, state.pages.size) {
+        val index = state.pages.indexOfFirst { it.id == state.revealPageId }
+        if (index >= 0) { viewport.pageCount = state.pages.size; viewport.scrollToPage(index, state.revealY); vm.consumeReveal() }
+    }
     BackHandler(enabled = state.editingElementId != null || state.selection != null) {
         if (state.editingElementId != null) vm.stopEditing() else vm.clearSelection()
     }
@@ -126,9 +134,16 @@ fun NoteEditorScreen(
     }
 
     Scaffold(
+        modifier = modifier,
+        contentWindowInsets = if (inPanel) androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0) else androidx.compose.material3.ScaffoldDefaults.contentWindowInsets,
         topBar = {
             TopAppBar(
-                navigationIcon = { IconButton(onClick = { if (state.editingElementId != null) vm.stopEditing(); onBack() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") } },
+                navigationIcon = {
+                    IconButton(onClick = { if (state.editingElementId != null) vm.stopEditing(); onBack() }) {
+                        if (inPanel) Icon(Icons.Outlined.Close, "Close notes panel") else Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
+                    }
+                },
+                windowInsets = if (inPanel) androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0) else androidx.compose.material3.TopAppBarDefaults.windowInsets,
                 title = {
                     var title by remember(state.isLoading) { mutableStateOf(state.title) }
                     TextField(

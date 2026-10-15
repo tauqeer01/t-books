@@ -114,6 +114,8 @@ data class ReaderUiState(
     val exportedPdfFile: File? = null,
     val showExportDialog: Boolean = false,
     val toastMessage: String? = null,
+    /** Notes panel open beside the reader: selections offer drag-to-note. */
+    val isNotesPanelOpen: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -653,6 +655,36 @@ class ReaderViewModel(
             toastMessage = "Copied to clipboard"
         )
     }
+
+    /** Quotes and clips for notes; the screen routes each to the open notes panel or the destination sheet. */
+    private val _captureRequests = kotlinx.coroutines.flow.MutableSharedFlow<com.bookflow.app.notes.data.CaptureSource>(extraBufferCapacity = 4)
+    val captureRequests: kotlinx.coroutines.flow.SharedFlow<com.bookflow.app.notes.data.CaptureSource> = _captureRequests
+
+    fun requestQuoteCapture() {
+        val selection = _uiState.value.selectedTextSelection ?: return
+        _captureRequests.tryEmit(com.bookflow.app.notes.data.CaptureSource.Quote(selection.text, bookId, selection.pageIndex))
+        clearSelection()
+    }
+
+    fun requestClip(pageIndex: Int, region: com.bookflow.app.pdf.engine.PdfRect, displayLongEdgePx: Int) {
+        viewModelScope.launch {
+            val bitmap = renderClip(pageIndex, region, displayLongEdgePx)
+            if (bitmap == null) _uiState.value = _uiState.value.copy(toastMessage = "Couldn't capture that area")
+            else _captureRequests.emit(com.bookflow.app.notes.data.CaptureSource.Clip(bitmap, bookId, pageIndex))
+        }
+    }
+
+    fun setNotesPanelOpen(open: Boolean) { _uiState.value = _uiState.value.copy(isNotesPanelOpen = open) }
+
+    /** Selection made by the Select text tool or a long-press drag. */
+    fun setTextSelection(selection: PdfTextSelection?) {
+        _uiState.value = _uiState.value.copy(selectedTextSelection = selection?.takeIf { it.text.isNotBlank() }, activeAnnotationMenu = null)
+    }
+
+    /** A sharp image of [region] (normalized) on [pageIndex], about twice the on-screen size. */
+    suspend fun renderClip(pageIndex: Int, region: com.bookflow.app.pdf.engine.PdfRect, displayLongEdgePx: Int): android.graphics.Bitmap? =
+        try { pdfEngine?.renderRegion(pageIndex, region, (displayLongEdgePx * 2).coerceIn(600, 2400)) }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (_: Exception) { null }
 
     fun clearSelection() {
         _uiState.value = _uiState.value.copy(selectedTextSelection = null)

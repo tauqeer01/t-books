@@ -30,6 +30,10 @@ enum class DrawingTool(val title: String) {
     TEXT_UNDERLINE("Underline"),
     TEXT_STRIKETHROUGH("Strikethrough"),
     STICKY_NOTE("Sticky note"),
+    /** Drag across text to select it for copying or sending to a note. */
+    SELECT_TEXT("Select text"),
+    /** Drag a rectangle to capture part of the page as an image for a note. */
+    CLIP("Clip to note"),
     HAND("Scroll");
 
     val isShape: Boolean get() = this == LINE || this == ARROW || this == RECTANGLE || this == ELLIPSE
@@ -40,7 +44,7 @@ enum class DrawingTool(val title: String) {
     /** Translucent tools pick from the pastel palette. */
     val usesHighlighterPalette: Boolean get() = this == HIGHLIGHTER || this == TEXT_HIGHLIGHT || this == STICKY_NOTE
 
-    val hasColor: Boolean get() = this != ERASER && this != HAND
+    val hasColor: Boolean get() = this != ERASER && this != HAND && this != SELECT_TEXT && this != CLIP
 
     val hasStrokeWidth: Boolean get() = this == PEN || this == HIGHLIGHTER || isShape
 }

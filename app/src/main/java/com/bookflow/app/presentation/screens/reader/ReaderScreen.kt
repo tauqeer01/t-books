@@ -21,6 +21,13 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.draganddrop.dragAndDropSource
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.NoteAdd
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -124,6 +131,7 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -191,7 +199,8 @@ val HighlightColorPalette = listOf(
 fun ReaderScreen(
     viewModel: ReaderViewModel,
     onBackClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onNotesClick: () -> Unit = {}
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -560,7 +569,8 @@ fun ReaderScreen(
                     onPageLabelClick = viewModel::openGoToPageDialog,
                     onSearchClick = { viewModel.setSearchOpen(!state.isSearchOpen) },
                     onBookmarkClick = viewModel::toggleBookmark,
-                    onMoreClick = { viewModel.openMoreOptionsSheet(true) }
+                    onMoreClick = { viewModel.openMoreOptionsSheet(true) },
+                    onNotesClick = onNotesClick
                 )
             }
 
@@ -1289,6 +1299,7 @@ fun PdfPageItem(
     modifier: Modifier = Modifier
 ) {
     var pageBitmap by remember(pageIndex) { mutableStateOf<Bitmap?>(null) }
+    val selectionScope = rememberCoroutineScope()
     var actualRatio by remember(pageIndex) { mutableFloatStateOf(aspectRatio) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -1314,11 +1325,6 @@ fun PdfPageItem(
                 if (!state.isDrawingModeActive) {
                     detectTapGestures(
                         onDoubleTap = { onDoubleTap() },
-                        onLongPress = { tapOffset ->
-                            val normX = tapOffset.x / size.width.toFloat()
-                            val normY = tapOffset.y / size.height.toFloat()
-                            viewModel.onPageLongPressed(pageIndex, normX, normY)
-                        },
                         onTap = { tapOffset ->
                             val normX = tapOffset.x / size.width.toFloat()
                             val normY = tapOffset.y / size.height.toFloat()
@@ -1337,6 +1343,29 @@ fun PdfPageItem(
                         }
                     )
                 }
+            }
+            // After the tap detector so it sees events first: long-press selects a word, dragging extends the
+            // selection word by word (finger or stylus), and the release is consumed so it is not also a tap.
+            .pointerInput(pageIndex, state.isDrawingModeActive) {
+                if (state.isDrawingModeActive) return@pointerInput
+                var start: Offset? = null
+                var rangeJob: kotlinx.coroutines.Job? = null
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { o ->
+                        val p = Offset(o.x / size.width, o.y / size.height)
+                        start = p
+                        viewModel.onPageLongPressed(pageIndex, p.x, p.y)
+                    },
+                    onDrag = { change, _ ->
+                        change.consume()
+                        val from = start ?: return@detectDragGesturesAfterLongPress
+                        val to = Offset(change.position.x / size.width, change.position.y / size.height)
+                        rangeJob?.cancel()
+                        rangeJob = selectionScope.launch { viewModel.selectTextRange(pageIndex, from.x, from.y, to.x, to.y)?.let(viewModel::setTextSelection) }
+                    },
+                    onDragEnd = { start = null },
+                    onDragCancel = { start = null }
+                )
             },
         contentAlignment = Alignment.Center
     ) {
@@ -1382,7 +1411,8 @@ fun PdfPageItem(
                             { viewModel.createAnnotationFromSelection(AnnotationType.UNDERLINE) },
                             { viewModel.createAnnotationFromSelection(AnnotationType.STRIKETHROUGH) },
                             { viewModel.createAnnotationFromSelection(AnnotationType.NOTE) },
-                            viewModel::copySelectionToClipboard, viewModel::clearSelection)
+                            viewModel::copySelectionToClipboard, viewModel::clearSelection,
+                            onAddToNote = viewModel::requestQuoteCapture, dragToNote = state.isNotesPanelOpen)
                     }
                 }
             }
@@ -1495,12 +1525,21 @@ fun TextSelectionContextBar(
     onStrikethrough: () -> Unit,
     onAddNote: () -> Unit,
     onCopy: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onAddToNote: () -> Unit = {},
+    /** When the notes panel is open, a handle lets the selection be dragged into it. */
+    dragToNote: Boolean = false
 ) {
     Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 10.dp,
         modifier = Modifier.fillMaxWidth().testTag("contextual_toolbar")) {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            // Capture first: it is the main study action and must not hide behind the scroll
+            if (dragToNote) DragToNoteHandle(selectedText)
+            FilledTonalButton(onClick = onAddToNote, modifier = Modifier.height(32.dp).testTag("selection_add_to_note"),
+                contentPadding = PaddingValues(horizontal = 10.dp)) {
+                Icon(Icons.Default.NoteAdd, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text("To note", fontSize = 13.sp)
+            }
             HighlightColorPalette.forEach { (name, hex) ->
                 ColorSwatch(hex, selected = selectedColorHex.equals(hex, true), onClick = { onColorSelected(hex) }, name = name, size = 20.dp)
             }
@@ -1513,6 +1552,35 @@ fun TextSelectionContextBar(
         }
     }
 }
+
+/** Long-press and drag this handle onto the notes panel to drop the selected text there. */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+private fun DragToNoteHandle(text: String) {
+    Box(
+        Modifier.size(32.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondaryContainer)
+            .dragAndDropSource(
+                drawDragDecoration = { drawQuoteDragShadow() },
+                block = { startQuoteDrag(text) }
+            )
+            .semantics { contentDescription = "Drag selection to note" },
+        contentAlignment = Alignment.Center
+    ) { Icon(Icons.Default.DragIndicator, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSecondaryContainer) }
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawQuoteDragShadow() =
+    drawRoundRect(Color(0xFFEDE9FE), cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()))
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private suspend fun androidx.compose.foundation.draganddrop.DragAndDropSourceScope.startQuoteDrag(text: String) =
+    detectTapGestures(onLongPress = {
+        // Global flag: the selection bar is a popup window, the notes panel is in the activity window
+        startTransfer(androidx.compose.ui.draganddrop.DragAndDropTransferData(
+            android.content.ClipData.newPlainText(DRAG_QUOTE_LABEL, text), flags = android.view.View.DRAG_FLAG_GLOBAL))
+    })
+
+/** ClipData label for quotes dragged from the reader into the notes panel. */
+const val DRAG_QUOTE_LABEL = "bookflow-quote"
 
 @Composable
 private fun ContextBarActionButton(
@@ -1667,7 +1735,8 @@ private fun ReaderHeader(
     onPageLabelClick: () -> Unit,
     onSearchClick: () -> Unit,
     onBookmarkClick: () -> Unit,
-    onMoreClick: () -> Unit
+    onMoreClick: () -> Unit,
+    onNotesClick: () -> Unit
 ) {
     BookFlowTopBar(
         title = state.book?.title ?: "PDF Reader",
@@ -1688,6 +1757,8 @@ private fun ReaderHeader(
             modifier = Modifier.testTag("reader_bookmark_toggle"),
             selected = state.isCurrentPageBookmarked
         )
+        BookFlowTopBarAction(Icons.Default.EditNote, if (state.isNotesPanelOpen) "Close notes panel" else "Notes beside book", onNotesClick,
+            Modifier.testTag("reader_notes_button"), selected = state.isNotesPanelOpen)
         BookFlowTopBarAction(Icons.Default.MoreVert, "Reader options", onMoreClick, Modifier.testTag("reader_more_button"))
     }
 }
