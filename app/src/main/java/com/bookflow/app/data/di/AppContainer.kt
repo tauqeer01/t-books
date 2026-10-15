@@ -60,6 +60,11 @@ class AppContainer(private val context: Context) {
 
     val noteFileStore by lazy { com.bookflow.app.notes.data.NoteFileStore(context) }
 
+    val flashcardRepository by lazy { com.bookflow.app.flashcards.data.FlashcardRepository(context, database.flashcardDao()) }
+
+    /** A card started in the reader, picked up by the card editor. */
+    val cardDrafts = com.bookflow.app.presentation.screens.cards.CardDraftHolder()
+
     val noteCapture by lazy { com.bookflow.app.notes.data.NoteCapture(noteFileStore) }
 
     val notesRepository: com.bookflow.app.notes.domain.NotesRepository by lazy {

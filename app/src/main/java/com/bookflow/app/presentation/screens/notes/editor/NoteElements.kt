@@ -53,7 +53,7 @@ class RichTextStates {
     /** Undo/redo can change HTML underneath an element; re-seed the editor when it is not being typed into. */
     fun sync(element: NoteElement, editing: Boolean) {
         val state = states[element.id] ?: return
-        if (!editing && state.toHtml() != element.html.orEmpty()) state.setHtml(element.html.orEmpty())
+        if (!editing && com.bookflow.app.notes.domain.HtmlText.normalize(state.toHtml()) != element.html.orEmpty()) state.setHtml(element.html.orEmpty())
     }
 }
 

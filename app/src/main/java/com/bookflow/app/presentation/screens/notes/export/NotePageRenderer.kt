@@ -74,7 +74,8 @@ object NotePageRenderer {
     }
 
     private fun drawText(canvas: Canvas, html: String, rect: RectF, scale: Float) {
-        val text = Html.fromHtml(html, Html.FROM_HTML_MODE_COMPACT)
+        // Normalized first: notes saved before entity normalization may still hold &comma;-style entities
+        val text = Html.fromHtml(com.bookflow.app.notes.domain.HtmlText.normalize(html), Html.FROM_HTML_MODE_COMPACT)
         val paint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF111827.toInt(); textSize = DEFAULT_TEXT_SIZE * scale }
         val layout = StaticLayout.Builder.obtain(text, 0, text.length, paint, rect.width().roundToInt().coerceAtLeast(1))
             .setAlignment(Layout.Alignment.ALIGN_NORMAL).setIncludePad(false)

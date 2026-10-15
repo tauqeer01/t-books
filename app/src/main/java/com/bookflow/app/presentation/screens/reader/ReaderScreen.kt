@@ -1412,7 +1412,8 @@ fun PdfPageItem(
                             { viewModel.createAnnotationFromSelection(AnnotationType.STRIKETHROUGH) },
                             { viewModel.createAnnotationFromSelection(AnnotationType.NOTE) },
                             viewModel::copySelectionToClipboard, viewModel::clearSelection,
-                            onAddToNote = viewModel::requestQuoteCapture, dragToNote = state.isNotesPanelOpen)
+                            onAddToNote = viewModel::requestQuoteCapture, dragToNote = state.isNotesPanelOpen,
+                            onMakeCard = { viewModel.requestCard(cloze = false) }, onMakeCloze = { viewModel.requestCard(cloze = true) })
                     }
                 }
             }
@@ -1527,28 +1528,39 @@ fun TextSelectionContextBar(
     onCopy: () -> Unit,
     onDismiss: () -> Unit,
     onAddToNote: () -> Unit = {},
+    onMakeCard: () -> Unit = {},
+    onMakeCloze: () -> Unit = {},
     /** When the notes panel is open, a handle lets the selection be dragged into it. */
     dragToNote: Boolean = false
 ) {
     Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 10.dp,
         modifier = Modifier.fillMaxWidth().testTag("contextual_toolbar")) {
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            // Capture first: it is the main study action and must not hide behind the scroll
-            if (dragToNote) DragToNoteHandle(selectedText)
-            FilledTonalButton(onClick = onAddToNote, modifier = Modifier.height(32.dp).testTag("selection_add_to_note"),
-                contentPadding = PaddingValues(horizontal = 10.dp)) {
-                Icon(Icons.Default.NoteAdd, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text("To note", fontSize = 13.sp)
+        // Two rows so every action stays visible: study capture on top, marking tools below
+        Column(Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+            Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (dragToNote) DragToNoteHandle(selectedText)
+                FilledTonalButton(onClick = onAddToNote, modifier = Modifier.height(32.dp).testTag("selection_add_to_note"),
+                    contentPadding = PaddingValues(horizontal = 10.dp)) {
+                    Icon(Icons.Default.NoteAdd, null, Modifier.size(16.dp)); Spacer(Modifier.width(4.dp)); Text("To note", fontSize = 13.sp)
+                }
+                FilledTonalButton(onClick = onMakeCard, modifier = Modifier.height(32.dp).testTag("selection_make_card"), contentPadding = PaddingValues(horizontal = 10.dp)) {
+                    Text("Card", fontSize = 13.sp)
+                }
+                FilledTonalButton(onClick = onMakeCloze, modifier = Modifier.height(32.dp).testTag("selection_make_cloze"), contentPadding = PaddingValues(horizontal = 10.dp)) {
+                    Text("Cloze", fontSize = 13.sp)
+                }
+                IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) { Icon(Icons.Default.Clear, "Dismiss selection", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface) }
             }
-            HighlightColorPalette.forEach { (name, hex) ->
-                ColorSwatch(hex, selected = selectedColorHex.equals(hex, true), onClick = { onColorSelected(hex) }, name = name, size = 20.dp)
+            Row(Modifier.horizontalScroll(rememberScrollState()), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                HighlightColorPalette.forEach { (name, hex) ->
+                    ColorSwatch(hex, selected = selectedColorHex.equals(hex, true), onClick = { onColorSelected(hex) }, name = name, size = 20.dp)
+                }
+                ContextBarActionButton(Icons.Default.FormatColorText, "Highlight", onHighlight)
+                ContextBarActionButton(Icons.Default.FormatUnderlined, "Underline", onUnderline)
+                ContextBarActionButton(Icons.Default.FormatStrikethrough, "Strikethrough", onStrikethrough)
+                ContextBarActionButton(Icons.Default.ChatBubbleOutline, "Add note", onAddNote)
+                ContextBarActionButton(Icons.Default.ContentCopy, "Copy", onCopy)
             }
-            ContextBarActionButton(Icons.Default.FormatColorText, "Highlight", onHighlight)
-            ContextBarActionButton(Icons.Default.FormatUnderlined, "Underline", onUnderline)
-            ContextBarActionButton(Icons.Default.FormatStrikethrough, "Strikethrough", onStrikethrough)
-            ContextBarActionButton(Icons.Default.ChatBubbleOutline, "Add note", onAddNote)
-            ContextBarActionButton(Icons.Default.ContentCopy, "Copy", onCopy)
-            IconButton(onClick = onDismiss, modifier = Modifier.size(30.dp)) { Icon(Icons.Default.Clear, "Dismiss selection", Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurface) }
         }
     }
 }

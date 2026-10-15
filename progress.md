@@ -175,17 +175,22 @@ User feedback: only one ruled sheet was visible and tools felt limited. Template
 - Flashcard and cloze actions from the selection bar arrive with Phase 19.
 - Known limitations: range selection follows the PDF's reading order, so it can pick up a neighbouring column or side box; drag-and-drop into the panel was verified to compile and wire up but needs a manual check on a real device (adb cannot drive a cross-window drag).
 
-## Phase 19 — Flashcards
+## Phase 19 — Flashcards (complete, 2026-10-15)
 
-- [ ] Room schema: decks, cards, schedule, review log; migration + tests.
-- [ ] SM-2 scheduler (pure Kotlin) with unit tests for every state × rating.
-- [ ] Card editor: text, image, ink faces; basic, reversed, cloze (`{{c1::…}}`).
-- [ ] Review screen with interval labels, undo, show source page.
-- [ ] Deck home with due counts; stats (30-day reviews, retention, 7-day forecast).
+- [x] Room v6 (auto-migration): `decks`, `cards` (faces as JSON: rich text + optional picture), `card_schedule` (one row per reviewable side), `review_log`.
+- [x] SM-2 scheduler, pure Kotlin: learning steps 1 m → 10 m → 1 d (Easy 4 d), Hard ×1.2 / Good × ease / Easy × ease × 1.3, each button strictly longer than the last, lapse → 10 m relearning with interval halved, ease floor 1.3, ±5% fuzz from 3 days, day rollover at 04:00 local (DST-safe). Button labels show the next interval.
+- [x] Study queue: due learning steps (with 20-minute learn-ahead), reviews due today, then new cards in creation order; daily new/review limits per deck count what was already studied today; counts include sub-decks.
+- [x] Card types: Basic, Basic + reversed, Cloze (`{{c1::answer::hint}}`, one card per number). Editor: deck picker/new deck, rich text with the Notes format bar, “[…] Make blank”, pictures from the photo picker, and handwriting via a low-latency sketch pad; “Save & add another”. Editing a card keeps progress on surviving sides.
+- [x] Screens: Cards tab (deck tree with New/Learning/Due, long-press deck settings: rename, limits, sub-deck, delete), deck (Study now, card list, delete), review (tap to reveal, Again/Hard/Good/Easy, undo, show source page), statistics (retention, 30-day reviews, 7-day forecast).
+- [x] From the reader: selection bar row 1 = To note · Card · Cloze (row 2 = highlight tools). Card puts the selection on the back; Cloze opens the editor with the sentence; both go to the book's deck (created on first use) and link to the page.
+- [x] Fixed on device: Android's ICU regex rejects a bare `}` that the JVM accepts (crash in the deck list); the rich editor writes punctuation as HTML5 entities (`&comma;`, `&colon;`, `&lcub;`), which broke cloze parsing and would show literally in note PDF export/search — editor HTML is now normalized (`HtmlText.normalize`) for notes and cards, and export/search decode older data.
+- [x] Tests: `SchedulerTest` (9, incl. cloze), `FlashcardTest` (3, on-device: ICU cloze parsing, sides/queue/undo/edit, daily limit + stats + deck deletion), entity normalization unit test. Suite: 35 instrumented (1 stress skipped) + 38 unit; lint passes.
+- Navigation: bottom bar is now Home · Library · Notes · Cards · Settings (Collections tab replaced; Collections remain reachable from Home until Phase 20 adds them to Library).
 
 ## Phase 20 — Navigation, global search, Home
 
-- [ ] Bottom bar: Home · Library · Notes · Cards · Settings; Collections moves into Library.
+- [x] Bottom bar: Home · Library · Notes · Cards · Settings (done with Phase 19).
+- [ ] Collections inside Library (Books | Collections switch).
 - [ ] Top-bar global search across books, book text, notes, and cards.
 - [ ] Home: "Due today" flashcards card and "Recent notes" shelf.
 

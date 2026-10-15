@@ -7,10 +7,38 @@ object HtmlText {
     private val whitespace = Regex("[ \\t\\x0B\\f\\r]+")
     private val entities = mapOf("&nbsp;" to " ", "&lt;" to "<", "&gt;" to ">", "&quot;" to "\"", "&#39;" to "'", "&apos;" to "'", "&amp;" to "&")
     private val numericEntity = Regex("&#(x?)([0-9a-fA-F]+);")
+    private val namedEntity = Regex("&([A-Za-z]+);")
+
+    /**
+     * HTML5 names for punctuation. The rich text editor writes these (`&comma;`, `&colon;`, `&lcub;`…), but
+     * Android's Html.fromHtml and our own parsers only understand plain characters.
+     */
+    private val punctuation = mapOf(
+        "comma" to ",", "period" to ".", "colon" to ":", "semi" to ";", "excl" to "!", "quest" to "?", "lcub" to "{", "rcub" to "}",
+        "lpar" to "(", "rpar" to ")", "lsqb" to "[", "rsqb" to "]", "lbrack" to "[", "rbrack" to "]", "sol" to "/", "bsol" to "\\",
+        "num" to "#", "percnt" to "%", "plus" to "+", "equals" to "=", "ast" to "*", "commat" to "@", "dollar" to "$", "Hat" to "^",
+        "lowbar" to "_", "grave" to "`", "verbar" to "|", "vert" to "|", "tilde" to "~", "hyphen" to "-", "dash" to "-", "apos" to "'",
+        "rsquo" to "’", "lsquo" to "‘", "ldquo" to "“", "rdquo" to "”", "ndash" to "–", "mdash" to "—", "hellip" to "…", "middot" to "·",
+        "deg" to "°", "times" to "×", "divide" to "÷", "plusmn" to "±", "micro" to "µ", "copy" to "©", "reg" to "®", "euro" to "€", "pound" to "£"
+    )
+
+    /** Kept escaped: these change the meaning of HTML. */
+    private val structural = setOf("<", ">", "&", "\"")
+
+    /** Editor HTML with punctuation entities written as plain characters; markup characters stay escaped. */
+    fun normalize(html: String): String {
+        var out = namedEntity.replace(html) { m -> punctuation[m.groupValues[1]]?.takeIf { it !in structural } ?: m.value }
+        out = numericEntity.replace(out) { m ->
+            val code = m.groupValues[2].toIntOrNull(if (m.groupValues[1].isEmpty()) 10 else 16)
+            val char = code?.takeIf { Character.isValidCodePoint(it) }?.let { String(Character.toChars(it)) }
+            if (char == null || char in structural || char == "'") m.value else char
+        }
+        return out
+    }
 
     fun toPlain(html: String?): String {
         if (html.isNullOrBlank()) return ""
-        var text = html.replace(blockBreak, "\n").replace(tag, "")
+        var text = normalize(html).replace(blockBreak, "\n").replace(tag, "")
         text = numericEntity.replace(text) { m ->
             val code = m.groupValues[2].toIntOrNull(if (m.groupValues[1].isEmpty()) 10 else 16)
             code?.let { String(Character.toChars(it)) } ?: m.value

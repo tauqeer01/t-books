@@ -84,6 +84,7 @@ fun ReaderCaptureHost(
     captureViewModel: ReaderCaptureViewModel,
     notesPanel: NotesPanelContent,
     onOpenNote: (String) -> Unit,
+    onMakeCard: (com.bookflow.app.presentation.screens.cards.CardDraft) -> Unit,
     reader: @Composable (onNotesClick: () -> Unit) -> Unit
 ) {
     val readerState by readerViewModel.uiState.collectAsStateWithLifecycle()
@@ -103,6 +104,7 @@ fun ReaderCaptureHost(
         else captureViewModel.capture(source)
     }
     LaunchedEffect(readerViewModel) { readerViewModel.captureRequests.collect(::deliver) }
+    LaunchedEffect(readerViewModel) { readerViewModel.cardRequests.collect(onMakeCard) }
 
     val dropTarget = remember {
         object : DragAndDropTarget {
@@ -141,7 +143,7 @@ fun ReaderCaptureHost(
                 modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(12.dp),
                 action = {
                     Row {
-                        TextButton(onClick = captureViewModel::undoDelivered) { Text("Undo") }
+                        TextButton(onClick = { captureViewModel.undoDelivered() }) { Text("Undo") }
                         TextButton(onClick = { captureViewModel.consumeDelivered(); onOpenNote(delivered.noteId) }) { Text("Open") }
                     }
                 }

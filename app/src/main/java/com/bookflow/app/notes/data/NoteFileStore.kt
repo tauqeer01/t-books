@@ -23,7 +23,10 @@ class NoteFileStore(private val context: Context) {
     fun deletePage(noteId: String, pageId: String) { inkFile(noteId, pageId).delete() }
 
     /** Copies a picked or captured photo into the note, downscaled to [MAX_IMAGE_EDGE] and stored as WebP. */
-    fun importImage(noteId: String, uri: Uri): ImportedImage {
+    fun importImage(noteId: String, uri: Uri): ImportedImage = importImageTo(noteDir(noteId), uri)
+
+    /** Same as [importImage] for any app-private folder (flashcards use their own). */
+    fun importImageTo(dir: File, uri: Uri): ImportedImage {
         requireSpace()
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
@@ -34,14 +37,16 @@ class NoteFileStore(private val context: Context) {
             BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
         } ?: throw IOException("This image could not be read")
         val oriented = ExifRotation.apply(context, uri, decoded)
-        return saveBitmap(noteId, oriented).also { if (oriented !== decoded) decoded.recycle(); oriented.recycle() }
+        return saveBitmapTo(dir, oriented).also { if (oriented !== decoded) decoded.recycle(); oriented.recycle() }
     }
 
-    fun saveBitmap(noteId: String, bitmap: Bitmap): ImportedImage {
+    fun saveBitmap(noteId: String, bitmap: Bitmap): ImportedImage = saveBitmapTo(noteDir(noteId), bitmap)
+
+    fun saveBitmapTo(dir: File, bitmap: Bitmap): ImportedImage {
         requireSpace()
         val scale = minOf(1f, MAX_IMAGE_EDGE.toFloat() / max(bitmap.width, bitmap.height))
         val scaled = if (scale < 1f) Bitmap.createScaledBitmap(bitmap, (bitmap.width * scale).roundToInt(), (bitmap.height * scale).roundToInt(), true) else bitmap
-        val file = File(noteDir(noteId), "img_${UUID.randomUUID()}.webp")
+        val file = File(dir.apply { mkdirs() }, "img_${UUID.randomUUID()}.webp")
         file.outputStream().use { scaled.compress(webp(), 88, it) }
         val result = ImportedImage(file.absolutePath, scaled.width, scaled.height)
         if (scaled !== bitmap) scaled.recycle()

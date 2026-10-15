@@ -20,12 +20,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.EditNote
@@ -83,11 +83,11 @@ val NavTabs = listOf(
         testTag = "nav_notes_tab"
     ),
     NavTabItem(
-        route = Screen.Collections.route,
-        labelRes = R.string.nav_collections,
-        filledIcon = Icons.Filled.Folder,
-        outlinedIcon = Icons.Outlined.Folder,
-        testTag = "nav_collections_tab"
+        route = Screen.Cards.route,
+        labelRes = R.string.nav_cards,
+        filledIcon = Icons.Filled.Style,
+        outlinedIcon = Icons.Outlined.Style,
+        testTag = "nav_cards_tab"
     ),
     NavTabItem(
         route = Screen.Settings.route,

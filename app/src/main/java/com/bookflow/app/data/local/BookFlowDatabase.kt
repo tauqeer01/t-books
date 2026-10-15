@@ -32,15 +32,20 @@ import com.bookflow.app.notes.data.NotesDao
         NoteEntity::class,
         NotePageEntity::class,
         NoteElementEntity::class,
-        NoteFtsEntity::class
+        NoteFtsEntity::class,
+        com.bookflow.app.flashcards.data.DeckEntity::class,
+        com.bookflow.app.flashcards.data.CardEntity::class,
+        com.bookflow.app.flashcards.data.ScheduleEntity::class,
+        com.bookflow.app.flashcards.data.ReviewLogEntity::class
     ],
     // Version 3 is the first Play Store release schema (exported to app/schemas).
     // Any future change must bump the version and add a migration (auto or in MIGRATIONS).
-    version = 5,
+    version = 6,
     exportSchema = true,
     // 4: Notes (folders, notes, pages, elements, full-text index) — new tables only.
     // 5: Sticky-note fill color on note elements (nullable column).
-    autoMigrations = [AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5)]
+    // 6: Flashcards (decks, cards, per-side schedules, review log) — new tables only.
+    autoMigrations = [AutoMigration(from = 3, to = 4), AutoMigration(from = 4, to = 5), AutoMigration(from = 5, to = 6)]
 )
 abstract class BookFlowDatabase : RoomDatabase() {
     abstract fun bookDao(): BookDao
@@ -48,6 +53,7 @@ abstract class BookFlowDatabase : RoomDatabase() {
     abstract fun annotationDao(): AnnotationDao
     abstract fun bookmarkDao(): BookmarkDao
     abstract fun notesDao(): NotesDao
+    abstract fun flashcardDao(): com.bookflow.app.flashcards.data.FlashcardDao
 
     companion object {
         @Volatile

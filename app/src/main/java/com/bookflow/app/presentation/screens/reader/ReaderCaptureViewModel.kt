@@ -83,10 +83,11 @@ class ReaderCaptureViewModel(
         return withContext(Dispatchers.IO) { capture.element(noteId, source, bookTitle) }
     }
 
-    fun undoDelivered() {
-        val delivered = _state.value.delivered ?: return
+    /** Returns the removal job so callers (and tests) can wait for it to finish. */
+    fun undoDelivered(): kotlinx.coroutines.Job? {
+        val delivered = _state.value.delivered ?: return null
         _state.update { it.copy(delivered = null) }
-        viewModelScope.launch { repository.removeElement(delivered.noteId, delivered.pageId, delivered.elementId) }
+        return viewModelScope.launch { repository.removeElement(delivered.noteId, delivered.pageId, delivered.elementId) }
     }
 
     fun consumeDelivered() = _state.update { it.copy(delivered = null) }

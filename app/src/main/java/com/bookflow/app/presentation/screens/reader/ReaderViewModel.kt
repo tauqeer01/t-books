@@ -674,6 +674,20 @@ class ReaderViewModel(
         }
     }
 
+    /** Flashcards started from a selection; the host opens the card editor with them. */
+    private val _cardRequests = kotlinx.coroutines.flow.MutableSharedFlow<com.bookflow.app.presentation.screens.cards.CardDraft>(extraBufferCapacity = 2)
+    val cardRequests: kotlinx.coroutines.flow.SharedFlow<com.bookflow.app.presentation.screens.cards.CardDraft> = _cardRequests
+
+    /** Basic card: the selection becomes the answer; a cloze card starts with the selected sentence. */
+    fun requestCard(cloze: Boolean) {
+        val selection = _uiState.value.selectedTextSelection ?: return
+        val html = "<p>${com.bookflow.app.notes.domain.HtmlText.escape(selection.text.trim().replace(Regex("\\s+"), " "))}</p>"
+        val draft = if (cloze) com.bookflow.app.presentation.screens.cards.CardDraft(com.bookflow.app.flashcards.domain.CardType.CLOZE, front = com.bookflow.app.flashcards.domain.CardFace(html))
+            else com.bookflow.app.presentation.screens.cards.CardDraft(com.bookflow.app.flashcards.domain.CardType.BASIC, back = com.bookflow.app.flashcards.domain.CardFace(html))
+        _cardRequests.tryEmit(draft.copy(sourceBookId = bookId, sourcePage = selection.pageIndex, suggestedDeckName = _uiState.value.book?.title))
+        clearSelection()
+    }
+
     fun setNotesPanelOpen(open: Boolean) { _uiState.value = _uiState.value.copy(isNotesPanelOpen = open) }
 
     /** Selection made by the Select text tool or a long-press drag. */

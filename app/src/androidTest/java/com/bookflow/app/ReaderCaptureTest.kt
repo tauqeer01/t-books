@@ -84,7 +84,10 @@ class ReaderCaptureTest {
 
     @Test fun captureToNewNoteAppendsAndUndoRemovesIt(): Unit = runBlocking(Dispatchers.Main) {
         val prefs = NotePenPreferences(context)
-        val vm = ReaderCaptureViewModel(repository, capture, prefs)
+        // A real ViewModelStore so clearing it cancels the ViewModel's database collectors before the DB closes
+        val store = androidx.lifecycle.ViewModelStore()
+        val vm = androidx.lifecycle.ViewModelProvider(store, ReaderCaptureViewModel.Factory(repository, capture, prefs))[ReaderCaptureViewModel::class.java]
+        try {
         vm.setBook("book-1", "Hydraulics")
         vm.capture(CaptureSource.Quote("Pascal's law", "book-1", 3))
         assertNotNull(vm.state.value.pending)
@@ -94,8 +97,9 @@ class ReaderCaptureTest {
         assertEquals(delivered.noteId, prefs.lastCaptureNoteId())
         val note = repository.loadNote(delivered.noteId)!!
         assertEquals("Pascal's law", note.pages.single().elements.single().quoteText)
-        vm.undoDelivered()
-        withTimeout(5_000) { while (repository.loadNote(delivered.noteId)!!.pages.single().elements.isNotEmpty()) kotlinx.coroutines.delay(50) }
+        withTimeout(5_000) { vm.undoDelivered()!!.join() }
+        assertTrue(repository.loadNote(delivered.noteId)!!.pages.single().elements.isEmpty())
         repository.deleteNote(delivered.noteId)
+        } finally { store.clear() }
     }
 }

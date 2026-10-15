@@ -263,7 +263,9 @@ class NoteEditorViewModel(
     /** Typing updates text without an undo step per keystroke; a step is recorded when editing ends. */
     private var textEditStart: EditorPage? = null
 
-    fun updateText(pageId: String, elementId: String, html: String, heightFraction: Float?) {
+    fun updateText(pageId: String, elementId: String, editorHtml: String, heightFraction: Float?) {
+        // The editor writes punctuation as HTML5 entities that export and search cannot read
+        val html = com.bookflow.app.notes.domain.HtmlText.normalize(editorHtml)
         val page = _state.value.page(pageId) ?: return
         val element = page.elements.firstOrNull { it.id == elementId } ?: return
         if (element.html == html && (heightFraction == null || kotlin.math.abs(element.height - heightFraction) < 0.002f)) return

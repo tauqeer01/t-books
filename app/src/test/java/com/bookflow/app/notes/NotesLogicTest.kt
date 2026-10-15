@@ -54,6 +54,13 @@ class NotesLogicTest {
         assertEquals("", HtmlText.toPlain(null))
     }
 
+    @Test fun editorPunctuationEntitiesBecomePlainButMarkupStaysEscaped() {
+        val editor = "<p>gas &lcub;&lcub;c1&colon;&colon;turbine&rcub;&rcub;&comma; ratio&period; 1 &lt; 2 &amp; &quot;x&quot; &#58;&#60;</p>"
+        assertEquals("<p>gas {{c1::turbine}}, ratio. 1 &lt; 2 &amp; &quot;x&quot; :&#60;</p>", HtmlText.normalize(editor))
+        assertEquals("gas {{c1::turbine}}, ratio. 1 < 2 & \"x\" :<", HtmlText.toPlain(editor))
+        assertEquals("&unknown;", HtmlText.normalize("&unknown;"))
+    }
+
     @Test fun ftsQueryUsesPrefixTermsAndDropsOperators() {
         assertEquals("lift* coeff*", HtmlText.ftsQuery("  lift \"coeff\" "))
         assertEquals("NEAR*", HtmlText.ftsQuery("NEAR"))

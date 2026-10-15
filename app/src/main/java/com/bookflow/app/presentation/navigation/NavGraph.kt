@@ -71,7 +71,8 @@ fun BookFlowNavGraph(
         Screen.Collections.route,
         Screen.Search.route,
         Screen.Settings.route,
-        Screen.Notes.route
+        Screen.Notes.route,
+        Screen.Cards.route
     )
 
     // Tablets, foldables and landscape get a side rail instead of a stretched bottom bar
@@ -230,6 +231,51 @@ fun BookFlowNavGraph(
                     )
                 }
 
+                composable(Screen.Cards.route) {
+                    val vm: com.bookflow.app.presentation.screens.cards.CardsHomeViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.cards.CardsHomeViewModel.Factory(container.flashcardRepository))
+                    com.bookflow.app.presentation.screens.cards.CardsHomeScreen(vm,
+                        onOpenDeck = { navController.navigate(Screen.Deck.createRoute(it)) },
+                        onStudy = { navController.navigate(Screen.Review.createRoute(it)) },
+                        onStats = { navController.navigate(Screen.CardStats.createRoute()) })
+                }
+                composable(Screen.Deck.route, arguments = listOf(navArgument("deckId") { type = NavType.StringType })) { entry ->
+                    val deckId = entry.arguments?.getString("deckId").orEmpty()
+                    val vm: com.bookflow.app.presentation.screens.cards.DeckViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.cards.DeckViewModel.Factory(deckId, container.flashcardRepository))
+                    com.bookflow.app.presentation.screens.cards.DeckScreen(vm,
+                        onBack = { navController.popBackStack() },
+                        onStudy = { navController.navigate(Screen.Review.createRoute(deckId)) },
+                        onAddCard = { navController.navigate(Screen.CardEditor.createRoute(deckId = deckId)) },
+                        onEditCard = { navController.navigate(Screen.CardEditor.createRoute(cardId = it)) },
+                        onStats = { navController.navigate(Screen.CardStats.createRoute(deckId)) })
+                }
+                composable(Screen.CardEditor.route, arguments = listOf(
+                    navArgument("cardId") { type = NavType.StringType; defaultValue = "" },
+                    navArgument("deckId") { type = NavType.StringType; defaultValue = "" }
+                )) { entry ->
+                    val cardId = entry.arguments?.getString("cardId")?.takeIf { it.isNotEmpty() }
+                    val deckId = entry.arguments?.getString("deckId")?.takeIf { it.isNotEmpty() }
+                    val vm: com.bookflow.app.presentation.screens.cards.CardEditorViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.cards.CardEditorViewModel.Factory(cardId, deckId, container.flashcardRepository, container.cardDrafts))
+                    com.bookflow.app.presentation.screens.cards.CardEditorScreen(vm, onClose = { navController.popBackStack() })
+                }
+                composable(Screen.Review.route, arguments = listOf(navArgument("deckId") { type = NavType.StringType })) { entry ->
+                    val deckId = entry.arguments?.getString("deckId").orEmpty()
+                    val vm: com.bookflow.app.presentation.screens.cards.ReviewViewModel = viewModel(
+                        factory = com.bookflow.app.presentation.screens.cards.ReviewViewModel.Factory(deckId, container.flashcardRepository))
+                    com.bookflow.app.presentation.screens.cards.ReviewScreen(vm,
+                        onBack = { navController.popBackStack() },
+                        onOpenSource = { book, page -> navController.navigate(Screen.Reader.createRoute(book, page)) })
+                }
+                composable(Screen.CardStats.route, arguments = listOf(navArgument("deckId") { type = NavType.StringType; defaultValue = "" })) { entry ->
+                    val deckId = entry.arguments?.getString("deckId")?.takeIf { it.isNotEmpty() }
+                    val vm: com.bookflow.app.presentation.screens.cards.StatsViewModel = viewModel(
+                        key = "stats_${deckId.orEmpty()}",
+                        factory = com.bookflow.app.presentation.screens.cards.StatsViewModel.Factory(deckId, container.flashcardRepository))
+                    com.bookflow.app.presentation.screens.cards.CardStatsScreen(vm, onBack = { navController.popBackStack() })
+                }
+
                 // 5. Settings Tab (Matching Settings Screenshot)
                 composable(Screen.Settings.route) {
                     val settingsViewModel: SettingsViewModel = viewModel(
@@ -299,6 +345,7 @@ fun BookFlowNavGraph(
                         readerViewModel = readerViewModel,
                         captureViewModel = captureViewModel,
                         onOpenNote = { navController.navigate(Screen.NoteEditor.createRoute(it)) },
+                        onMakeCard = { draft -> container.cardDrafts.draft = draft; navController.navigate(Screen.CardEditor.createRoute()) },
                         notesPanel = { noteId, inbox, onClose, panelModifier ->
                             val panelViewModel: com.bookflow.app.presentation.screens.notes.editor.NoteEditorViewModel = viewModel(
                                 key = "notes_panel_$noteId",
