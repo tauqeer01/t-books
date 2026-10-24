@@ -787,7 +787,8 @@ class ReaderViewModel(
 
     // Last color/width chosen for ink tools (pen + shapes) and the highlighter, kept across tool switches
     private var inkStyle: Pair<String, Float>? = null
-    private var highlighterStyle: Pair<String, Float> = "#FFE066" to 14.0f
+    // Text marks start in the default highlight color from Settings until a color is picked here
+    private var highlighterStyle: Pair<String, Float>? = null
 
     fun setDrawingTool(tool: DrawingTool) {
         val current = _uiState.value
@@ -796,7 +797,7 @@ class ReaderViewModel(
             // The pen and highlighter draw with the active shared pen
             (tool == DrawingTool.PEN || tool == DrawingTool.HIGHLIGHTER) && pen != null -> ReaderInk.colorHex(pen) to ReaderInk.strokeWidth(pen)
             !tool.hasColor -> current.drawingColorHex to current.drawingStrokeWidth
-            tool.usesHighlighterPalette -> highlighterStyle
+            tool.usesHighlighterPalette -> highlighterStyle ?: (current.preferences.defaultHighlightColor to 14.0f)
             else -> inkStyle ?: (current.preferences.penColor to current.preferences.penWidth)
         }
         _uiState.value = current.copy(

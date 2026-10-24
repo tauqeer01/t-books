@@ -33,55 +33,52 @@ Store link (live after publishing): https://play.google.com/store/apps/details?i
 | Contact email | aht.apps@alhadaftech.com |
 | Privacy policy URL | Host `docs/legal/privacy-policy.html` publicly (e.g. GitHub Pages) and paste the URL |
 
-### Full description
+### Full description (2468/4000)
 
 ```
-AHT Books is a fast, private PDF reader and study app. Read and mark up PDFs, write notes by hand, study with flashcards, and sign documents — everything stays on your device.
+AHT Books is an offline PDF reader and study app. Organize your documents, pick up where you left off, mark up pages, take handwritten notes, and review with flashcards, all on your device.
 
 READ YOUR WAY
-• Smooth vertical scrolling, horizontal swipe, single page, or Book mode with a realistic page curl
-• Opens large PDFs of any page count
-• Pinch and double-tap zoom, page thumbnails, table of contents, and Go to page
-• Light, Dark, Sepia and Mint page themes, plus a dark mode for the whole app
+• Continuous scrolling, horizontal page turning, single-page reading, or Book mode with a page curl
+• Zoom and pan, browse page thumbnails, and use a PDF’s table of contents
+• Light, Dark, Sepia and Mint page colors, plus a dark mode for the whole app
+• Return to your last reading position, even in large textbooks and manuals
+• Search PDF text when the document contains selectable text
 
-HIGHLIGHT AND ANNOTATE
-• Highlight, underline or strike through text — drag across a passage and it snaps to whole words
-• Pen and highlighter with colors and thickness presets, stylus-only mode for tablets with a pen
-• Sticky notes anywhere on the page, notes on highlighted text, undo and redo
-• Export an annotated copy of your PDF to share
+ORGANIZE YOUR LIBRARY
+• Import PDFs from your device, or open them from other apps with “Open with”
+• Browse recently opened documents, favorites, and collections
+• Search, sort, and switch between grid and list views
+• See reading progress and document details
+
+ANNOTATE AS YOU READ
+• Pick tools from a spinning tool dial at the edge of the page
+• Highlight, underline, or strike through text, in bright or soft colors, or any color you choose
+• Draw with fine pens, pencil, marker, or highlighter; add lines, arrows, rectangles, and ellipses
+• Add bookmarks and sticky notes, erase, and undo or redo
+• Export an annotated copy of a PDF
 
 HANDWRITTEN NOTES
-• Notebooks with ruled, grid, dotted, Cornell, music and more page templates
-• Low-latency stylus ink, shapes, lasso, eraser, rich text, sticky notes and photos
-• Study tape to cover answers, and a laser pointer for presenting
-• Send a passage or a clip of any page from a book straight into your notes, or keep notes open beside the book
-• Folders, tags, full-text search, and export to PDF or PNG
+• Notebooks with blank, ruled, grid, dotted, Cornell, music, and other page templates
+• Low-latency stylus writing with pens from 0.1 mm, shapes, lasso, text, photos, and sticky notes
+• Study tape to hide answers, and a laser pointer for presenting
+• Send a passage or a clip of a page from a book into your notes, or keep notes open beside the book
+• Folders, tags, search, and export to PDF or PNG
 
 FLASHCARDS
-• Basic, reversed and cloze cards with pictures and handwriting
+• Basic, reversed, and fill-in-the-blank (cloze) cards with pictures and handwriting
 • Spaced repetition with daily limits and review statistics
-• Make a card from any selection in a book
+• Make a card from text you select in a book
 
 FILL & SIGN
-• Add your signature, initials, text, dates and checkmarks to any PDF
-• Draw your signature with a finger or stylus, or photograph it on paper
+• Add your signature, initials, text, dates, and checkmarks to a PDF
+• Draw your signature, or photograph it on paper
 • A signed copy is saved; the original stays unchanged
 
-FIND ANYTHING
-• Full-text search inside a book with every match listed in context
-• Search across your books, highlights, notes and flashcards
+MAKE READING YOURS
+Set a daily reading goal, adjust brightness, page spacing, and orientation, keep the screen awake, use volume buttons to turn pages, or read in immersive mode.
 
-STAY ORGANIZED
-• Collections, favorites and a library that remembers your progress in every book
-• Open PDFs straight from your file manager, email or downloads with "Open with AHT Books"
-
-BUILD A READING HABIT
-• Set a daily reading goal and watch your ring fill as you read
-
-PRIVATE BY DESIGN
-• No account, no ads, no analytics, no tracking
-• AHT Books has no internet permission — your documents and notes never leave your device
-• Removing a book from AHT Books never deletes your original file
+AHT Books keeps your library, notes, and reading data on your device. There is no account and no ads. Scanned PDFs without a text layer can be read, but their text cannot be searched. OCR is not included.
 
 AHT Books is made by Al Hadaf Tech (AHT).
 ```
@@ -92,6 +89,8 @@ AHT Books is made by Al Hadaf Tech (AHT).
 BookFlow is now AHT Books — same app, with your library, notes and flashcards just as you left them.
 • Stylus writing no longer disappears when your hand rests on the screen
 • Tapping Back twice no longer leaves a blank screen or skips a screen
+• Large, image-heavy PDFs such as aviation handbooks no longer crash, and their text can be searched
+• New tool dial for annotating, finer pens, more highlight colors, and Fill & Sign
 ```
 
 ## 4. App content (Policy › App content)
@@ -124,7 +123,7 @@ Notes for reviewers / your own records:
 
 ## 6. Publishing steps
 
-1. Play Console › Create app: name *BookFlow*, default language English (US), App, Free. (Done; renamed to *AHT Books* in Grow › Store presence › Main store listing › App name. If possible, also set the developer name to show *AHT – Al Hadaf Tech*.)
+1. Play Console › Create app: name *BookFlow*, default language English (US), App, Free. (Done; renamed to *AHT Books: PDF Reader & Notes* in Grow › Store presence › Main store listing › App name. If possible, also set the developer name to show *AHT – Al Hadaf Tech*.)
 2. Complete sections 3–5 above.
 3. Testing › **Internal testing**: create a release, upload `app-release.aab`, add testers, roll out. Install from the opt-in link and run the smoke test in section 1.
 4. Review the **Pre-launch report** (automatic device tests, accessibility and security warnings) and fix anything flagged.

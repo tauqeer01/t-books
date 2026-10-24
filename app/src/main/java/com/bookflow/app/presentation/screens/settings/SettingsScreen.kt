@@ -115,8 +115,8 @@ fun SettingsScreen(
                                 icon = Icons.Default.BorderColor,
                                 iconTint = Color(0xFFEAB308),
                                 iconBg = Color(0xFFFEF3C7),
-                                title = "Highlight & pen",
-                                subtitle = "Default highlight color, pen color and thickness",
+                                title = "Highlight & stylus",
+                                subtitle = "Default highlight color, stylus only",
                                 isColorPalette = true,
                                 onClick = { editorSection = ANNOTATIONS_SECTION }
                             )
@@ -367,8 +367,8 @@ fun SettingsScreen(
     }
 }
 
-/** Editor section showing both the highlight color and the pen defaults. */
-const val ANNOTATIONS_SECTION = "Highlight & pen"
+/** Editor section with the default highlight color and stylus-only drawing (pens carry their own color and size). */
+const val ANNOTATIONS_SECTION = "Highlight & stylus"
 
 private data class SettingRowData(
     val icon: ImageVector,

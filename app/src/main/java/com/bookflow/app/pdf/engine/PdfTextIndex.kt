@@ -6,7 +6,6 @@ import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.tom_roush.pdfbox.io.MemoryUsageSetting
 import com.tom_roush.pdfbox.io.RandomAccessRead
 import com.tom_roush.pdfbox.io.ScratchFile
-import com.tom_roush.pdfbox.pdfparser.PDFParser
 import com.tom_roush.pdfbox.pdmodel.PDDocument
 import com.tom_roush.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineNode
 import com.tom_roush.pdfbox.text.PDFTextStripper
@@ -65,7 +64,8 @@ internal class PdfTextIndex(private val context: Context) {
         val access = DescriptorAccess(input)
         val scratch = ScratchFile(MemoryUsageSetting.setupMixed(SCRATCH_HEAP_BYTES).setTempDir(scratchDir()))
         try {
-            val parser = PDFParser(access, scratch)
+            // Skips the structure tree, which text features never use and some tagged PDFs make enormous
+            val parser = TaglessPdfParser(access, scratch)
             parser.parse()
             val parsed = parser.pdDocument
             synchronized(lock) {
