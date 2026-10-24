@@ -19,19 +19,25 @@ enum class PenType(val title: String) {
 data class PenPreset(val type: PenType, val colorArgb: Int, val size: Float)
 
 object InkBrushes {
-    /** Sizes are in page units (a page is 1000 units wide). */
-    val sizes = listOf(2f, 4f, 6f, 10f, 16f, 24f)
-    val highlighterSizes = listOf(16f, 28f, 40f, 56f)
+    /** Sizes are in page units (a page is 1000 units wide, so one unit is about 0.21 mm on A4). */
+    val penSizes = 0.5f..24f
+    val highlighterSizes = 10f..56f
 
+    fun sizeRange(type: PenType) = if (type == PenType.HIGHLIGHTER) highlighterSizes else penSizes
+
+    /** Line width on an A4 page, for labels. */
+    fun millimeters(size: Float) = size * A4_WIDTH_MM / 1000f
+
+    // Fine-liner widths like other note apps: 0.3 mm pens, 0.4 mm fountain pen
     val defaultPresets = listOf(
-        PenPreset(PenType.BALLPOINT, 0xFF1F2937.toInt(), 4f),
-        PenPreset(PenType.BALLPOINT, 0xFF2563EB.toInt(), 4f),
-        PenPreset(PenType.FOUNTAIN, 0xFF111827.toInt(), 6f),
-        PenPreset(PenType.FOUNTAIN, 0xFFDC2626.toInt(), 6f),
-        PenPreset(PenType.PENCIL, 0xFF4B5563.toInt(), 5f),
-        PenPreset(PenType.MARKER, 0xFF16A34A.toInt(), 14f),
-        PenPreset(PenType.HIGHLIGHTER, 0xFFFDE047.toInt(), 28f),
-        PenPreset(PenType.HIGHLIGHTER, 0xFF86EFAC.toInt(), 28f),
+        PenPreset(PenType.BALLPOINT, 0xFF1F2937.toInt(), 1.5f),
+        PenPreset(PenType.BALLPOINT, 0xFF2563EB.toInt(), 1.5f),
+        PenPreset(PenType.FOUNTAIN, 0xFF111827.toInt(), 2f),
+        PenPreset(PenType.FOUNTAIN, 0xFFDC2626.toInt(), 2f),
+        PenPreset(PenType.PENCIL, 0xFF4B5563.toInt(), 1.5f),
+        PenPreset(PenType.MARKER, 0xFF16A34A.toInt(), 8f),
+        PenPreset(PenType.HIGHLIGHTER, 0xFFFDE047.toInt(), 20f),
+        PenPreset(PenType.HIGHLIGHTER, 0xFF86EFAC.toInt(), 20f),
     )
 
     val palette = listOf(
@@ -59,4 +65,5 @@ object InkBrushes {
     val textures = TextureBitmapStore { null }
 
     private const val EPSILON = 0.1f
+    private const val A4_WIDTH_MM = 210f
 }

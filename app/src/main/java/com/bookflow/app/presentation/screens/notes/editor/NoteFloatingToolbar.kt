@@ -149,9 +149,8 @@ fun NoteFloatingToolbar(state: NoteEditorUiState, actions: FloatingToolbarAction
                                 .semantics { contentDescription = "${pen.type.title} ${index + 1}"; selected = active },
                             contentAlignment = Alignment.Center
                         ) {
-                            val dot = (10 + pen.size.coerceAtMost(28f) * 0.5f).dp.coerceAtMost(22.dp)
-                            Box(Modifier.size(dot).background(Color(pen.colorArgb).copy(alpha = if (pen.type.translucent) 0.6f else 1f),
-                                if (pen.type == PenType.HIGHLIGHTER) RoundedCornerShape(3.dp) else CircleShape))
+                            // The pen runs off the bottom of the round button, like a pen standing in a cup
+                            PenGlyph(pen, Modifier.size(width = 22.dp, height = 36.dp).offset(y = 6.dp))
                         }
                     }
                     HorizontalDivider(Modifier.width(28.dp).padding(vertical = 2.dp))

@@ -76,6 +76,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -168,25 +171,23 @@ fun ShapeBar(state: NoteEditorUiState, onShape: (ShapeKind) -> Unit, onAuto: () 
 
 val StickyColors = listOf(0xFFFEF08A, 0xFFBBF7D0, 0xFFBFDBFE, 0xFFFBCFE8, 0xFFFED7AA, 0xFFE9D5FF).map { it.toInt() }
 
-/** Saved pens as one-tap chips; tapping the active pen again opens its editor. */
+/** Saved pens standing in a tray, the active one raised; tapping the active pen again opens its editor. */
 @Composable
 fun PenPresetBar(state: NoteEditorUiState, onSelect: (Int) -> Unit, onEditActive: () -> Unit, onAdd: () -> Unit) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp).padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
         state.presets.forEachIndexed { index, preset ->
             val active = index == state.activePreset
+            val sink by androidx.compose.animation.core.animateDpAsState(if (active) 0.dp else 14.dp, label = "pen_raise")
             Box(
-                Modifier.size(38.dp).border(if (active) 2.5.dp else 1.dp, if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape)
+                Modifier.size(width = 34.dp, height = 54.dp).clipToBounds()
                     .clickable(onClickLabel = if (active) "Edit pen" else "Use pen") { if (active) onEditActive() else onSelect(index) }
-                    .semantics { contentDescription = "${preset.type.title} ${index + 1}" },
-                contentAlignment = Alignment.Center
+                    .semantics { contentDescription = "${preset.type.title} ${index + 1}"; selected = active }
             ) {
-                val dot = (8 + preset.size.coerceAtMost(30f) * 0.7f).dp
-                Box(Modifier.size(dot.coerceAtMost(26.dp)).background(Color(preset.colorArgb).copy(alpha = if (preset.type.translucent) 0.55f else 1f),
-                    if (preset.type == PenType.HIGHLIGHTER) RoundedCornerShape(3.dp) else CircleShape))
+                PenGlyph(preset, Modifier.fillMaxSize().offset { androidx.compose.ui.unit.IntOffset(0, sink.roundToPx()) })
             }
         }
-        IconButton(onClick = onAdd, modifier = Modifier.size(38.dp)) { Icon(Icons.Outlined.Add, "Add pen") }
+        IconButton(onClick = onAdd, modifier = Modifier.padding(bottom = 6.dp).size(38.dp)) { Icon(Icons.Outlined.Add, "Add pen") }
     }
 }
 
@@ -203,11 +204,18 @@ fun PenEditor(
 ) {
     var picking by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(16.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Pen", style = MaterialTheme.typography.titleMedium)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            PenGlyph(preset, Modifier.size(width = 26.dp, height = 44.dp).clipToBounds())
+            Text("Pen", style = MaterialTheme.typography.titleMedium)
+        }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PenType.entries.forEach { type ->
                 FilterChip(selected = preset.type == type, onClick = {
-                    onChange { it.copy(type = type, size = if (type == PenType.HIGHLIGHTER) maxOf(it.size, 14f) else minOf(it.size, 24f)) }
+                    // Pens and highlighters have different width ranges, so crossing over starts from that kind's default
+                    onChange {
+                        val crossing = (type == PenType.HIGHLIGHTER) != (it.type == PenType.HIGHLIGHTER)
+                        it.copy(type = type, size = if (crossing) InkBrushes.defaultPresets.firstOrNull { p -> p.type == type }?.size ?: 1.5f else it.size)
+                    }
                 }, label = { Text(type.title) })
             }
         }
@@ -226,9 +234,19 @@ fun PenEditor(
                 contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Add, null, tint = Color.White, modifier = Modifier.size(18.dp)) }
         }
         if (picking) NoteColorPicker(preset.colorArgb) { color -> onCustomColor(color); picking = false }
-        val sizes = if (preset.type == PenType.HIGHLIGHTER) InkBrushes.highlighterSizes else InkBrushes.sizes
-        Text("Thickness", style = MaterialTheme.typography.labelLarge)
-        Slider(value = preset.size, onValueChange = { v -> onChange { it.copy(size = v) } }, valueRange = sizes.first()..sizes.last())
+        // Logarithmic, so most of the slider covers the fine widths people write with
+        val range = InkBrushes.sizeRange(preset.type)
+        val span = kotlin.math.ln(range.endInclusive / range.start)
+        Row(Modifier.fillMaxWidth()) {
+            Text("Thickness", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
+            Text("%.1f mm".format(InkBrushes.millimeters(preset.size)), style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Slider(
+            value = (kotlin.math.ln(preset.size.coerceIn(range) / range.start) / span),
+            onValueChange = { f -> onChange { it.copy(size = range.start * kotlin.math.exp(f * span)) } },
+            modifier = Modifier.semantics { contentDescription = "Thickness" }
+        )
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             if (canRemove) TextButton(onClick = onRemove) { Text("Remove pen") }
             Spacer(Modifier.weight(1f))
