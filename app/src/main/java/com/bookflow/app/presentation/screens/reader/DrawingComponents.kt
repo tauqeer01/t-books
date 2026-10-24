@@ -135,12 +135,10 @@ private val PenColorPalette = listOf(
 )
 
 private val HighlighterColorPalette = listOf(
-    "#FFE066", // Yellow
-    "#86EFAC", // Mint Green
-    "#7DD3FC", // Sky Blue
-    "#F472B6", // Pink
-    "#C084FC", // Lilac
-    "#FDBA74"  // Peach
+    // Bright
+    "#FFE066", "#86EFAC", "#7DD3FC", "#F472B6", "#C084FC", "#FDBA74", "#4ADE80", "#60A5FA",
+    // Soft, for a barely-there mark
+    "#FEF9C3", "#DCFCE7", "#E0F2FE", "#FCE7F3", "#F3E8FF", "#FFEDD5", "#CCFBF1", "#E5E7EB"
 )
 
 private val InkWidthPresets = listOf(2.0f to "Fine", 4.0f to "Medium", 8.0f to "Bold", 16.0f to "Marker")
@@ -152,7 +150,7 @@ private val RailInk: Color @Composable get() = MaterialTheme.colorScheme.onSurfa
 private val RailSelectedBg: Color @Composable get() = MaterialTheme.colorScheme.primaryContainer
 private val RailDividerColor: Color @Composable get() = MaterialTheme.colorScheme.outlineVariant
 
-private enum class RailFlyout { TEXT, SHAPES, COLOR, WIDTH }
+internal enum class RailFlyout { TEXT, SHAPES, COLOR, WIDTH }
 
 private val EraserIcon: ImageVector by lazy {
     ImageVector.Builder("Eraser", 24.dp, 24.dp, 24f, 24f).apply {
@@ -167,7 +165,7 @@ private val EraserIcon: ImageVector by lazy {
     }.build()
 }
 
-private fun DrawingTool.icon(): ImageVector = when (this) {
+internal fun DrawingTool.icon(): ImageVector = when (this) {
     DrawingTool.PEN -> Icons.Default.Create
     DrawingTool.HIGHLIGHTER -> Icons.Default.Highlight
     DrawingTool.ERASER -> EraserIcon
@@ -184,170 +182,11 @@ private fun DrawingTool.icon(): ImageVector = when (this) {
     DrawingTool.HAND -> Icons.Default.PanTool
 }
 
-private fun parseHex(hex: String, fallback: Color = BrandPurple): Color =
+internal fun parseHex(hex: String, fallback: Color = BrandPurple): Color =
     try { Color(android.graphics.Color.parseColor(hex)) } catch (_: Exception) { fallback }
 
-/**
- * Right-edge annotation rail. Collapsed it is a single pen button; tapping it enters drawing mode and expands
- * a slim vertical strip with tools, style pickers (as side flyouts) and history actions.
- */
 @Composable
-fun AnnotationToolRail(
-    state: ReaderUiState,
-    viewModel: ReaderViewModel,
-    modifier: Modifier = Modifier
-) {
-    var flyout by remember { mutableStateOf<RailFlyout?>(null) }
-    // Kept separately so the flyout keeps its content while animating out
-    var lastFlyout by remember { mutableStateOf(RailFlyout.COLOR) }
-    LaunchedEffect(state.isDrawingModeActive) { flyout = null }
-    val styleFlyoutHidden = (flyout == RailFlyout.COLOR && !state.drawingTool.hasColor) ||
-        (flyout == RailFlyout.WIDTH && !state.drawingTool.hasStrokeWidth)
-
-    fun toggle(target: RailFlyout) {
-        if (flyout == target) flyout = null else { flyout = target; lastFlyout = target }
-    }
-
-    Row(modifier = modifier, verticalAlignment = Alignment.Bottom) {
-        AnimatedVisibility(
-            visible = flyout != null && state.isDrawingModeActive && !styleFlyoutHidden,
-            enter = fadeIn() + slideInHorizontally(initialOffsetX = { it / 3 }),
-            exit = fadeOut() + slideOutHorizontally(targetOffsetX = { it / 3 })
-        ) {
-            RailFlyoutCard(
-                flyout = lastFlyout,
-                state = state,
-                onTool = { viewModel.setDrawingTool(it); flyout = null },
-                onColor = { viewModel.setDrawingColor(it); flyout = null },
-                onWidth = { viewModel.setStrokeWidth(it); flyout = null }
-            )
-        }
-        Spacer(Modifier.width(8.dp))
-        AnimatedContent(
-            targetState = state.isDrawingModeActive,
-            transitionSpec = {
-                (fadeIn() + scaleIn(initialScale = .85f, transformOrigin = TransformOrigin(1f, 1f))) togetherWith
-                    (fadeOut() + scaleOut(targetScale = .85f, transformOrigin = TransformOrigin(1f, 1f)))
-            },
-            contentAlignment = Alignment.BottomEnd,
-            label = "annotation_rail"
-        ) { expanded ->
-            if (!expanded) {
-                Surface(
-                    onClick = {
-                        viewModel.setDrawingMode(true)
-                        viewModel.setDrawingTool(DrawingTool.PEN)
-                    },
-                    shape = CircleShape,
-                    color = BrandPurple,
-                    shadowElevation = 8.dp,
-                    modifier = Modifier.size(48.dp).testTag("annotation_rail_button")
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Create, contentDescription = "Annotate", tint = Color.White, modifier = Modifier.size(22.dp))
-                    }
-                }
-            } else {
-                Surface(
-                    shape = RoundedCornerShape(26.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 10.dp,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant),
-                    modifier = Modifier.testTag("drawing_toolbar")
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .width(52.dp)
-                            .verticalScroll(rememberScrollState())
-                            .padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        val tool = state.drawingTool
-                        fun select(t: DrawingTool) { viewModel.setDrawingTool(t); flyout = null }
-                        RailButton(DrawingTool.HAND.icon(), "Scroll", tool == DrawingTool.HAND, "tool_hand") { select(DrawingTool.HAND) }
-                        RailButton(DrawingTool.SELECT_TEXT.icon(), "Select text", tool == DrawingTool.SELECT_TEXT, "tool_select_text") { select(DrawingTool.SELECT_TEXT) }
-                        RailButton(DrawingTool.CLIP.icon(), "Clip to note", tool == DrawingTool.CLIP, "tool_clip") { select(DrawingTool.CLIP) }
-                        RailButton(DrawingTool.PEN.icon(), "Pen", tool == DrawingTool.PEN, "tool_pen") { select(DrawingTool.PEN) }
-                        RailButton(DrawingTool.HIGHLIGHTER.icon(), "Highlighter", tool == DrawingTool.HIGHLIGHTER, "tool_highlighter") {
-                            select(DrawingTool.HIGHLIGHTER)
-                        }
-                        RailButton(
-                            icon = if (tool.isTextMarkup) tool.icon() else Icons.Default.FormatColorText,
-                            label = "Text markup",
-                            isSelected = tool.isTextMarkup,
-                            testTag = "tool_text",
-                            hasFlyout = true
-                        ) {
-                            // First tap picks a text tool right away; tapping again offers the other styles
-                            if (!tool.isTextMarkup) viewModel.setDrawingTool(DrawingTool.TEXT_HIGHLIGHT)
-                            toggle(RailFlyout.TEXT)
-                        }
-                        RailButton(
-                            icon = if (tool.isShape) tool.icon() else Icons.Default.Category,
-                            label = "Shapes",
-                            isSelected = tool.isShape,
-                            testTag = "tool_shapes",
-                            hasFlyout = true
-                        ) { toggle(RailFlyout.SHAPES) }
-                        RailButton(DrawingTool.STICKY_NOTE.icon(), "Sticky note", tool == DrawingTool.STICKY_NOTE, "tool_sticky_note") {
-                            select(DrawingTool.STICKY_NOTE)
-                        }
-                        RailButton(DrawingTool.ERASER.icon(), "Eraser", tool == DrawingTool.ERASER, "tool_eraser") { select(DrawingTool.ERASER) }
-
-                        if (tool.hasColor) {
-                            RailDivider()
-                            RailStyleButton("Color", "tool_color", flyout == RailFlyout.COLOR, { toggle(RailFlyout.COLOR) }) {
-                                Box(
-                                    Modifier
-                                        .size(22.dp)
-                                        .clip(CircleShape)
-                                        .background(parseHex(state.drawingColorHex))
-                                        .border(1.dp, Color(0x22000000), CircleShape)
-                                )
-                            }
-                            if (tool.hasStrokeWidth) {
-                                RailStyleButton("Thickness", "tool_width", flyout == RailFlyout.WIDTH, { toggle(RailFlyout.WIDTH) }) {
-                                    val dot = (state.drawingStrokeWidth * 0.9f).coerceIn(4f, 22f).dp
-                                    Box(Modifier.size(dot).clip(CircleShape).background(RailInk))
-                                }
-                            }
-                        }
-
-                        RailDivider()
-                        RailButton(Icons.AutoMirrored.Filled.Undo, "Undo", false, "drawing_undo_button", enabled = state.canUndoDrawing) {
-                            viewModel.undoDrawing()
-                        }
-                        RailButton(Icons.AutoMirrored.Filled.Redo, "Redo", false, "drawing_redo_button", enabled = state.canRedoDrawing) {
-                            viewModel.redoDrawing()
-                        }
-                        RailButton(Icons.Default.DeleteSweep, "Clear page drawings", false, "drawing_clear_page_button") {
-                            viewModel.clearCurrentPageDrawings()
-                        }
-                        RailButton(Icons.Default.Gesture, if (state.isStylusOnlyDrawing) "Stylus only" else "Touch and stylus", state.isStylusOnlyDrawing, "stylus_toggle_button") {
-                            viewModel.toggleStylusOnlyDrawing()
-                        }
-
-                        RailDivider()
-                        Surface(
-                            onClick = { viewModel.setDrawingMode(false) },
-                            shape = CircleShape,
-                            color = BrandPurple,
-                            modifier = Modifier.size(40.dp).testTag("drawing_done_button")
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.Check, contentDescription = "Done", tint = Color.White, modifier = Modifier.size(20.dp))
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RailButton(
+internal fun RailButton(
     icon: ImageVector,
     label: String,
     isSelected: Boolean,
@@ -409,7 +248,7 @@ private fun RailStyleButton(
 }
 
 @Composable
-private fun RailDivider() {
+internal fun RailDivider() {
     HorizontalDivider(
         color = RailDividerColor,
         thickness = 1.dp,
@@ -419,7 +258,7 @@ private fun RailDivider() {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun RailFlyoutCard(
+internal fun RailFlyoutCard(
     flyout: RailFlyout,
     state: ReaderUiState,
     onTool: (DrawingTool) -> Unit,
@@ -468,10 +307,22 @@ private fun RailFlyoutCard(
                     }
                 }
                 // 48dp touch targets: four per row fill the card width
-                RailFlyout.COLOR -> FlowRow(maxItemsInEachRow = 4) {
-                    (if (isHighlighter) HighlighterColorPalette else PenColorPalette).forEach { hex ->
-                        ColorSwatch(hex, selected = state.drawingColorHex.equals(hex, ignoreCase = true), onClick = { onColor(hex) }, size = 30.dp)
+                RailFlyout.COLOR -> Column {
+                    var custom by remember { mutableStateOf(false) }
+                    FlowRow(maxItemsInEachRow = 4) {
+                        (if (isHighlighter) HighlighterColorPalette else PenColorPalette).forEach { hex ->
+                            ColorSwatch(hex, selected = state.drawingColorHex.equals(hex, ignoreCase = true), onClick = { onColor(hex) }, size = 30.dp)
+                        }
+                        // Any color: a rainbow swatch that opens the picker
+                        Box(Modifier.size(48.dp).clickable(onClickLabel = "Custom color") { custom = !custom }.testTag("custom_color"),
+                            contentAlignment = Alignment.Center) {
+                            Box(Modifier.size(30.dp).clip(CircleShape).background(androidx.compose.ui.graphics.Brush.sweepGradient(
+                                listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red))))
+                        }
                     }
+                    if (custom) com.bookflow.app.presentation.screens.notes.editor.NoteColorPicker(
+                        android.graphics.Color.parseColor(state.drawingColorHex.takeIf { it.length == 7 } ?: "#FFE066")
+                    ) { argb -> onColor("#%06X".format(argb and 0xFFFFFF)) }
                 }
                 RailFlyout.WIDTH -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     val color = parseHex(state.drawingColorHex).let { if (isHighlighter) it.copy(alpha = .6f) else it }

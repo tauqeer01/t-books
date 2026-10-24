@@ -424,7 +424,8 @@ fun BookFlowNavGraph(
                             bookmarkUseCase = container.bookmarkUseCase,
                             preferencesRepository = container.preferencesRepository,
                             pdfEngineFactory = container.pdfEngineFactory,
-                            readingStatsRepository = container.readingStatsRepository
+                            readingStatsRepository = container.readingStatsRepository,
+                            notePenPreferences = container.notePenPreferences
                         )
                     )
 

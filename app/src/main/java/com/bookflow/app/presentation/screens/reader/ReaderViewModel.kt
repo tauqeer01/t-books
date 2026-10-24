@@ -106,6 +106,8 @@ data class ReaderUiState(
     val drawingTool: DrawingTool = DrawingTool.PEN,
     val drawingColorHex: String = "#4F46E5",
     val drawingStrokeWidth: Float = 3.5f,
+    val penPresets: List<com.bookflow.app.notes.ink.PenPreset> = emptyList(),
+    val activePenIndex: Int = 0,
     val isStylusOnlyDrawing: Boolean = false,
     val canUndoDrawing: Boolean = false,
     val canRedoDrawing: Boolean = false,
@@ -131,7 +133,9 @@ class ReaderViewModel(
     private val bookmarkUseCase: BookmarkUseCase,
     private val preferencesRepository: PreferencesRepository,
     private val pdfEngineFactory: PdfEngineFactory,
-    private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository
+    private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository,
+    /** The saved pens, shared with Notes. */
+    private val pens: com.bookflow.app.presentation.screens.notes.editor.NotePenPreferences
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReaderUiState(currentPage = initialPage))
@@ -144,6 +148,7 @@ class ReaderViewModel(
     fun recordReadingTime(seconds: Long) = readingStatsRepository.addReadingTime(seconds)
 
     init {
+        refreshPens()
         // Celebrate crossing today's goal while reading, like Apple Books
         viewModelScope.launch {
             var previous: com.bookflow.app.domain.model.ReadingStats? = null
@@ -223,8 +228,6 @@ class ReaderViewModel(
                 _uiState.value = _uiState.value.copy(
                     preferences = prefs,
                     activeHighlightColorHex = prefs.defaultHighlightColor,
-                    drawingColorHex = prefs.penColor,
-                    drawingStrokeWidth = prefs.penWidth,
                     isStylusOnlyDrawing = prefs.stylusOnly,
                     readerTheme = prefs.readerTheme,
                     scrollMode = prefs.scrollMode
@@ -788,7 +791,10 @@ class ReaderViewModel(
 
     fun setDrawingTool(tool: DrawingTool) {
         val current = _uiState.value
+        val pen = current.penPresets.getOrNull(current.activePenIndex)
         val (color, width) = when {
+            // The pen and highlighter draw with the active shared pen
+            (tool == DrawingTool.PEN || tool == DrawingTool.HIGHLIGHTER) && pen != null -> ReaderInk.colorHex(pen) to ReaderInk.strokeWidth(pen)
             !tool.hasColor -> current.drawingColorHex to current.drawingStrokeWidth
             tool.usesHighlighterPalette -> highlighterStyle
             else -> inkStyle ?: (current.preferences.penColor to current.preferences.penWidth)
@@ -817,6 +823,52 @@ class ReaderViewModel(
     fun setStrokeWidth(width: Float) {
         _uiState.value = _uiState.value.copy(drawingStrokeWidth = width)
         rememberToolStyle()
+    }
+
+    // --- Shared pens (the same saved pens as Notes) ---
+
+    /** Re-reads the saved pens, which Notes may have changed. */
+    fun refreshPens() {
+        val presets = pens.presets()
+        _uiState.value = _uiState.value.copy(penPresets = presets, activePenIndex = pens.activeIndex().coerceIn(0, presets.lastIndex))
+        val tool = _uiState.value.drawingTool
+        if (tool == DrawingTool.PEN || tool == DrawingTool.HIGHLIGHTER) selectPen(_uiState.value.activePenIndex)
+    }
+
+    /** Draws with saved pen [index]: highlighter pens use the highlighter tool, every other pen the pen tool. */
+    fun selectPen(index: Int) {
+        val presets = _uiState.value.penPresets
+        val pen = presets.getOrNull(index) ?: return
+        pens.setActive(index)
+        _uiState.value = _uiState.value.copy(activePenIndex = index)
+        setDrawingTool(ReaderInk.tool(pen))
+    }
+
+    fun updateActivePen(transform: (com.bookflow.app.notes.ink.PenPreset) -> com.bookflow.app.notes.ink.PenPreset) {
+        val s = _uiState.value
+        val pen = s.penPresets.getOrNull(s.activePenIndex) ?: return
+        val presets = s.penPresets.toMutableList().also { it[s.activePenIndex] = transform(pen) }
+        pens.save(presets)
+        _uiState.value = s.copy(penPresets = presets)
+        selectPen(s.activePenIndex)
+    }
+
+    /** Adds a copy of the active pen and draws with it, as Notes' "Add pen" does. */
+    fun addPen() {
+        val s = _uiState.value
+        val presets = s.penPresets + (s.penPresets.getOrNull(s.activePenIndex) ?: com.bookflow.app.notes.ink.InkBrushes.defaultPresets.first())
+        pens.save(presets)
+        _uiState.value = s.copy(penPresets = presets)
+        selectPen(presets.lastIndex)
+    }
+
+    fun removeActivePen() {
+        val s = _uiState.value
+        if (s.penPresets.size <= 1) return
+        val presets = s.penPresets.filterIndexed { i, _ -> i != s.activePenIndex }
+        pens.save(presets)
+        _uiState.value = s.copy(penPresets = presets)
+        selectPen(s.activePenIndex.coerceAtMost(presets.lastIndex))
     }
 
     fun toggleStylusOnlyDrawing() {
@@ -1175,7 +1227,8 @@ class ReaderViewModel(
         private val bookmarkUseCase: BookmarkUseCase,
         private val preferencesRepository: PreferencesRepository,
         private val pdfEngineFactory: PdfEngineFactory,
-        private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository
+        private val readingStatsRepository: com.bookflow.app.domain.repository.ReadingStatsRepository,
+        private val notePenPreferences: com.bookflow.app.presentation.screens.notes.editor.NotePenPreferences
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -1191,7 +1244,8 @@ class ReaderViewModel(
                 bookmarkUseCase,
                 preferencesRepository,
                 pdfEngineFactory,
-                readingStatsRepository
+                readingStatsRepository,
+                notePenPreferences
             ) as T
         }
     }

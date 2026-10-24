@@ -45,6 +45,14 @@ object InkBrushes {
         0xFF0891B2, 0xFF2563EB, 0xFF7C3AED, 0xFFDB2777, 0xFFFDE047, 0xFF86EFAC, 0xFF93C5FD, 0xFFF9A8D4
     ).map { it.toInt() }
 
+    /** Highlighter colors: bright ones, then soft ones for a barely-there mark. */
+    val highlighterPalette = listOf(
+        0xFFFDE047, 0xFF86EFAC, 0xFF7DD3FC, 0xFFF472B6, 0xFFC084FC, 0xFFFDBA74, 0xFF4ADE80, 0xFF60A5FA,
+        0xFFFEF9C3, 0xFFDCFCE7, 0xFFE0F2FE, 0xFFFCE7F3, 0xFFF3E8FF, 0xFFFFEDD5, 0xFFCCFBF1, 0xFFE5E7EB
+    ).map { it.toInt() }
+
+    fun palette(type: PenType) = if (type == PenType.HIGHLIGHTER) highlighterPalette else palette
+
     fun brush(preset: PenPreset): Brush = brush(preset.type, preset.colorArgb, preset.size)
 
     fun brush(type: PenType, colorArgb: Int, size: Float): Brush {

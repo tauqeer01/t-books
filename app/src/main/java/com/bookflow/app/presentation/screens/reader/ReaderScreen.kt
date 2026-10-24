@@ -167,6 +167,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -204,6 +205,7 @@ fun ReaderScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val toolDial = remember { ToolDialState() }
 
     ReaderWindowEffects(state, viewModel)
 
@@ -340,12 +342,16 @@ fun ReaderScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .background(Color(android.graphics.Color.parseColor(state.readerTheme.bgHex)))
+                .onGloballyPositioned { toolDial.originInWindow = it.positionInWindow() }
                 .pointerInput(Unit) {
-                    // Observe (never consume) every touch so the reading timer knows the reader is active
+                    // Observe (never consume) every touch so the reading timer knows the reader is active,
+                    // and fold the tool dial away when the page is touched outside it
                     awaitPointerEventScope {
                         while (true) {
-                            awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                            val event = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
                             lastActivityAt.set(System.currentTimeMillis())
+                            if (toolDial.open && event.type == androidx.compose.ui.input.pointer.PointerEventType.Press &&
+                                event.changes.none { toolDial.bounds.contains(it.position + toolDial.originInWindow) }) toolDial.open = false
                         }
                     }
                 }
@@ -750,8 +756,8 @@ fun ReaderScreen(
                 }
             }
 
-            // --- ANNOTATION RAIL (bottom-right pen button that expands upward into a vertical tool strip) ---
-            // Anchored bottom-end so it never covers the tap-to-turn page edges; lifts above the page bar
+            // --- ANNOTATION TOOLS (bottom-right pen button; in annotation mode a tool dial on the right edge) ---
+            // The button sits bottom-end so it never covers the tap-to-turn page edges; lifts above the page bar
             val railBottom by androidx.compose.animation.core.animateDpAsState(
                 targetValue = if (state.isPageNavigatorVisible && state.isChromeVisible && !state.isDrawingModeActive) 80.dp else 20.dp,
                 label = "rail_bottom"
@@ -761,12 +767,12 @@ fun ReaderScreen(
                 enter = fadeIn(),
                 exit = fadeOut(),
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
+                    .fillMaxSize()
                     .statusBarsPadding()
                     .navigationBarsPadding()
-                    .padding(top = headerInset + 8.dp, bottom = railBottom, end = 16.dp)
+                    .padding(top = headerInset + 8.dp, bottom = railBottom)
             ) {
-                AnnotationToolRail(state = state, viewModel = viewModel)
+                AnnotationToolRail(state = state, viewModel = viewModel, dial = toolDial)
             }
 
             // --- PAGE NAVIGATOR (opens when the page is tapped) ---

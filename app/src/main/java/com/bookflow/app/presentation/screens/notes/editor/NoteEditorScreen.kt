@@ -266,9 +266,9 @@ fun NoteEditorScreen(
                     onTool = vm::selectTool,
                     onPreset = vm::selectPreset,
                     onEditPen = { editingPen = true },
-                    onHighlighter = vm::selectHighlighter,
-                    onUndo = vm::undo,
-                    onRedo = vm::redo,
+                    onAddPen = vm::addPreset,
+                    onShape = vm::selectShape,
+                    onAutoShape = vm::selectAutoShape,
                     onPaste = paste,
                     initialPosition = position,
                     onMoved = vm::setFloatingPosition

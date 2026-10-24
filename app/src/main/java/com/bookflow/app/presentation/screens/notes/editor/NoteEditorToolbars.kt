@@ -221,7 +221,8 @@ fun PenEditor(
         }
         Text("Color", style = MaterialTheme.typography.labelLarge)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            (InkBrushes.palette + recentColors.filterNot { c -> InkBrushes.palette.any { (it and 0xFFFFFF) == (c and 0xFFFFFF) } }).forEach { color ->
+            val palette = InkBrushes.palette(preset.type)
+            (palette + recentColors.filterNot { c -> palette.any { (it and 0xFFFFFF) == (c and 0xFFFFFF) } }).forEach { color ->
                 val selected = (color and 0xFFFFFF) == (preset.colorArgb and 0xFFFFFF)
                 Box(Modifier.size(32.dp).background(Color(color), CircleShape)
                     .border(if (selected) 3.dp else 1.dp, if (selected) MaterialTheme.colorScheme.primary else Color(0x33000000), CircleShape)

@@ -1,33 +1,24 @@
 package com.bookflow.app.presentation.screens.notes.editor
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.Redo
-import androidx.compose.material.icons.automirrored.outlined.Undo
-import androidx.compose.material.icons.outlined.BorderColor
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.ContentPaste
-import androidx.compose.material.icons.outlined.DragIndicator
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.UnfoldLess
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -41,18 +32,25 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import com.bookflow.app.notes.ink.PenType
+import com.bookflow.app.core.theme.BrandPurple
+import com.bookflow.app.notes.ink.InkGeometry
+import com.bookflow.app.notes.ink.NoteShapes
+import com.bookflow.app.notes.ink.ShapeKind
+import com.bookflow.app.presentation.components.DialEntry
+import com.bookflow.app.presentation.components.ToolDial
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -60,19 +58,29 @@ class FloatingToolbarActions(
     val onTool: (EditorTool) -> Unit,
     val onPreset: (Int) -> Unit,
     val onEditPen: () -> Unit,
-    val onHighlighter: () -> Unit,
-    val onUndo: () -> Unit,
-    val onRedo: () -> Unit,
+    val onAddPen: () -> Unit,
+    val onShape: (ShapeKind) -> Unit,
+    val onAutoShape: () -> Unit,
     val onPaste: () -> Unit,
     /** Position as fractions of the free space, persisted between sessions. */
     val initialPosition: Pair<Float, Float>,
     val onMoved: (Float, Float) -> Unit
 )
 
+/** What a stop on the Notes tool dial does. */
+private sealed interface NoteDialItem {
+    data class Pen(val index: Int) : NoteDialItem
+    data class Shape(val kind: ShapeKind) : NoteDialItem
+    data object AutoShape : NoteDialItem
+    data class Tool(val tool: EditorTool, val icon: ImageVector, val label: String) : NoteDialItem
+    data object AddPen : NoteDialItem
+    data object Paste : NoteDialItem
+}
+
 /**
- * A pencil button that floats over the page (bottom right at first) and opens a palette of pens and tools.
- * Picking a pen or tool closes the palette again. Drag the button or the palette's handle anywhere; it settles
- * against the nearer side so it never covers the middle of the page.
+ * A pencil button that floats over the page (bottom right at first). Tapping it opens the tool dial on the right
+ * edge: every saved pen, every shape, and the other tools. Spin it and lift, or tap a tool, and it closes again.
+ * Drag the button anywhere; it settles against the nearer side so it never covers the middle of the page.
  */
 @Composable
 fun NoteFloatingToolbar(state: NoteEditorUiState, actions: FloatingToolbarActions, modifier: Modifier = Modifier) {
@@ -108,18 +116,48 @@ fun NoteFloatingToolbar(state: NoteEditorUiState, actions: FloatingToolbarAction
             }
         }
 
-        Surface(
-            shape = if (expanded) RoundedCornerShape(26.dp) else CircleShape,
-            shadowElevation = 6.dp,
-            tonalElevation = 2.dp,
-            modifier = Modifier
-                .offset { IntOffset((margin + x.value * freeW).roundToInt(), (margin + y.value * freeH).roundToInt()) }
-                .onSizeChanged { barW = it.width; barH = it.height }
-        ) {
-            if (!expanded) {
-                val active = EditorToolEntries.firstOrNull { it.first == state.tool }?.second?.second.orEmpty()
-                // The bar under the pencil shows the current pen color while a pen is in use
-                val penColor = if (state.tool == EditorTool.PEN) state.activePen?.let { Color(it.colorArgb) } else null
+        if (expanded) {
+            BackHandler { expanded = false }
+            // Tapping the page outside the dial closes it
+            Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { expanded = false } })
+            val items = noteDialItems(state)
+            val selected = items.indexOfFirst { item ->
+                when (item) {
+                    is NoteDialItem.Pen -> state.tool == EditorTool.PEN && item.index == state.activePreset
+                    is NoteDialItem.Shape -> state.tool == EditorTool.SHAPE && !state.autoShape && item.kind == state.shapeKind
+                    NoteDialItem.AutoShape -> state.tool == EditorTool.SHAPE && state.autoShape
+                    is NoteDialItem.Tool -> state.tool == item.tool
+                    else -> false
+                }
+            }.coerceAtLeast(0)
+            ToolDial(
+                entries = items.map { item -> DialEntry(item.label(state), item.tag()) { sel -> NoteDialIcon(item, state, sel) } },
+                selected = selected,
+                onPick = { index, tapped ->
+                    expanded = false
+                    when (val item = items[index]) {
+                        is NoteDialItem.Pen -> if (tapped && index == selected) actions.onEditPen() else actions.onPreset(item.index)
+                        is NoteDialItem.Shape -> actions.onShape(item.kind)
+                        NoteDialItem.AutoShape -> actions.onAutoShape()
+                        is NoteDialItem.Tool -> actions.onTool(item.tool)
+                        NoteDialItem.AddPen -> { actions.onAddPen(); actions.onEditPen() }
+                        NoteDialItem.Paste -> actions.onPaste()
+                    }
+                },
+                modifier = Modifier.align(Alignment.CenterEnd)
+            )
+        } else {
+            val active = EditorToolEntries.firstOrNull { it.first == state.tool }?.second?.second.orEmpty()
+            // The bar under the pencil shows the current pen color while a pen is in use
+            val penColor = if (state.tool == EditorTool.PEN) state.activePen?.let { Color(it.colorArgb) } else null
+            Surface(
+                shape = CircleShape,
+                shadowElevation = 6.dp,
+                tonalElevation = 2.dp,
+                modifier = Modifier
+                    .offset { IntOffset((margin + x.value * freeW).roundToInt(), (margin + y.value * freeH).roundToInt()) }
+                    .onSizeChanged { barW = it.width; barH = it.height }
+            ) {
                 Box(
                     Modifier.size(56.dp).background(MaterialTheme.colorScheme.primaryContainer).then(drag)
                         .clickable(onClickLabel = "Open tools") { expanded = true }
@@ -129,62 +167,61 @@ fun NoteFloatingToolbar(state: NoteEditorUiState, actions: FloatingToolbarAction
                     Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
                     if (penColor != null) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 9.dp).size(width = 18.dp, height = 3.dp).background(penColor, CircleShape))
                 }
-            } else {
-                Column(
-                    Modifier.width(52.dp).heightIn(max = with(LocalDensity.current) { (maxH - 2 * margin).toDp() })
-                        .verticalScroll(rememberScrollState()).padding(vertical = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Box(Modifier.size(44.dp, 28.dp).then(drag).semantics { contentDescription = "Move toolbar" }, contentAlignment = Alignment.Center) {
-                        Icon(Icons.Outlined.DragIndicator, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(20.dp))
-                    }
-                    // Saved pens: tap to use, tap the active one again to edit it
-                    state.presets.take(MAX_PEN_DOTS).forEachIndexed { index, pen ->
-                        val active = state.tool == EditorTool.PEN && index == state.activePreset
-                        Box(
-                            Modifier.size(36.dp).clip(CircleShape)
-                                .border(if (active) 2.5.dp else 0.dp, if (active) MaterialTheme.colorScheme.primary else Color.Transparent, CircleShape)
-                                .clickable(onClickLabel = if (active) "Edit pen" else "Use pen") { if (active) actions.onEditPen() else { actions.onPreset(index); expanded = false } }
-                                .semantics { contentDescription = "${pen.type.title} ${index + 1}"; selected = active },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            // The pen runs off the bottom of the round button, like a pen standing in a cup
-                            PenGlyph(pen, Modifier.size(width = 22.dp, height = 36.dp).offset(y = 6.dp))
-                        }
-                    }
-                    HorizontalDivider(Modifier.width(28.dp).padding(vertical = 2.dp))
-                    val highlighting = state.tool == EditorTool.PEN && state.activePen?.type == PenType.HIGHLIGHTER
-                    FloatingTool(Icons.Outlined.BorderColor, "Highlighter", highlighting) { actions.onHighlighter(); expanded = false }
-                    EditorToolEntries.filter { it.first != EditorTool.PEN }.forEach { (tool, entry) ->
-                        FloatingTool(entry.first, entry.second, state.tool == tool) { actions.onTool(tool); expanded = false }
-                    }
-                    HorizontalDivider(Modifier.width(28.dp).padding(vertical = 2.dp))
-                    FloatingTool(Icons.AutoMirrored.Outlined.Undo, "Undo", false, enabled = state.canUndo, onClick = actions.onUndo)
-                    FloatingTool(Icons.AutoMirrored.Outlined.Redo, "Redo", false, enabled = state.canRedo, onClick = actions.onRedo)
-                    if (state.clipboardAvailable) FloatingTool(Icons.Outlined.ContentPaste, "Paste", false, onClick = actions.onPaste)
-                    FloatingTool(Icons.Outlined.UnfoldLess, "Collapse toolbar", false) { expanded = false }
-                }
             }
         }
     }
 }
 
-private const val MAX_PEN_DOTS = 5
+private fun noteDialItems(state: NoteEditorUiState): List<NoteDialItem> =
+    state.presets.indices.map { NoteDialItem.Pen(it) } +
+        ShapeKind.entries.map { NoteDialItem.Shape(it) } + NoteDialItem.AutoShape +
+        EditorToolEntries.filter { it.first != EditorTool.PEN && it.first != EditorTool.SHAPE }
+            .map { (tool, entry) -> NoteDialItem.Tool(tool, entry.first, entry.second) } +
+        NoteDialItem.AddPen +
+        listOfNotNull(NoteDialItem.Paste.takeIf { state.clipboardAvailable })
+
+private fun NoteDialItem.label(state: NoteEditorUiState): String = when (this) {
+    is NoteDialItem.Pen -> "${state.presets[index].type.title} ${index + 1}"
+    is NoteDialItem.Shape -> kind.title
+    NoteDialItem.AutoShape -> "Auto shape"
+    is NoteDialItem.Tool -> label
+    NoteDialItem.AddPen -> "Add pen"
+    NoteDialItem.Paste -> "Paste"
+}
+
+private fun NoteDialItem.tag(): String = when (this) {
+    is NoteDialItem.Pen -> "note_pen_$index"
+    is NoteDialItem.Shape -> "note_shape_${kind.name.lowercase()}"
+    NoteDialItem.AutoShape -> "note_auto_shape"
+    is NoteDialItem.Tool -> "note_tool_${tool.name.lowercase()}"
+    NoteDialItem.AddPen -> "note_add_pen"
+    NoteDialItem.Paste -> "note_paste"
+}
 
 @Composable
-private fun FloatingTool(icon: ImageVector, label: String, selected: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
-    Box(
-        Modifier.size(40.dp).clip(RoundedCornerShape(12.dp))
-            .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-            .clickable(enabled = enabled, onClick = onClick)
-            .semantics { contentDescription = label; this.selected = selected },
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(icon, null, tint = when {
-            !enabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-            selected -> MaterialTheme.colorScheme.onPrimaryContainer
-            else -> MaterialTheme.colorScheme.onSurfaceVariant
-        })
+private fun NoteDialIcon(item: NoteDialItem, state: NoteEditorUiState, selected: Boolean) {
+    val tint = if (selected) BrandPurple else MaterialTheme.colorScheme.onSurface
+    when (item) {
+        is NoteDialItem.Pen -> PenGlyph(state.presets[item.index], Modifier.size(width = 24.dp, height = 40.dp).clipToBounds())
+        is NoteDialItem.Shape -> ShapeGlyph(item.kind, tint)
+        NoteDialItem.AutoShape -> Icon(Icons.Outlined.AutoFixHigh, null, tint = tint, modifier = Modifier.size(22.dp))
+        is NoteDialItem.Tool -> Icon(item.icon, null, tint = tint, modifier = Modifier.size(22.dp))
+        NoteDialItem.AddPen -> Icon(Icons.Outlined.Add, null, tint = tint, modifier = Modifier.size(22.dp))
+        NoteDialItem.Paste -> Icon(Icons.Outlined.ContentPaste, null, tint = tint, modifier = Modifier.size(22.dp))
+    }
+}
+
+/** The shape itself, drawn with the same outline the editor inserts. */
+@Composable
+private fun ShapeGlyph(kind: ShapeKind, tint: Color) {
+    val points = remember(kind) { NoteShapes.points(kind, InkGeometry.Point(0f, 0f), InkGeometry.Point(100f, 100f)) }
+    Canvas(Modifier.size(22.dp)) {
+        if (points.size < 2) return@Canvas
+        val s = size.minDimension / 100f
+        val path = Path().apply {
+            moveTo(points[0].x * s, points[0].y * s)
+            points.drop(1).forEach { lineTo(it.x * s, it.y * s) }
+        }
+        drawPath(path, tint, style = Stroke(1.8.dp.toPx()))
     }
 }

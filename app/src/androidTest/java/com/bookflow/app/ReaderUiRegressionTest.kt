@@ -174,10 +174,17 @@ class ReaderUiRegressionTest {
     }
 
     @Test fun pinchDrawingAndUndoRedoCoexist() {
+        // The reader draws with the saved pens it shares with Notes
+        val pens = app.container.notePenPreferences
+        val savedPens = pens.presets()
+        pens.save(listOf(com.bookflow.app.notes.ink.PenPreset(com.bookflow.app.notes.ink.PenType.BALLPOINT, 0xFFEF4444.toInt(), 5f)))
+        pens.setActive(0)
+        try { drawUndoRedo() } finally { pens.save(savedPens) }
+    }
+
+    private fun drawUndoRedo() {
         runBlocking {
-            app.container.preferencesRepository.savePreferences(com.bookflow.app.domain.model.UserReadingPreferences(
-                penColor = "#EF4444", penWidth = 8f, immersiveReading = false
-            ), bookId)
+            app.container.preferencesRepository.savePreferences(com.bookflow.app.domain.model.UserReadingPreferences(immersiveReading = false), bookId)
         }
         compose.onNodeWithContentDescription("Library").performClick()
         compose.onNodeWithText("UI Regression PDF").performClick()
@@ -202,7 +209,8 @@ class ReaderUiRegressionTest {
             val annotation = withTimeout(5000) { app.container.annotationRepository.getAnnotationsForBook(bookId).first { it.isNotEmpty() }.single() }
             org.junit.Assert.assertEquals("#EF4444", annotation.colorHex)
             val stroke = com.bookflow.app.pdf.drawing.StrokeSerializer.deserialize(annotation.id, 0, annotation.strokePathData!!, annotation.colorHex)!!
-            org.junit.Assert.assertEquals(8f, stroke.strokeWidth)
+            // A Notes size of 5 (1/1000 of the page) is 2 in reader units (1/400), the same width on the page
+            org.junit.Assert.assertEquals(2f, stroke.strokeWidth, .001f)
             org.junit.Assert.assertTrue(stroke.points.all { it.x in 0f..1f && it.y in 0f..1f })
         }
         compose.onNodeWithTag("drawing_undo_button").performClick()
@@ -219,8 +227,9 @@ class ReaderUiRegressionTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("PDF Page 1").fetchSemanticsNodes().isNotEmpty() }
 
         // Text marker: drag across the first line snaps to whole words
+        // Tools off the visible arc are still reachable by their click action (as TalkBack reaches them)
         compose.onNodeWithContentDescription("Annotate").performClick()
-        compose.onNodeWithTag("tool_text").performClick()
+        compose.onNodeWithTag("tool_text").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         compose.onNodeWithContentDescription("PDF Page 1").performTouchInput {
             swipe(androidx.compose.ui.geometry.Offset(width * .09f, height * .125f), androidx.compose.ui.geometry.Offset(width * .40f, height * .125f), 400)
         }
@@ -234,7 +243,8 @@ class ReaderUiRegressionTest {
         runBlocking { withTimeout(5000) { app.container.annotationRepository.getAnnotationsForBook(bookId).first { it.isEmpty() } } }
 
         // Sticky note: tap to drop, then write it
-        compose.onNodeWithTag("tool_sticky_note").performClick()
+        compose.onNodeWithTag("current_tool_button").performClick()
+        compose.onNodeWithTag("tool_sticky_note").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         compose.onNodeWithContentDescription("PDF Page 1").performTouchInput { click(androidx.compose.ui.geometry.Offset(width * .7f, height * .6f)) }
         compose.onNodeWithTag("edit_note_input").performTextInput("Check this")
         compose.onNodeWithText("Save Note").performClick()

@@ -265,51 +265,14 @@ fun ReadingPreferencesEditor(
                     }
                 }
 
+                // Pen color and thickness live on each saved pen (shared with Notes), chosen from the tool dial
                 if (section == "Pen & Drawing" || section == ANNOTATIONS_SECTION) {
-                    Text(
-                        "Pen Stroke Width: ${"%.1f".format(prefs.penWidth)} dp",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Slider(
-                        value = prefs.penWidth,
-                        onValueChange = { prefs = prefs.copy(penWidth = it) },
-                        valueRange = 1f..16f,
-                        colors = SliderDefaults.colors(
-                            thumbColor = BrandPurple,
-                            activeTrackColor = BrandPurple,
-                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
-                        )
-                    )
-
                     PreferenceSwitchRow(
                         title = "Draw with stylus only",
                         subtitle = "Prevents accidental finger marks while handwriting",
                         checked = prefs.stylusOnly,
                         onCheckedChange = { prefs = prefs.copy(stylusOnly = it) }
                     )
-
-                    Text(
-                        "Pen Color",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    val penColors = listOf(
-                        "Purple" to "#5935FF",
-                        "Red" to "#EF4444",
-                        "Blue" to "#2563EB",
-                        "Black" to "#0F172A"
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceAround
-                    ) {
-                        penColors.forEach { (name, hex) ->
-                            ColorSwatch(hex, selected = prefs.penColor.equals(hex, true), onClick = { prefs = prefs.copy(penColor = hex) }, name = name, size = 38.dp)
-                        }
-                    }
                 }
 
                 if (section == "Library View") {
