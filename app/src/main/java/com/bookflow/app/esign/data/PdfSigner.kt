@@ -66,7 +66,13 @@ class PdfSigner(private val context: Context) {
 
     private fun drawImage(doc: PDDocument, content: PDPageContentStream, field: SignField, x: Float, y: Float, w: Float, h: Float) {
         val path = field.imagePath ?: return
-        val bitmap = BitmapFactory.decodeFile(path) ?: return
+        // Decode no larger than needed for the stamped size (4 px per point keeps print quality)
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        if (bounds.outWidth <= 0) return
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / (sample * 2) >= maxOf(w, h) * 4) sample *= 2
+        val bitmap = BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return
         val image = LosslessFactory.createFromImage(doc, bitmap) // keeps transparency
         bitmap.recycle()
         content.saveGraphicsState()

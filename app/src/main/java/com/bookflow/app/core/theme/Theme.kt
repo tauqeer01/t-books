@@ -8,7 +8,6 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -64,9 +63,8 @@ fun BookFlowTheme(
         SideEffect {
             val window = (view.context as? Activity)?.window
             if (window != null) {
-                // Edge-to-edge: screen headers (BookFlowTopBar) paint their own color behind the status bar
-                window.statusBarColor = Color.Transparent.toArgb()
-                window.navigationBarColor = colorScheme.surface.toArgb()
+                // Edge-to-edge (enableEdgeToEdge in MainActivity) keeps the bars transparent; screen headers paint
+                // their own color behind the status bar. Only the bar icons follow the theme.
                 WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
                 WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
             }
