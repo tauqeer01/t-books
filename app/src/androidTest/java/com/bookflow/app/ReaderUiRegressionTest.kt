@@ -82,6 +82,32 @@ class ReaderUiRegressionTest {
         compose.onNodeWithText("1 / 3").assertExists()
     }
 
+    // Both clicks run before the next frame, so the second lands before the screen changes, like a quick double tap
+    private fun doubleTap(node: () -> SemanticsNodeInteraction) {
+        val click = node().fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.OnClick].action!!
+        compose.runOnUiThread { click(); click() }
+        compose.waitForIdle()
+    }
+
+    @Test fun doubleTappingReaderBackClosesOnlyTheReader() {
+        compose.onNodeWithContentDescription("Library").performClick()
+        compose.onNodeWithText("UI Regression PDF").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("reader_back_button").fetchSemanticsNodes().isNotEmpty() }
+        doubleTap { compose.onNodeWithTag("reader_back_button") }
+        compose.onNodeWithText("My Library").assertExists()
+        compose.onNodeWithTag("reader_screen").assertDoesNotExist()
+    }
+
+    @Test fun doubleTappingABookOpensOneReader() {
+        compose.onNodeWithContentDescription("Library").performClick()
+        doubleTap { compose.onNodeWithText("UI Regression PDF") }
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("reader_back_button").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("reader_back_button").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("My Library").assertExists()
+        compose.onNodeWithTag("reader_screen").assertDoesNotExist()
+    }
+
     @Test fun readerWindowPreferencesAndVolumeKeysRestoreOnExit() {
         val activity = compose.activity
         var originalBrightness = -1f

@@ -329,7 +329,7 @@ class BookRepositoryImpl(
 
         val now = System.currentTimeMillis()
         val sample = BookEntity(
-            id = "book_aircraft_systems", title = "Aircraft Systems", author = "BookFlow sample document",
+            id = "book_aircraft_systems", title = "Aircraft Systems", author = "AHT Books sample document",
             filePath = pdfFile.absolutePath, uriString = null, fileSizeBytes = pdfFile.length(),
             pageCount = 2, currentPage = 0, readingProgress = 0f, isFavorite = false,
             category = "PDF", collectionId = "col_aviation", thumbnailPath = sampleThumbPath,

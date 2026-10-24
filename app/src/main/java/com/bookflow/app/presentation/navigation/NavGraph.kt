@@ -18,7 +18,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
+import androidx.navigation.NavOptionsBuilder
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -39,6 +41,19 @@ import com.bookflow.app.presentation.screens.reader.ReaderViewModel
 import com.bookflow.app.presentation.screens.search.SearchScreen
 import com.bookflow.app.presentation.screens.settings.SettingsScreen
 import com.bookflow.app.presentation.screens.settings.SettingsViewModel
+
+/**
+ * Navigates only while [from] is still the top screen, so a quick double tap can't open a screen twice.
+ * (A lifecycle check would also drop navigations from picker results, which arrive before the screen resumes.)
+ */
+private fun NavHostController.navigateFrom(from: NavBackStackEntry, route: String, builder: NavOptionsBuilder.() -> Unit = {}) {
+    if (currentBackStackEntry?.id == from.id) navigate(route, builder)
+}
+
+/** Goes back only while [from] is still the top screen, so a double tap on Back can't also close the screen below. */
+private fun NavHostController.popFrom(from: NavBackStackEntry) {
+    if (currentBackStackEntry?.id == from.id) popBackStack()
+}
 
 @Composable
 fun BookFlowNavGraph(
@@ -153,38 +168,38 @@ fun BookFlowNavGraph(
                 startDestination = Screen.Home.route
             ) {
                 // 1. Home Tab (Dashboard from Screenshot)
-                composable(Screen.Home.route) {
+                composable(Screen.Home.route) { entry ->
                     HomeScreen(
                         viewModel = homeViewModel,
                         onBookClick = { bookId, page ->
-                            navController.navigate(Screen.Reader.createRoute(bookId, page))
+                            navController.navigateFrom(entry, Screen.Reader.createRoute(bookId, page))
                         },
                         onNavigateToCollections = {
                             libraryShowsCollections = true
                             navigateToTab(Screen.Library.route)
                         },
-                        onLibrary = { filter -> libraryViewModel.onCategorySelected(filter); navController.navigate(Screen.Library.route) },
-                        onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
-                        onSearch = { navController.navigate(Screen.Search.route) { launchSingleTop = true } },
-                        onSettings = { navController.navigate(Screen.Settings.route) { launchSingleTop = true } },
+                        onLibrary = { filter -> libraryViewModel.onCategorySelected(filter); navController.navigateFrom(entry, Screen.Library.route) },
+                        onBookInformation = { navController.navigateFrom(entry, Screen.BookDetails.createRoute(it)) },
+                        onSearch = { navController.navigateFrom(entry, Screen.Search.route) { launchSingleTop = true } },
+                        onSettings = { navController.navigateFrom(entry, Screen.Settings.route) { launchSingleTop = true } },
                         dueCards = remember { container.flashcardRepository.dueToday() }.collectAsStateWithLifecycle(0).value,
                         recentNotes = remember { container.notesRepository.notes() }.collectAsStateWithLifecycle(emptyList()).value
                             .sortedByDescending { it.updatedAt },
                         onStudyCards = { navigateToTab(Screen.Cards.route) },
-                        onOpenNote = { navController.navigate(Screen.NoteEditor.createRoute(it)) },
+                        onOpenNote = { navController.navigateFrom(entry, Screen.NoteEditor.createRoute(it)) },
                         onSeeNotes = { navigateToTab(Screen.Notes.route) },
                         // Opens straight into a note with the last used page template (changeable in the editor)
                         onNewNote = {
                             container.applicationScope.launch(kotlinx.coroutines.Dispatchers.Main) {
                                 val id = container.notesRepository.createNote(background = container.notePenPreferences.lastTemplate())
-                                navController.navigate(Screen.NoteEditor.createRoute(id))
+                                navController.navigateFrom(entry, Screen.NoteEditor.createRoute(id))
                             }
                         }
                     )
                 }
 
                 // 2. Library Tab
-                composable(Screen.Library.route) {
+                composable(Screen.Library.route) { entry ->
                     val switch: @Composable () -> Unit = {
                         com.bookflow.app.presentation.screens.library.LibrarySwitch(libraryShowsCollections) { libraryShowsCollections = it }
                     }
@@ -199,24 +214,24 @@ fun BookFlowNavGraph(
                         )
                         CollectionsScreen(
                             viewModel = collectionsViewModel,
-                            onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
-                            onBookClick = { bookId, page -> navController.navigate(Screen.Reader.createRoute(bookId, page)) },
+                            onBookInformation = { navController.navigateFrom(entry, Screen.BookDetails.createRoute(it)) },
+                            onBookClick = { bookId, page -> navController.navigateFrom(entry, Screen.Reader.createRoute(bookId, page)) },
                             header = switch
                         )
                     } else LibraryScreen(
                         viewModel = libraryViewModel,
                         onBookClick = { bookId, page ->
-                            navController.navigate(Screen.Reader.createRoute(bookId, page))
+                            navController.navigateFrom(entry, Screen.Reader.createRoute(bookId, page))
                         },
                         onBookDetailsClick = { bookId ->
-                            navController.navigate(Screen.BookDetails.createRoute(bookId))
+                            navController.navigateFrom(entry, Screen.BookDetails.createRoute(bookId))
                         },
                         header = switch
                     )
                 }
 
                 // 3. Collections Tab (Matching Pastel Collections Screenshot)
-                composable(Screen.Collections.route) {
+                composable(Screen.Collections.route) { entry ->
                     val collectionsViewModel: CollectionsViewModel = viewModel(
                         factory = CollectionsViewModel.Factory(
                             getCollectionsUseCase = container.getCollectionsUseCase,
@@ -227,37 +242,37 @@ fun BookFlowNavGraph(
                     )
                     CollectionsScreen(
                         viewModel = collectionsViewModel,
-                        onBookInformation = { navController.navigate(Screen.BookDetails.createRoute(it)) },
+                        onBookInformation = { navController.navigateFrom(entry, Screen.BookDetails.createRoute(it)) },
                         onBookClick = { bookId, page ->
-                            navController.navigate(Screen.Reader.createRoute(bookId, page))
+                            navController.navigateFrom(entry, Screen.Reader.createRoute(bookId, page))
                         }
                     )
                 }
 
                 // 4. Search Tab
-                composable(Screen.Search.route) {
+                composable(Screen.Search.route) { entry ->
                     val query = homeViewModel.uiState.collectAsStateWithLifecycle().value.searchQuery
                     val notebookResults by remember(query) { container.notesRepository.search(query) }.collectAsStateWithLifecycle(emptyList())
                     val cardResults by remember(query) { container.flashcardRepository.search(query) }.collectAsStateWithLifecycle(emptyList())
                     SearchScreen(
                         homeViewModel = homeViewModel,
                         onBookClick = { bookId, page ->
-                            navController.navigate(Screen.Reader.createRoute(bookId, page))
+                            navController.navigateFrom(entry, Screen.Reader.createRoute(bookId, page))
                         },
                         notebookResults = notebookResults,
                         cardResults = cardResults,
-                        onOpenNote = { navController.navigate(Screen.NoteEditor.createRoute(it)) },
-                        onOpenCard = { navController.navigate(Screen.CardEditor.createRoute(cardId = it)) }
+                        onOpenNote = { navController.navigateFrom(entry, Screen.NoteEditor.createRoute(it)) },
+                        onOpenCard = { navController.navigateFrom(entry, Screen.CardEditor.createRoute(cardId = it)) }
                     )
                 }
 
-                composable(Screen.Notes.route) {
+                composable(Screen.Notes.route) { entry ->
                     val notesViewModel: com.bookflow.app.presentation.screens.notes.NotesHomeViewModel = viewModel(
                         factory = com.bookflow.app.presentation.screens.notes.NotesHomeViewModel.Factory(container.notesRepository, container.notePenPreferences)
                     )
                     com.bookflow.app.presentation.screens.notes.NotesHomeScreen(
                         viewModel = notesViewModel,
-                        onOpenNote = { navController.navigate(Screen.NoteEditor.createRoute(it)) }
+                        onOpenNote = { navController.navigateFrom(entry, Screen.NoteEditor.createRoute(it)) }
                     )
                 }
 
@@ -274,29 +289,29 @@ fun BookFlowNavGraph(
                     )
                     com.bookflow.app.presentation.screens.notes.editor.NoteEditorScreen(
                         vm = editorViewModel,
-                        onBack = { navController.popBackStack() },
-                        onOpenSource = { bookId, page -> navController.navigate(Screen.Reader.createRoute(bookId, page)) }
+                        onBack = { navController.popFrom(entry) },
+                        onOpenSource = { bookId, page -> navController.navigateFrom(entry, Screen.Reader.createRoute(bookId, page)) }
                     )
                 }
 
-                composable(Screen.Cards.route) {
+                composable(Screen.Cards.route) { entry ->
                     val vm: com.bookflow.app.presentation.screens.cards.CardsHomeViewModel = viewModel(
                         factory = com.bookflow.app.presentation.screens.cards.CardsHomeViewModel.Factory(container.flashcardRepository))
                     com.bookflow.app.presentation.screens.cards.CardsHomeScreen(vm,
-                        onOpenDeck = { navController.navigate(Screen.Deck.createRoute(it)) },
-                        onStudy = { navController.navigate(Screen.Review.createRoute(it)) },
-                        onStats = { navController.navigate(Screen.CardStats.createRoute()) })
+                        onOpenDeck = { navController.navigateFrom(entry, Screen.Deck.createRoute(it)) },
+                        onStudy = { navController.navigateFrom(entry, Screen.Review.createRoute(it)) },
+                        onStats = { navController.navigateFrom(entry, Screen.CardStats.createRoute()) })
                 }
                 composable(Screen.Deck.route, arguments = listOf(navArgument("deckId") { type = NavType.StringType })) { entry ->
                     val deckId = entry.arguments?.getString("deckId").orEmpty()
                     val vm: com.bookflow.app.presentation.screens.cards.DeckViewModel = viewModel(
                         factory = com.bookflow.app.presentation.screens.cards.DeckViewModel.Factory(deckId, container.flashcardRepository))
                     com.bookflow.app.presentation.screens.cards.DeckScreen(vm,
-                        onBack = { navController.popBackStack() },
-                        onStudy = { navController.navigate(Screen.Review.createRoute(deckId)) },
-                        onAddCard = { navController.navigate(Screen.CardEditor.createRoute(deckId = deckId)) },
-                        onEditCard = { navController.navigate(Screen.CardEditor.createRoute(cardId = it)) },
-                        onStats = { navController.navigate(Screen.CardStats.createRoute(deckId)) })
+                        onBack = { navController.popFrom(entry) },
+                        onStudy = { navController.navigateFrom(entry, Screen.Review.createRoute(deckId)) },
+                        onAddCard = { navController.navigateFrom(entry, Screen.CardEditor.createRoute(deckId = deckId)) },
+                        onEditCard = { navController.navigateFrom(entry, Screen.CardEditor.createRoute(cardId = it)) },
+                        onStats = { navController.navigateFrom(entry, Screen.CardStats.createRoute(deckId)) })
                 }
                 composable(Screen.CardEditor.route, arguments = listOf(
                     navArgument("cardId") { type = NavType.StringType; defaultValue = "" },
@@ -306,33 +321,33 @@ fun BookFlowNavGraph(
                     val deckId = entry.arguments?.getString("deckId")?.takeIf { it.isNotEmpty() }
                     val vm: com.bookflow.app.presentation.screens.cards.CardEditorViewModel = viewModel(
                         factory = com.bookflow.app.presentation.screens.cards.CardEditorViewModel.Factory(cardId, deckId, container.flashcardRepository, container.cardDrafts))
-                    com.bookflow.app.presentation.screens.cards.CardEditorScreen(vm, onClose = { navController.popBackStack() })
+                    com.bookflow.app.presentation.screens.cards.CardEditorScreen(vm, onClose = { navController.popFrom(entry) })
                 }
                 composable(Screen.Review.route, arguments = listOf(navArgument("deckId") { type = NavType.StringType })) { entry ->
                     val deckId = entry.arguments?.getString("deckId").orEmpty()
                     val vm: com.bookflow.app.presentation.screens.cards.ReviewViewModel = viewModel(
                         factory = com.bookflow.app.presentation.screens.cards.ReviewViewModel.Factory(deckId, container.flashcardRepository))
                     com.bookflow.app.presentation.screens.cards.ReviewScreen(vm,
-                        onBack = { navController.popBackStack() },
-                        onOpenSource = { book, page -> navController.navigate(Screen.Reader.createRoute(book, page)) })
+                        onBack = { navController.popFrom(entry) },
+                        onOpenSource = { book, page -> navController.navigateFrom(entry, Screen.Reader.createRoute(book, page)) })
                 }
                 composable(Screen.CardStats.route, arguments = listOf(navArgument("deckId") { type = NavType.StringType; defaultValue = "" })) { entry ->
                     val deckId = entry.arguments?.getString("deckId")?.takeIf { it.isNotEmpty() }
                     val vm: com.bookflow.app.presentation.screens.cards.StatsViewModel = viewModel(
                         key = "stats_${deckId.orEmpty()}",
                         factory = com.bookflow.app.presentation.screens.cards.StatsViewModel.Factory(deckId, container.flashcardRepository))
-                    com.bookflow.app.presentation.screens.cards.CardStatsScreen(vm, onBack = { navController.popBackStack() })
+                    com.bookflow.app.presentation.screens.cards.CardStatsScreen(vm, onBack = { navController.popFrom(entry) })
                 }
 
-                composable(Screen.ESign.route) {
+                composable(Screen.ESign.route) { entry ->
                     val vm: com.bookflow.app.presentation.screens.esign.ESignHomeViewModel = viewModel(
                         factory = com.bookflow.app.presentation.screens.esign.ESignHomeViewModel.Factory(context.applicationContext, container.signatureStore, container.bookRepository))
                     val creator: com.bookflow.app.presentation.screens.esign.SignatureCreatorViewModel = viewModel(
                         factory = com.bookflow.app.presentation.screens.esign.SignatureCreatorViewModel.Factory(container.signatureStore))
                     com.bookflow.app.presentation.screens.esign.ESignHomeScreen(vm, creator,
-                        onSignBook = { navController.navigate(Screen.SignEditor.createRoute(bookId = it)) },
-                        onSignFile = { navController.navigate(Screen.SignEditor.createRoute(uri = it)) },
-                        onOpenBook = { navController.navigate(Screen.Reader.createRoute(it)) })
+                        onSignBook = { navController.navigateFrom(entry, Screen.SignEditor.createRoute(bookId = it)) },
+                        onSignFile = { navController.navigateFrom(entry, Screen.SignEditor.createRoute(uri = it)) },
+                        onOpenBook = { navController.navigateFrom(entry, Screen.Reader.createRoute(it)) })
                 }
                 composable(Screen.SignEditor.route, arguments = listOf(
                     navArgument("bookId") { type = NavType.StringType; defaultValue = "" },
@@ -346,14 +361,14 @@ fun BookFlowNavGraph(
                     val creator: com.bookflow.app.presentation.screens.esign.SignatureCreatorViewModel = viewModel(
                         factory = com.bookflow.app.presentation.screens.esign.SignatureCreatorViewModel.Factory(container.signatureStore))
                     com.bookflow.app.presentation.screens.esign.SignEditorScreen(vm, creator,
-                        onClose = { navController.popBackStack() },
+                        onClose = { navController.popFrom(entry) },
                         onOpenSigned = { id ->
-                            navController.navigate(Screen.Reader.createRoute(id)) { popUpTo(Screen.ESign.route) }
+                            navController.navigateFrom(entry, Screen.Reader.createRoute(id)) { popUpTo(Screen.ESign.route) }
                         })
                 }
 
                 // 5. Settings Tab (Matching Settings Screenshot)
-                composable(Screen.Settings.route) {
+                composable(Screen.Settings.route) { entry ->
                     val settingsViewModel: SettingsViewModel = viewModel(
                         factory = SettingsViewModel.Factory(
                             context = context,
@@ -364,22 +379,22 @@ fun BookFlowNavGraph(
                     SettingsScreen(
                         viewModel = settingsViewModel,
                         onCollections = { libraryShowsCollections = true; navigateToTab(Screen.Library.route) },
-                        onLibrary = { navController.navigate(Screen.Library.route) },
-                        onBack = { navController.popBackStack() },
-                        onOpenLegal = { navController.navigate(Screen.Legal.createRoute(it.route)) },
-                        onOpenLicenses = { navController.navigate(Screen.Licenses.route) }
+                        onLibrary = { navController.navigateFrom(entry, Screen.Library.route) },
+                        onBack = { navController.popFrom(entry) },
+                        onOpenLegal = { navController.navigateFrom(entry, Screen.Legal.createRoute(it.route)) },
+                        onOpenLicenses = { navController.navigateFrom(entry, Screen.Licenses.route) }
                     )
                 }
 
                 composable(Screen.Legal.route, arguments = listOf(navArgument("doc") { type = NavType.StringType })) { entry ->
                     com.bookflow.app.presentation.screens.legal.LegalDocumentScreen(
                         document = com.bookflow.app.presentation.screens.legal.LegalDocument.fromRoute(entry.arguments?.getString("doc")),
-                        onBack = { navController.popBackStack() }
+                        onBack = { navController.popFrom(entry) }
                     )
                 }
 
-                composable(Screen.Licenses.route) {
-                    com.bookflow.app.presentation.screens.legal.OpenSourceLicensesScreen(onBack = { navController.popBackStack() })
+                composable(Screen.Licenses.route) { entry ->
+                    com.bookflow.app.presentation.screens.legal.OpenSourceLicensesScreen(onBack = { navController.popFrom(entry) })
                 }
 
                 // PDF Reader Screen (Matching Aircraft Systems Screenshot)
@@ -392,9 +407,9 @@ fun BookFlowNavGraph(
                             defaultValue = -1
                         }
                     )
-                ) { backStackEntry ->
-                    val bookId = backStackEntry.arguments?.getString("bookId") ?: "book_aircraft_systems"
-                    val page = backStackEntry.arguments?.getInt("page") ?: -1
+                ) { entry ->
+                    val bookId = entry.arguments?.getString("bookId") ?: "book_aircraft_systems"
+                    val page = entry.arguments?.getInt("page") ?: -1
 
                     val readerViewModel: ReaderViewModel = viewModel(
                         factory = ReaderViewModel.Factory(
@@ -421,8 +436,8 @@ fun BookFlowNavGraph(
                     com.bookflow.app.presentation.screens.reader.ReaderCaptureHost(
                         readerViewModel = readerViewModel,
                         captureViewModel = captureViewModel,
-                        onOpenNote = { navController.navigate(Screen.NoteEditor.createRoute(it)) },
-                        onMakeCard = { draft -> container.cardDrafts.draft = draft; navController.navigate(Screen.CardEditor.createRoute()) },
+                        onOpenNote = { navController.navigateFrom(entry, Screen.NoteEditor.createRoute(it)) },
+                        onMakeCard = { draft -> container.cardDrafts.draft = draft; navController.navigateFrom(entry, Screen.CardEditor.createRoute()) },
                         notesPanel = { noteId, inbox, onClose, panelModifier ->
                             val panelViewModel: com.bookflow.app.presentation.screens.notes.editor.NoteEditorViewModel = viewModel(
                                 key = "notes_panel_$noteId",
@@ -438,7 +453,7 @@ fun BookFlowNavGraph(
                                 // A clip from this book jumps the reader beside it; other books open normally
                                 onOpenSource = { sourceBook, sourcePage ->
                                     if (sourceBook == bookId) readerViewModel.jumpToPage(sourcePage)
-                                    else navController.navigate(Screen.Reader.createRoute(sourceBook, sourcePage))
+                                    else navController.navigateFrom(entry, Screen.Reader.createRoute(sourceBook, sourcePage))
                                 },
                                 modifier = panelModifier,
                                 inPanel = true
@@ -447,7 +462,7 @@ fun BookFlowNavGraph(
                     ) { onNotesClick ->
                         ReaderScreen(
                             viewModel = readerViewModel,
-                            onBackClick = { navController.popBackStack() },
+                            onBackClick = { navController.popFrom(entry) },
                             onNotesClick = onNotesClick
                         )
                     }
@@ -459,8 +474,8 @@ fun BookFlowNavGraph(
                     arguments = listOf(
                         navArgument("bookId") { type = NavType.StringType }
                     )
-                ) { backStackEntry ->
-                    val bookId = backStackEntry.arguments?.getString("bookId") ?: "book_aircraft_systems"
+                ) { entry ->
+                    val bookId = entry.arguments?.getString("bookId") ?: "book_aircraft_systems"
                     val detailsViewModel: BookDetailsViewModel = viewModel(
                         factory = BookDetailsViewModel.Factory(
                             bookId = bookId,
@@ -471,9 +486,9 @@ fun BookFlowNavGraph(
                     )
                     BookDetailsScreen(
                         viewModel = detailsViewModel,
-                        onBackClick = { navController.popBackStack() },
+                        onBackClick = { navController.popFrom(entry) },
                         onNavigateToReader = { bId, page ->
-                            navController.navigate(Screen.Reader.createRoute(bId, page))
+                            navController.navigateFrom(entry, Screen.Reader.createRoute(bId, page))
                         }
                     )
                 }

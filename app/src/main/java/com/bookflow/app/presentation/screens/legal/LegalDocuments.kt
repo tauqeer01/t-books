@@ -20,50 +20,50 @@ enum class LegalDocument(val route: String, val title: String, val sections: Lis
         sections = listOf(
             LegalSection(
                 "Summary",
-                "BookFlow works entirely on your device. It has no accounts, no ads, no analytics and no tracking, " +
+                "AHT Books works entirely on your device. It has no accounts, no ads, no analytics and no tracking, " +
                     "and the app does not have permission to access the internet."
             ),
             LegalSection(
-                "What BookFlow stores on your device",
+                "What AHT Books stores on your device",
                 "• The PDFs you choose to open, read in place from where they are stored. PDFs opened from another app " +
-                    "with \"Open with\" are copied into BookFlow's private storage so they keep working.\n" +
+                    "with \"Open with\" are copied into the app's private storage so they keep working.\n" +
                     "• Your library details: titles, authors, reading position, collections and favorites.\n" +
                     "• Your highlights, notes, drawings and bookmarks.\n" +
                     "• Reading time per day for your reading goal.\n" +
                     "• Your settings and page thumbnails.\n\n" +
-                    "This data never leaves your device through BookFlow."
+                    "This data never leaves your device through AHT Books."
             ),
             LegalSection(
                 "File access",
-                "BookFlow only opens files you pick in the Android file picker or send to it with \"Open with\". " +
-                    "It does not scan your storage. Removing a book from BookFlow never deletes your original file."
+                "AHT Books only opens files you pick in the Android file picker or send to it with \"Open with\". " +
+                    "It does not scan your storage. Removing a book from AHT Books never deletes your original file."
             ),
             LegalSection(
                 "Backups",
-                "If Android backup is turned on for your device, Android may back up your BookFlow library details, " +
+                "If Android backup is turned on for your device, Android may back up your AHT Books library details, " +
                     "annotations and settings to your Google account. PDF files are not included. You control this in " +
                     "your device's backup settings, and Google's privacy policy applies to those backups."
             ),
             LegalSection(
                 "Crash reports",
-                "If BookFlow crashes, a technical report (app version, device model, Android version and error details) " +
+                "If AHT Books crashes, a technical report (app version, device model, Android version and error details) " +
                     "is saved on your device. It is only sent if you choose to share it from Settings › Report a problem. " +
                     "If you have opted in to sharing diagnostics with Google, Google Play may also provide anonymous crash " +
                     "statistics to the developer."
             ),
             LegalSection(
                 "Sharing",
-                "BookFlow does not sell or share your data. When you use Share (for example sharing a PDF or an exported " +
+                "AHT Books does not sell or share your data. When you use Share (for example sharing a PDF or an exported " +
                     "annotated copy), the file goes to the app you choose."
             ),
             LegalSection(
                 "Deleting your data",
-                "Remove individual books from your library, clear the cache in Settings, or uninstall BookFlow to delete " +
+                "Remove individual books from your library, clear the cache in Settings, or uninstall AHT Books to delete " +
                     "all of its data from your device."
             ),
             LegalSection(
                 "Children",
-                "BookFlow is a general-audience reading app and does not knowingly collect personal information from anyone."
+                "AHT Books is a general-audience reading app and does not knowingly collect personal information from anyone."
             ),
             LegalSection(
                 "Changes and contact",
@@ -77,28 +77,28 @@ enum class LegalDocument(val route: String, val title: String, val sections: Lis
         title = "Terms of Use",
         sections = listOf(
             LegalSection(
-                "Using BookFlow",
-                "BookFlow is provided by ${LegalInfo.PUBLISHER} to read, organize and annotate PDF documents on your device. " +
+                "Using AHT Books",
+                "AHT Books is provided by ${LegalInfo.PUBLISHER} to read, organize and annotate PDF documents on your device. " +
                     "By using the app you agree to these terms."
             ),
             LegalSection(
                 "Your content",
                 "You keep all rights to the documents you open and the notes you create. Only open documents you have " +
-                    "the right to use. BookFlow does not upload or claim any rights to your content."
+                    "the right to use. AHT Books does not upload or claim any rights to your content."
             ),
             LegalSection(
                 "Your responsibility for your data",
                 "Your library and annotations are stored on your device. Keep your own backups of important files; " +
-                    "uninstalling the app or resetting your device can delete BookFlow's data."
+                    "uninstalling the app or resetting your device can delete the app's data."
             ),
             LegalSection(
                 "No warranty",
-                "BookFlow is provided \"as is\" without warranties of any kind. To the extent permitted by law, " +
+                "AHT Books is provided \"as is\" without warranties of any kind. To the extent permitted by law, " +
                     "${LegalInfo.PUBLISHER} is not liable for any loss of data or damages arising from use of the app."
             ),
             LegalSection(
                 "Open-source software",
-                "BookFlow includes open-source components, each under its own license. See Settings › Open-source licenses."
+                "AHT Books includes open-source components, each under its own license. See Settings › Open-source licenses."
             ),
             LegalSection(
                 "Changes and contact",

@@ -47,7 +47,7 @@ object CrashLog {
         val time = Date()
         val stack = StringWriter().also { throwable.printStackTrace(PrintWriter(it)) }.toString()
         val report = buildString {
-            appendLine("BookFlow crash report")
+            appendLine("AHT Books crash report")
             appendLine("Time: ${SimpleDateFormat("yyyy-MM-dd HH:mm:ss Z", Locale.US).format(time)}")
             appendLine("App: ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
             appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL}")

@@ -378,6 +378,7 @@ private suspend fun PointerInputScope.routeGestures(
             GestureMode.LASSO -> overlay.lasso.clear()
             GestureMode.SHAPE -> { overlay.shape.clear(); overlay.freehand.clear() }
             GestureMode.TAPE -> overlay.tape = null
+            GestureMode.TRANSFORM -> vm.commitTransform()
             else -> Unit
         }
     }
@@ -391,6 +392,13 @@ private suspend fun PointerInputScope.routeGestures(
         for (change in event.changes.filter { it.changedToDownIgnoreConsumed() }) {
             flingJob?.cancel()
             val stylus = change.isStylus()
+            // A pen always gets its own gesture: a hand resting on the screen (or still down after the last stroke)
+            // must not swallow it, since a consumed pointer makes the ink layer cancel the stroke
+            if (stylus && mode != GestureMode.IDLE && event.changes.none { it.id == activeId && it.pressed && it.isStylus() }) {
+                cancelDrawing()
+                nav.clear(); tapStart = null; navMoved = false
+                mode = GestureMode.IDLE
+            }
             if (mode == GestureMode.IDLE) {
                 val drawingTool = s.tool.draws && !viewport.onAddPageTile(change.position, s.pages.size)
                 val inks = stylus || (s.fingerInks && change.type == PointerType.Touch)

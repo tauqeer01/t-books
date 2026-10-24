@@ -151,24 +151,24 @@ fun SettingsScreen(
                                 icon = Icons.Default.Share,
                                 iconTint = Color(0xFF059669),
                                 iconBg = Color(0xFFD1FAE5),
-                                title = "Share BookFlow",
+                                title = "Share AHT Books",
                                 subtitle = "Send the Play Store link to a friend",
                                 onClick = {
                                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                         type = "text/plain"
                                         putExtra(
                                             Intent.EXTRA_TEXT,
-                                            "BookFlow — a fast, private PDF reader for Android: https://play.google.com/store/apps/details?id=${context.packageName}"
+                                            "AHT Books — a fast, private PDF reader for Android: https://play.google.com/store/apps/details?id=${context.packageName}"
                                         )
                                     }
-                                    context.startActivity(Intent.createChooser(shareIntent, "Share BookFlow"))
+                                    context.startActivity(Intent.createChooser(shareIntent, "Share AHT Books"))
                                 }
                             ),
                             SettingRowData(
                                 icon = Icons.Default.Info,
                                 iconTint = Color(0xFF7C3AED),
                                 iconBg = Color(0xFFEDE9FE),
-                                title = "About BookFlow",
+                                title = "About AHT Books",
                                 subtitle = "Version, privacy, terms, and licenses",
                                 value = "v${com.bookflow.app.BuildConfig.VERSION_NAME}",
                                 onClick = { showAboutDialog = true }
@@ -291,13 +291,13 @@ fun SettingsScreen(
                             appendLine("Describe what happened:")
                             appendLine()
                             appendLine()
-                            appendLine("— BookFlow ${com.bookflow.app.BuildConfig.VERSION_NAME} (${com.bookflow.app.BuildConfig.VERSION_CODE}), " +
+                            appendLine("— AHT Books ${com.bookflow.app.BuildConfig.VERSION_NAME} (${com.bookflow.app.BuildConfig.VERSION_CODE}), " +
                                 "Android ${android.os.Build.VERSION.RELEASE}, ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
                             crashReport?.let { appendLine(); append(it) }
                         }
                         val intent = Intent(Intent.ACTION_SEND).apply {
                             type = "text/plain"
-                            putExtra(Intent.EXTRA_SUBJECT, "BookFlow problem report")
+                            putExtra(Intent.EXTRA_SUBJECT, "AHT Books problem report")
                             putExtra(Intent.EXTRA_TEXT, body)
                         }
                         context.startActivity(Intent.createChooser(intent, "Send report"))
@@ -330,7 +330,7 @@ fun SettingsScreen(
     if (showAboutDialog) {
         BookFlowBottomSheet(
             onDismissRequest = { showAboutDialog = false },
-            title = "BookFlow",
+            title = "AHT Books",
             subtitle = "Version ${com.bookflow.app.BuildConfig.VERSION_NAME} (Build ${com.bookflow.app.BuildConfig.VERSION_CODE}) • Your Reading Companion",
             titleIcon = { BookFlowEmblem(Modifier.size(40.dp)) },
             confirmButton = {
@@ -345,13 +345,13 @@ fun SettingsScreen(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(vertical = 4.dp)) {
                 Text(
-                    "BookFlow is a PDF reader for studying: read books of any size, annotate, take notes, and learn with flashcards.",
+                    "AHT Books is a PDF reader for studying: read books of any size, annotate, take notes, and learn with flashcards.",
                     fontSize = 13.5.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 19.sp
                 )
                 PrivacyBulletPoint("Private by design", "No account, no uploads, no tracking. Books, notes, and cards stay on this device.")
-                PrivacyBulletPoint("Your files are safe", "Removing a book from BookFlow never deletes or changes the original PDF.")
+                PrivacyBulletPoint("Your files are safe", "Removing a book from AHT Books never deletes or changes the original PDF.")
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant, thickness = 1.dp)
                 TextButton(onClick = { showAboutDialog = false; onOpenLegal(com.bookflow.app.presentation.screens.legal.LegalDocument.PRIVACY) }) {
                     Text("Privacy policy", color = BrandPurple, fontWeight = FontWeight.SemiBold)
