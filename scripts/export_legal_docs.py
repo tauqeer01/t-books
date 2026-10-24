@@ -10,7 +10,7 @@ import pathlib
 import re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SOURCE = ROOT / "app/src/main/java/com/bookflow/app/presentation/screens/legal/LegalDocuments.kt"
+SOURCE = ROOT / "android/app/src/main/java/com/bookflow/app/presentation/screens/legal/LegalDocuments.kt"
 OUT = ROOT / "docs/legal"
 
 src = SOURCE.read_text()

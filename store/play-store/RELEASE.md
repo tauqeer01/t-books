@@ -6,15 +6,15 @@ Store link (live after publishing): https://play.google.com/store/apps/details?i
 
 ## 1. Before every upload
 
-- [ ] Bump `versionCode` (and `versionName` if user-visible) in `app/build.gradle.kts`. Play rejects a reused version code.
-- [ ] If the database schema changed: bump `version` in `BookFlowDatabase`, add a `Migration` to `MIGRATIONS`, and commit the new file in `app/schemas/`. **Never** rely on destructive migration — it would erase users' highlights and notes.
+- [ ] Bump `versionCode` (and `versionName` if user-visible) in `android/app/build.gradle.kts`. Play rejects a reused version code.
+- [ ] If the database schema changed: bump `version` in `BookFlowDatabase`, add a `Migration` to `MIGRATIONS`, and commit the new file in `android/app/schemas/`. **Never** rely on destructive migration — it would erase users' highlights and notes.
 - [ ] If `LegalDocuments.kt` changed: `python3 scripts/export_legal_docs.py` and re-publish `docs/legal/`.
-- [ ] Build the bundle: `./gradlew :app:bundleRelease` → `app/build/outputs/bundle/release/app-release.aab`
-- [ ] Optionally smoke-test a release APK on a device: `./gradlew :app:assembleRelease` then `adb install -r app/build/outputs/apk/release/app-release.apk` (open a book, search text, open Settings › Open-source licenses, "Open with" a PDF from Files).
+- [ ] Build the bundle: `cd android && ./gradlew :app:bundleRelease` → `android/app/build/outputs/bundle/release/app-release.aab`
+- [ ] Optionally smoke-test a release APK on a device: `cd android && ./gradlew :app:assembleRelease` then `adb install -r android/app/build/outputs/apk/release/app-release.apk` (open a book, search text, open Settings › Open-source licenses, "Open with" a PDF from Files).
 
 ## 2. Signing (one-time setup — keep these safe)
 
-- Upload key: `keystore/bookflow-upload.jks`, alias `bookflow-upload`, password in `keystore.properties`. Both are git-ignored.
+- Upload key: `android/keystore/bookflow-upload.jks`, alias `bookflow-upload`, password in `android/keystore.properties`. Both are git-ignored.
 - **Back up both files** (e.g. password manager + offline copy). Losing them means requesting an upload-key reset from Google support.
 - Upload key SHA-256: `49:23:72:4F:B8:1F:56:40:61:91:8F:DF:59:D5:16:45:67:BF:D6:F9:55:E6:BD:60:B7:E9:8B:8D:4B:6A:46:78`
 - On first upload, accept **Play App Signing** (Google holds the app signing key; you keep only the upload key).
@@ -25,13 +25,13 @@ Store link (live after publishing): https://play.google.com/store/apps/details?i
 |---|---|
 | App name (29/30) | AHT Books: PDF Reader & Notes |
 | Short description (78/80) | Read & annotate PDFs, write notes, study flashcards. Private, offline, no ads. |
-| App icon | `docs/play-store/icon-512.png` (512×512) |
-| Feature graphic | `docs/play-store/feature-graphic-1024x500.png` (1024×500, AHT Books wordmark) |
-| Phone screenshots | `docs/play-store/screenshots/phone/01…08-*.png` (8 images, 1080×1920, 9:16), upload in numbered order |
-| Tablet screenshots | `docs/play-store/screenshots/tablet/01…04-*.png` (4 images, 2560×1600, 16:10), upload to both **7-inch** and **10-inch** tablet slots |
+| App icon | `store/play-store/icon-512.png` (512×512) |
+| Feature graphic | `store/play-store/feature-graphic-1024x500.png` (1024×500, AHT Books wordmark) |
+| Phone screenshots | `store/play-store/screenshots/phone/01…08-*.png` (8 images, 1080×1920, 9:16), upload in numbered order |
+| Tablet screenshots | `store/play-store/screenshots/tablet/01…04-*.png` (4 images, 2560×1600, 16:10), upload to both **7-inch** and **10-inch** tablet slots |
 | Category | Books & Reference |
 | Contact email | aht.apps@alhadaftech.com |
-| Privacy policy URL | Host `docs/legal/privacy-policy.html` publicly (e.g. GitHub Pages) and paste the URL |
+| Privacy policy URL | https://tauqeer01.github.io/t-books/legal/privacy-policy.html (GitHub Pages publishes `docs/` from `main`; keep `docs/legal/` where it is) |
 
 ### Full description (2468/4000)
 
@@ -135,7 +135,7 @@ Notes for reviewers / your own records:
 - R8 code + resource shrinking (APK ~10 MB vs 80 MB debug); obfuscation mapping is embedded in the bundle so Play de-obfuscates crash reports.
 - Release signing from `keystore.properties`; no `INTERNET` permission; narrowed FileProvider paths.
 - Auto Backup / device-transfer rules (database + settings; PDFs and thumbnails excluded).
-- Room schema exported (`app/schemas/`), destructive migration only on downgrade.
+- Room schema exported (`android/app/schemas/`), destructive migration only on downgrade.
 - Branded system splash (Android 12+ API), adaptive icon with Android 13 themed (monochrome) layer.
 - Edge-to-edge, predictive back, light/dark/system app theme, navigation rail on screens ≥600dp.
 - In-app Privacy policy, Terms of use, generated Open-source licenses, Report a problem (local crash log).
@@ -143,5 +143,5 @@ Notes for reviewers / your own records:
 
 ## 8. Open items
 
-- [ ] **App baseline profile**: the `:baselineprofile` module is set up, but generation on the Android 16 emulator failed with Macrobenchmark 1.3.4 ("Unable to confirm activity launch completion"). Next step: upgrade `baselineprofile` to 1.4.x in `gradle/libs.versions.toml`, then `./gradlew :app:generateReleaseBaselineProfile` with a device connected (note: the run uninstalls the app afterwards). Library profiles (Compose etc.) are already included in the bundle.
+- [ ] **App baseline profile**: the `:baselineprofile` module is set up, but generation on the Android 16 emulator failed with Macrobenchmark 1.3.4 ("Unable to confirm activity launch completion"). Next step: upgrade `baselineprofile` to 1.4.x in `android/gradle/libs.versions.toml`, then `cd android && ./gradlew :app:generateReleaseBaselineProfile` with a device connected (note: the run uninstalls the app afterwards). Library profiles (Compose etc.) are already included in the bundle.
 - [ ] Host `docs/legal/privacy-policy.html` and `terms-of-use.html` and add the URL in Play Console.

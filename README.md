@@ -1,8 +1,18 @@
-# BookFlow
+# AHT Books
 
-An offline Android PDF library and annotation reader built with Kotlin, Jetpack Compose, Room, DataStore, Coroutines, and Navigation Compose.
+An offline PDF library, annotation reader, notes and flashcards app by Al Hadaf Tech (formerly BookFlow). The Android app is built with Kotlin, Jetpack Compose, Room, DataStore, Coroutines, and Navigation Compose; an iOS app is planned.
 
-Implementation status and verification evidence are maintained in [progress.md](progress.md). Product scope is in [docs/prd.txt](docs/prd.txt); the PNG files beside it are the visual references.
+Implementation status and verification evidence are maintained in [progress.md](progress.md).
+
+## Repository layout
+
+| Folder | What it holds |
+|---|---|
+| `android/` | The Android app: Gradle project (`app/`, `baselineprofile/`, wrapper). Open this folder in Android Studio. Signing files (`keystore/`, `keystore.properties`) live here, git-ignored. |
+| `ios/` | The iOS app (planned). |
+| `store/` | Store listings and artwork: `play-store/` (release checklist, icon, feature graphic, screenshots); an `app-store/` folder will sit beside it. |
+| `docs/` | The public website, published by GitHub Pages from `main` → `/docs` at https://tauqeer01.github.io/t-books/. It hosts the privacy policy and terms the store listings link to, so keep `docs/legal/` paths stable. |
+| `scripts/` | Repo tools, e.g. `export_legal_docs.py` (writes `docs/legal/` from the in-app legal text). |
 
 ## Implemented experience
 
@@ -22,9 +32,10 @@ The first-run sample is an actual two-page Aircraft Systems PDF. Imported docume
 
 ## Build and verify
 
-Use Java 17 and an Android SDK with platform 36 installed. Set `ANDROID_HOME` or provide `sdk.dir` in your local `local.properties`.
+Use Java 17 and an Android SDK with platform 36 installed. Set `ANDROID_HOME` or provide `sdk.dir` in `android/local.properties`. Run Gradle from `android/`:
 
 ```sh
+cd android
 ./gradlew :app:assembleDebug
 ./gradlew :app:lintDebug
 ./gradlew :app:connectedDebugAndroidTest
