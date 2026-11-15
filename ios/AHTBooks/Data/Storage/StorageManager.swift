@@ -53,8 +53,31 @@ public final class StorageManager: ObservableObject {
         if notes.isEmpty {
             createSampleNoteIfNeeded()
         }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-UITestsReset") {
+            resetSampleBookForUITests()
+        }
+        #endif
     }
-    
+
+    #if DEBUG
+    /// UI tests start from a clean sample book: no annotations or bookmarks, page 1, horizontal paging.
+    private func resetSampleBookForUITests() {
+        let sampleId = "sample_aircraft"
+        annotations.removeAll { $0.bookId == sampleId }
+        bookmarks.removeAll { $0.bookId == sampleId }
+        if let i = books.firstIndex(where: { $0.id == sampleId }) {
+            books[i].currentPage = 0
+        }
+        preferences.scrollMode = .HORIZONTAL_PAGING
+        saveAll()
+        // Notes: default pens, finger drawing on
+        for key in ["notes.pens.v1", "notes.pens.active", "notes.fingerDrawing"] {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
+    #endif
+
     private func createSubdirectoriesIfNeeded() {
         let paths = [
             appSupportURL,
@@ -127,6 +150,17 @@ public final class StorageManager: ObservableObject {
         saveJSON(readingStats, filename: "reading_stats.json")
     }
     
+    /// Writes only the annotations file; the reader calls this after every stroke.
+    public func saveAnnotations() {
+        saveJSON(annotations, filename: "annotations.json")
+    }
+
+    /// Writes only the notes and folders; the note editor saves this way while you write.
+    public func saveNotes() {
+        saveJSON(notes, filename: "notes.json")
+        saveJSON(noteFolders, filename: "note_folders.json")
+    }
+
     public func loadAll() {
         self.books = loadJSON(filename: "books.json", fallback: [])
         self.collections = loadJSON(filename: "collections.json", fallback: [])

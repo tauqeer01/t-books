@@ -10,8 +10,28 @@ public struct CardEditorScreen: View {
     @State private var backText: String = ""
     @State private var tagsText: String = ""
     
-    public init(deckId: String) {
+    /// Source of a card started from the reader.
+    private let sourceBookId: String?
+    private let sourcePage: Int?
+    /// Deck to create on save when it does not exist yet (e.g. a new deck named after the book).
+    private let deckToCreate: Deck?
+
+    public init(
+        deckId: String,
+        initialType: CardType = .BASIC,
+        initialFront: String = "",
+        initialBack: String = "",
+        sourceBookId: String? = nil,
+        sourcePage: Int? = nil,
+        deckToCreate: Deck? = nil
+    ) {
         self.deckId = deckId
+        self.sourceBookId = sourceBookId
+        self.sourcePage = sourcePage
+        self.deckToCreate = deckToCreate
+        self._cardType = State(initialValue: initialType)
+        self._frontText = State(initialValue: initialFront)
+        self._backText = State(initialValue: initialBack)
     }
     
     public var body: some View {
@@ -79,10 +99,15 @@ public struct CardEditorScreen: View {
             type: cardType,
             front: CardFace(text: frontText),
             back: CardFace(text: backText),
+            sourceBookId: sourceBookId,
+            sourcePage: sourcePage,
             tags: tags
         )
         let schedule = CardSchedule(cardId: card.id)
-        
+        if let deck = deckToCreate, !storage.decks.contains(where: { $0.id == deck.id }) {
+            storage.decks.append(deck)
+        }
+
         storage.cards.append(card)
         storage.schedules.append(schedule)
         storage.saveAll()

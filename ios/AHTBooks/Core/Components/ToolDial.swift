@@ -340,6 +340,8 @@ public struct RadialToolDial: View {
                             .opacity(edgeFade)
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .accessibilityLabel(item.label)
+                        .accessibilityIdentifier("dial.\(item.label)")
                         .position(x: x, y: y)
                         .zIndex(isMiddle ? 20 : Double(10 - abs(deltaIndex)))
                     }
@@ -439,7 +441,12 @@ public struct CollapsedToolBar: View {
     public var onToggleStylusOnly: () -> Void
     public var isStylusOnly: Bool
     public var onDone: () -> Void
-    
+    /// Current stroke width; nil hides the width button for tools without one.
+    public var strokeWidth: Double? = nil
+    public var onToggleWidth: () -> Void = {}
+    public var canUndo: Bool = true
+    public var canRedo: Bool = true
+
     public var body: some View {
         VStack(spacing: 8) {
             // 1. Active Tool Glass Lens Button (tap to spin liquid dial)
@@ -469,7 +476,9 @@ public struct CollapsedToolBar: View {
                 }
             }
             .buttonStyle(LiquidScaleButtonStyle())
-            
+            .accessibilityLabel("Tool: \(activeTool.label)")
+            .accessibilityIdentifier("rail.tool")
+
             // 2. Liquid Color Pearl Swatch
             if activeTool.hasColor {
                 Button(action: onToggleColorPalette) {
@@ -500,31 +509,57 @@ public struct CollapsedToolBar: View {
                     .frame(width: 38, height: 38)
                 }
                 .buttonStyle(LiquidScaleButtonStyle())
+                .accessibilityLabel("Color")
+                .accessibilityIdentifier("rail.color")
             }
-            
+
+            // Stroke width
+            if let width = strokeWidth {
+                Button(action: onToggleWidth) {
+                    ZStack {
+                        Circle()
+                            .stroke(Color(hex: "#CBD5E1"), lineWidth: 1)
+                            .frame(width: 30, height: 30)
+                        Circle()
+                            .fill(Color(hex: activeColorHex))
+                            .frame(width: min(max(CGFloat(width) * 1.6, 3), 24), height: min(max(CGFloat(width) * 1.6, 3), 24))
+                    }
+                    .frame(width: 38, height: 38)
+                }
+                .buttonStyle(LiquidScaleButtonStyle())
+                .accessibilityLabel("Stroke width")
+                .accessibilityIdentifier("rail.width")
+            }
+
             // Elegant Frosted Glass Hairline Divider
             Rectangle()
                 .fill(Color(hex: "#CBD5E1").opacity(0.4))
                 .frame(width: 28, height: 1)
                 .padding(.vertical, 2)
-            
+
             // 3. Undo Glass Button
             Button(action: onUndo) {
                 Image(systemName: "arrow.uturn.backward")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(Theme.appTextPrimary)
+                    .foregroundColor(canUndo ? Theme.appTextPrimary : Theme.appTextSecondary.opacity(0.4))
                     .frame(width: 38, height: 38)
             }
             .buttonStyle(LiquidScaleButtonStyle())
-            
+            .disabled(!canUndo)
+            .accessibilityLabel("Undo")
+            .accessibilityIdentifier("rail.undo")
+
             // 4. Redo Glass Button
             Button(action: onRedo) {
                 Image(systemName: "arrow.uturn.forward")
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(Theme.appTextPrimary)
+                    .foregroundColor(canRedo ? Theme.appTextPrimary : Theme.appTextSecondary.opacity(0.4))
                     .frame(width: 38, height: 38)
             }
             .buttonStyle(LiquidScaleButtonStyle())
+            .disabled(!canRedo)
+            .accessibilityLabel("Redo")
+            .accessibilityIdentifier("rail.redo")
             
             // 5. Overflow Actions Menu (...)
             Menu {
@@ -540,6 +575,8 @@ public struct CollapsedToolBar: View {
                     .foregroundColor(Theme.appTextSecondary)
                     .frame(width: 38, height: 38)
             }
+            .accessibilityLabel("More drawing options")
+            .accessibilityIdentifier("rail.more")
             
             // Elegant Frosted Glass Hairline Divider
             Rectangle()
@@ -581,6 +618,8 @@ public struct CollapsedToolBar: View {
                 }
             }
             .buttonStyle(LiquidScaleButtonStyle())
+            .accessibilityLabel("Done annotating")
+            .accessibilityIdentifier("rail.done")
         }
         .padding(.vertical, 12)
         .frame(width: 54)
@@ -617,8 +656,9 @@ public struct CollapsedToolBar: View {
 
 public struct RailFlyoutColorCard: View {
     @Binding public var selectedColorHex: String
+    public var palette: [String] = RailFlyoutColorCard.palette
     public var onSelect: (String) -> Void
-    
+
     public static let palette = [
         "#FFE600", // Yellow
         "#4ADE80", // Green
@@ -640,7 +680,7 @@ public struct RailFlyoutColorCard: View {
                 .tracking(0.8)
             
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(32), spacing: 10), count: 5), spacing: 10) {
-                ForEach(Self.palette, id: \.self) { hex in
+                ForEach(palette, id: \.self) { hex in
                     let isSelected = selectedColorHex.lowercased() == hex.lowercased()
                     Button(action: {
                         UISelectionFeedbackGenerator().selectionChanged()
@@ -688,6 +728,8 @@ public struct RailFlyoutColorCard: View {
                         .animation(.spring(response: 0.25, dampingFraction: 0.7), value: isSelected)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .accessibilityLabel("Color \(hex)")
+                    .accessibilityIdentifier("color.\(hex)")
                 }
             }
         }
@@ -706,6 +748,43 @@ public struct RailFlyoutColorCard: View {
                             lineWidth: 1.5
                         )
                 )
+                .shadow(color: Color.black.opacity(0.16), radius: 16, x: 0, y: 6)
+        )
+    }
+}
+
+// MARK: - Stroke Width Flyout
+
+public struct RailFlyoutWidthCard: View {
+    @Binding public var width: Double
+    public var range: ClosedRange<Double>
+    public var colorHex: String
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("STROKE WIDTH")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(Theme.appTextSecondary)
+                .tracking(0.8)
+            HStack(spacing: 12) {
+                Capsule()
+                    .fill(Color(hex: colorHex))
+                    .frame(width: 44, height: min(max(CGFloat(width) * 1.6, 2), 24))
+                    .frame(width: 44, height: 26)
+                Slider(value: $width, in: range)
+                    .frame(width: 150)
+                    .tint(Theme.brandPurple)
+                    .accessibilityIdentifier("width.slider")
+                Text(String(format: "%.1f", width))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundColor(Theme.appTextPrimary)
+                    .frame(width: 32)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
                 .shadow(color: Color.black.opacity(0.16), radius: 16, x: 0, y: 6)
         )
     }

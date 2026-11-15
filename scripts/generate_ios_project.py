@@ -8,6 +8,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 IOS_DIR = ROOT / "ios"
 PROJECT_DIR = IOS_DIR / "AHTBooks.xcodeproj"
 SRC_DIR = IOS_DIR / "AHTBooks"
+UITEST_DIR = IOS_DIR / "AHTBooksUITests"
 
 def make_uuid(seed: str) -> str:
     """Generate a stable 24-character hex PBX UUID from a string seed."""
@@ -76,6 +77,131 @@ def main():
     # Product file ref
     file_refs.append(f'\t\t{app_product_uuid} /* AHTBooks.app */ = {{isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AHTBooks.app; sourceTree = BUILT_PRODUCTS_DIR; }};')
 
+    # UI test target (optional: only when ios/AHTBooksUITests exists)
+    ui_files = sorted(UITEST_DIR.glob("*.swift")) if UITEST_DIR.exists() else []
+    has_ui_tests = bool(ui_files)
+    ui_target_uuid = make_uuid("AHTBooksUITests_Target")
+    ui_product_uuid = make_uuid("AHTBooksUITests_Product")
+    ui_sources_phase_uuid = make_uuid("AHTBooksUITests_Sources_Phase")
+    ui_frameworks_phase_uuid = make_uuid("AHTBooksUITests_Frameworks_Phase")
+    ui_config_list_uuid = make_uuid("AHTBooksUITests_ConfigList")
+    ui_proxy_uuid = make_uuid("AHTBooksUITests_Proxy")
+    ui_dependency_uuid = make_uuid("AHTBooksUITests_Dependency")
+    ui_group_uuid = make_uuid("GROUP_AHTBooksUITests")
+    ui_sources_entries = []
+    ui_group_children = []
+    for uf in ui_files:
+        f_uuid = make_uuid(f"UITEST_FILE_{uf.name}")
+        bf_uuid = make_uuid(f"UITEST_BUILDFILE_{uf.name}")
+        file_refs.append(f'\t\t{f_uuid} /* {uf.name} */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "{uf.name}"; sourceTree = "<group>"; }};')
+        build_files.append(f'\t\t{bf_uuid} /* {uf.name} in Sources */ = {{isa = PBXBuildFile; fileRef = {f_uuid} /* {uf.name} */; }};')
+        ui_sources_entries.append(f'\t\t\t\t{bf_uuid} /* {uf.name} in Sources */,')
+        ui_group_children.append(f'\t\t\t\t{f_uuid} /* {uf.name} */,')
+    if has_ui_tests:
+        file_refs.append(f'\t\t{ui_product_uuid} /* AHTBooksUITests.xctest */ = {{isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AHTBooksUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; }};')
+
+    ui_main_child = f"\t\t\t\t{ui_group_uuid} /* AHTBooksUITests */,\n" if has_ui_tests else ""
+    ui_product_child = f"\t\t\t\t{ui_product_uuid} /* AHTBooksUITests.xctest */,\n" if has_ui_tests else ""
+    ui_group_def = (f"""\t\t{ui_group_uuid} /* AHTBooksUITests */ = {{
+\t\t\tisa = PBXGroup;
+\t\t\tchildren = (
+{chr(10).join(ui_group_children)}
+\t\t\t);
+\t\t\tpath = AHTBooksUITests;
+\t\t\tsourceTree = "<group>";
+\t\t}};
+""" if has_ui_tests else "")
+    ui_proxy_section = (f"""/* Begin PBXContainerItemProxy section */
+\t\t{ui_proxy_uuid} /* PBXContainerItemProxy */ = {{
+\t\t\tisa = PBXContainerItemProxy;
+\t\t\tcontainerPortal = {proj_uuid} /* Project object */;
+\t\t\tproxyType = 1;
+\t\t\tremoteGlobalIDString = {target_uuid};
+\t\t\tremoteInfo = AHTBooks;
+\t\t}};
+/* End PBXContainerItemProxy section */
+
+""" if has_ui_tests else "")
+    ui_frameworks_phase = (f"""\t\t{ui_frameworks_phase_uuid} /* Frameworks */ = {{
+\t\t\tisa = PBXFrameworksBuildPhase;
+\t\t\tbuildActionMask = 2147483647;
+\t\t\tfiles = (
+\t\t\t);
+\t\t\trunOnlyForDeploymentPostprocessing = 0;
+\t\t}};
+""" if has_ui_tests else "")
+    ui_native_target = (f"""\t\t{ui_target_uuid} /* AHTBooksUITests */ = {{
+\t\t\tisa = PBXNativeTarget;
+\t\t\tbuildConfigurationList = {ui_config_list_uuid} /* Build configuration list for PBXNativeTarget "AHTBooksUITests" */;
+\t\t\tbuildPhases = (
+\t\t\t\t{ui_sources_phase_uuid} /* Sources */,
+\t\t\t\t{ui_frameworks_phase_uuid} /* Frameworks */,
+\t\t\t);
+\t\t\tbuildRules = (
+\t\t\t);
+\t\t\tdependencies = (
+\t\t\t\t{ui_dependency_uuid} /* PBXTargetDependency */,
+\t\t\t);
+\t\t\tname = AHTBooksUITests;
+\t\t\tproductName = AHTBooksUITests;
+\t\t\tproductReference = {ui_product_uuid} /* AHTBooksUITests.xctest */;
+\t\t\tproductType = "com.apple.product-type.bundle.ui-testing";
+\t\t}};
+""" if has_ui_tests else "")
+    ui_target_attr = (f"""\t\t\t\t\t{ui_target_uuid} = {{
+\t\t\t\t\t\tCreatedOnToolsVersion = 16.0;
+\t\t\t\t\t\tTestTargetID = {target_uuid};
+\t\t\t\t\t}};
+""" if has_ui_tests else "")
+    ui_target_ref = f"\t\t\t\t{ui_target_uuid} /* AHTBooksUITests */,\n" if has_ui_tests else ""
+    ui_sources_phase = (f"""\t\t{ui_sources_phase_uuid} /* Sources */ = {{
+\t\t\tisa = PBXSourcesBuildPhase;
+\t\t\tbuildActionMask = 2147483647;
+\t\t\tfiles = (
+{chr(10).join(ui_sources_entries)}
+\t\t\t);
+\t\t\trunOnlyForDeploymentPostprocessing = 0;
+\t\t}};
+""" if has_ui_tests else "")
+    ui_dependency_section = (f"""/* Begin PBXTargetDependency section */
+\t\t{ui_dependency_uuid} /* PBXTargetDependency */ = {{
+\t\t\tisa = PBXTargetDependency;
+\t\t\ttarget = {target_uuid} /* AHTBooks */;
+\t\t\ttargetProxy = {ui_proxy_uuid} /* PBXContainerItemProxy */;
+\t\t}};
+/* End PBXTargetDependency section */
+
+""" if has_ui_tests else "")
+    def ui_config(name, uuid_seed):
+        return f"""\t\t{make_uuid(uuid_seed)} /* {name} */ = {{
+\t\t\tisa = XCBuildConfiguration;
+\t\t\tbuildSettings = {{
+\t\t\t\tCODE_SIGN_STYLE = Automatic;
+\t\t\t\tCURRENT_PROJECT_VERSION = 1;
+\t\t\t\tGENERATE_INFOPLIST_FILE = YES;
+\t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = 17.0;
+\t\t\t\tMARKETING_VERSION = 1.0.0;
+\t\t\t\tPRODUCT_BUNDLE_IDENTIFIER = com.alhadaftech.bookflow.uitests;
+\t\t\t\tPRODUCT_NAME = "$(TARGET_NAME)";
+\t\t\t\tSWIFT_VERSION = 5.0;
+\t\t\t\tTARGETED_DEVICE_FAMILY = "1,2";
+\t\t\t\tTEST_TARGET_NAME = AHTBooks;
+\t\t\t}};
+\t\t\tname = {name};
+\t\t}};
+"""
+    ui_configs = (ui_config("Debug", "CONF_UITEST_DEBUG") + ui_config("Release", "CONF_UITEST_RELEASE")) if has_ui_tests else ""
+    ui_config_list = (f"""\t\t{ui_config_list_uuid} /* Build configuration list for PBXNativeTarget "AHTBooksUITests" */ = {{
+\t\t\tisa = XCConfigurationList;
+\t\t\tbuildConfigurations = (
+\t\t\t\t{make_uuid("CONF_UITEST_DEBUG")} /* Debug */,
+\t\t\t\t{make_uuid("CONF_UITEST_RELEASE")} /* Release */,
+\t\t\t);
+\t\t\tdefaultConfigurationIsVisible = 0;
+\t\t\tdefaultConfigurationName = Release;
+\t\t}};
+""" if has_ui_tests else "")
+
     # Groups tree
     # Build hierarchical groups matching directory tree under AHTBooks
     def build_group(directory: pathlib.Path, group_name: str) -> tuple[str, list[str]]:
@@ -131,7 +257,7 @@ def main():
 {chr(10).join(file_refs)}
 /* End PBXFileReference section */
 
-/* Begin PBXFrameworksBuildPhase section */
+{ui_proxy_section}/* Begin PBXFrameworksBuildPhase section */
 \t\t{frameworks_phase_uuid} /* Frameworks */ = {{
 \t\t\tisa = PBXFrameworksBuildPhase;
 \t\t\tbuildActionMask = 2147483647;
@@ -139,14 +265,14 @@ def main():
 \t\t\t);
 \t\t\trunOnlyForDeploymentPostprocessing = 0;
 \t\t}};
-/* End PBXFrameworksBuildPhase section */
+{ui_frameworks_phase}/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 \t\t{main_group_uuid} = {{
 \t\t\tisa = PBXGroup;
 \t\t\tchildren = (
 \t\t\t\t{src_root_uuid} /* AHTBooks */,
-\t\t\t\t{products_group_uuid} /* Products */,
+{ui_main_child}\t\t\t\t{products_group_uuid} /* Products */,
 \t\t\t);
 \t\t\tsourceTree = "<group>";
 \t\t}};
@@ -154,12 +280,12 @@ def main():
 \t\t\tisa = PBXGroup;
 \t\t\tchildren = (
 \t\t\t\t{app_product_uuid} /* AHTBooks.app */,
-\t\t\t);
+{ui_product_child}\t\t\t);
 \t\t\tname = Products;
 \t\t\tsourceTree = "<group>";
 \t\t}};
 {chr(10).join(all_groups)}
-/* End PBXGroup section */
+{ui_group_def}/* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
 \t\t{target_uuid} /* AHTBooks */ = {{
@@ -179,7 +305,7 @@ def main():
 \t\t\tproductReference = {app_product_uuid} /* AHTBooks.app */;
 \t\t\tproductType = "com.apple.product-type.application";
 \t\t}};
-/* End PBXNativeTarget section */
+{ui_native_target}/* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
 \t\t{proj_uuid} /* Project object */ = {{
@@ -191,7 +317,7 @@ def main():
 \t\t\t\t\t{target_uuid} = {{
 \t\t\t\t\t\tCreatedOnToolsVersion = 16.0;
 \t\t\t\t\t}};
-\t\t\t\t}};
+{ui_target_attr}\t\t\t\t}};
 \t\t\t}};
 \t\t\tbuildConfigurationList = {config_list_proj_uuid} /* Build configuration list for PBXProject "AHTBooks" */;
 \t\t\tcompatibilityVersion = "Xcode 14.0";
@@ -207,7 +333,7 @@ def main():
 \t\t\tprojectRoot = "";
 \t\t\ttargets = (
 \t\t\t\t{target_uuid} /* AHTBooks */,
-\t\t\t);
+{ui_target_ref}\t\t\t);
 \t\t}};
 /* End PBXProject section */
 
@@ -231,8 +357,8 @@ def main():
 \t\t\t);
 \t\t\trunOnlyForDeploymentPostprocessing = 0;
 \t\t}};
-/* End PBXSourcesBuildPhase section */
-
+{ui_sources_phase}/* End PBXSourcesBuildPhase section */
+{ui_dependency_section}
 /* Begin XCBuildConfiguration section */
 \t\t{make_uuid("CONF_PROJ_DEBUG")} /* Debug */ = {{
 \t\t\tisa = XCBuildConfiguration;
@@ -331,7 +457,7 @@ def main():
 \t\t\t}};
 \t\t\tname = Release;
 \t\t}};
-/* End XCBuildConfiguration section */
+{ui_configs}/* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
 \t\t{config_list_proj_uuid} /* Build configuration list for PBXProject "AHTBooks" */ = {{
@@ -352,7 +478,7 @@ def main():
 \t\t\tdefaultConfigurationIsVisible = 0;
 \t\t\tdefaultConfigurationName = Release;
 \t\t}};
-/* End XCConfigurationList section */
+{ui_config_list}/* End XCConfigurationList section */
 
 \t}};
 \trootObject = {proj_uuid} /* Project object */;
@@ -363,6 +489,17 @@ def main():
     print(f"Generated {PROJECT_DIR / 'project.pbxproj'} with {len(swift_files)} Swift source files.")
 
     # Shared Scheme
+    ui_testable = (f"""         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "{ui_target_uuid}"
+               BuildableName = "AHTBooksUITests.xctest"
+               BlueprintName = "AHTBooksUITests"
+               ReferencedContainer = "container:AHTBooks.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+""" if has_ui_tests else "")
     scheme_content = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Scheme
    LastUpgradeVersion = "1600"
@@ -393,7 +530,7 @@ def main():
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
-      </Testables>
+{ui_testable}      </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

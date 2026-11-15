@@ -311,6 +311,7 @@ public struct PageTemplatePicker: View {
                                 onSelect(tpl, selectedTheme)
                                 dismiss()
                             }
+                            .accessibilityIdentifier("template.\(tpl.rawValue)")
                         }
                     }
                     .padding(16)

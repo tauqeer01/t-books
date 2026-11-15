@@ -192,7 +192,7 @@ public enum NoteExporter {
             (el.content as NSString).draw(in: rect, withAttributes: attrs)
             
         case .IMAGE:
-            if let path = el.imagePath, let img = UIImage(contentsOfFile: path) {
+            if let img = NoteElementStyle.image(at: el.imagePath) {
                 img.draw(in: rect)
             }
             

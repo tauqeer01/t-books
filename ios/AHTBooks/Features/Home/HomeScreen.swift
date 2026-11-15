@@ -128,6 +128,7 @@ public struct HomeScreen: View {
                                 )
                             }
                             .buttonStyle(PlainButtonStyle())
+                            .accessibilityIdentifier("home.continueReading")
                         }
                         .padding(.horizontal, 20)
                     }
