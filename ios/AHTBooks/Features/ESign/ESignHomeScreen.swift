@@ -91,8 +91,7 @@ public struct ESignHomeScreen: View {
                                             .frame(width: 160, height: 90)
                                             .contextMenu {
                                                 Button(role: .destructive) {
-                                                    storage.savedSignatures.removeAll { $0.id == sig.id }
-                                                    storage.saveAll()
+                                                    storage.deleteSignature(sig)
                                                 } label: {
                                                     Label("Delete", systemImage: "trash")
                                                 }
@@ -145,8 +144,7 @@ public struct ESignHomeScreen: View {
                                             .frame(width: 110, height: 80)
                                             .contextMenu {
                                                 Button(role: .destructive) {
-                                                    storage.savedSignatures.removeAll { $0.id == sig.id }
-                                                    storage.saveAll()
+                                                    storage.deleteSignature(sig)
                                                 } label: {
                                                     Label("Delete", systemImage: "trash")
                                                 }

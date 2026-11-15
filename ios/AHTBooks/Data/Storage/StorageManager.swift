@@ -26,7 +26,11 @@ public final class StorageManager: ObservableObject {
     private let appSupportURL: URL
     private let documentsURL: URL
     public var documentsDirectory: URL { documentsURL }
-    
+    /// Signatures live outside Documents so they never appear in the Files app
+    /// or Finder file sharing (UIFileSharingEnabled exposes Documents).
+    private var signaturesURL: URL { appSupportURL.appendingPathComponent("Signatures", isDirectory: true) }
+    private var legacySignaturesURL: URL { documentsURL.appendingPathComponent("Signatures", isDirectory: true) }
+
     public init() {
         let docs = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let support = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -34,6 +38,7 @@ public final class StorageManager: ObservableObject {
         self.appSupportURL = support
         
         createSubdirectoriesIfNeeded()
+        migrateLegacySignatures()
         loadAll()
         
         // Ensure sample PDF exists on disk even across container UUID changes
@@ -56,11 +61,32 @@ public final class StorageManager: ObservableObject {
             documentsURL.appendingPathComponent("PDFs", isDirectory: true),
             documentsURL.appendingPathComponent("Thumbnails", isDirectory: true),
             documentsURL.appendingPathComponent("Drawings", isDirectory: true),
-            documentsURL.appendingPathComponent("Signatures", isDirectory: true),
             documentsURL.appendingPathComponent("Photos", isDirectory: true)
         ]
         for url in paths {
             try? fileManager.createDirectory(at: url, withIntermediateDirectories: true)
+        }
+        try? fileManager.createDirectory(
+            at: signaturesURL,
+            withIntermediateDirectories: true,
+            attributes: [.protectionKey: FileProtectionType.complete]
+        )
+    }
+
+    /// Moves signature images saved by earlier builds out of the user-visible
+    /// Documents folder into protected Application Support storage.
+    private func migrateLegacySignatures() {
+        guard let files = try? fileManager.contentsOfDirectory(at: legacySignaturesURL, includingPropertiesForKeys: nil) else { return }
+        for src in files {
+            let dest = signaturesURL.appendingPathComponent(src.lastPathComponent)
+            if fileManager.fileExists(atPath: dest.path) {
+                try? fileManager.removeItem(at: src)
+            } else if (try? fileManager.moveItem(at: src, to: dest)) != nil {
+                try? fileManager.setAttributes([.protectionKey: FileProtectionType.complete], ofItemAtPath: dest.path)
+            }
+        }
+        if (try? fileManager.contentsOfDirectory(atPath: legacySignaturesURL.path))?.isEmpty == true {
+            try? fileManager.removeItem(at: legacySignaturesURL)
         }
     }
     
@@ -249,19 +275,30 @@ public final class StorageManager: ObservableObject {
     public func saveSignatureImage(_ image: UIImage, kind: SignatureKind) -> SavedSignature {
         let id = UUID().uuidString
         let fileName = "\(id).png"
-        let url = documentsURL.appendingPathComponent("Signatures").appendingPathComponent(fileName)
+        let url = signaturesURL.appendingPathComponent(fileName)
         if let data = image.pngData() {
-            try? data.write(to: url)
+            try? data.write(to: url, options: [.atomic, .completeFileProtection])
         }
         let sig = SavedSignature(id: id, kind: kind, imageFileName: fileName)
         savedSignatures.append(sig)
         saveJSON(savedSignatures, filename: "signatures.json")
         return sig
     }
-    
+
     public func getSignatureImage(fileName: String) -> UIImage? {
-        let url = documentsURL.appendingPathComponent("Signatures").appendingPathComponent(fileName)
+        let url = signaturesURL.appendingPathComponent(fileName)
         return UIImage(contentsOfFile: url.path)
+    }
+
+    /// Removes the signature from the list and deletes its image file from disk.
+    public func deleteSignature(_ signature: SavedSignature) {
+        savedSignatures.removeAll { $0.id == signature.id }
+        // Only delete a plain file name inside the signatures folder.
+        let fileName = (signature.imageFileName as NSString).lastPathComponent
+        if !fileName.isEmpty {
+            try? fileManager.removeItem(at: signaturesURL.appendingPathComponent(fileName))
+        }
+        saveJSON(savedSignatures, filename: "signatures.json")
     }
     
     // MARK: - Sample Data Generation
