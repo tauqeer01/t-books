@@ -1,0 +1,525 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		77A7992176D107BD9E1370B8 /* AHTBooksApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FB16E1C2AED285F78A261A6 /* AHTBooksApp.swift */; };
+		C1D782A153FAA47A0AC7C0D1 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5260D102A861B4E7D404AE7F /* MainTabView.swift */; };
+		2D869C8FCB5A8C63A61F53E5 /* BookCoverCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 831805EBB528BB0F863D1CF7 /* BookCoverCard.swift */; };
+		C77B428D47ED0E5DB744CB78 /* BookFlowEmblem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5893526FDAF07E69A3E76E11 /* BookFlowEmblem.swift */; };
+		48CF708005520419C9CDBBD6 /* DocumentPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4F0C94CF0E87A3505BDE77F /* DocumentPickerView.swift */; };
+		E83E8E0C5ABB5C9E636AA56D /* PastelCollectionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB5F261C09B2E95D92388E7D /* PastelCollectionCard.swift */; };
+		76B913A5FD34092FE59324BF /* ReadingGoalRing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 709EC2985E54E096A480B799 /* ReadingGoalRing.swift */; };
+		5F2B142645FD965FBF2B75B1 /* ToolDial.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C9967C58FA69026F705DD5A /* ToolDial.swift */; };
+		1B72FA53433C377A4CBBDEAA /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 416B0E06437CA1DFCD97D511 /* Theme.swift */; };
+		7C31B66F11526C4CEE24F507 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D0C5C71F97DA76AE3CFFC8D /* Models.swift */; };
+		8591B0E6D25590A5546CB94A /* StorageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DED6E7BE94C728394D1A871 /* StorageManager.swift */; };
+		2471043014EA2FB4033DA829 /* CollectionsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = F43BD030BAC6746E2A49E0F9 /* CollectionsScreen.swift */; };
+		FBDB3FE39A6AC30D11B80B8E /* ESignHomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7432401888DE30EE556C0BAD /* ESignHomeScreen.swift */; };
+		A71CA387817E89A34631A01F /* SignEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5BA636DDA8B1105F7FFB33C /* SignEditorView.swift */; };
+		0FC44252B12703FE3F6F9CDD /* SignaturePadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0084EB72FF30C39C73B77B78 /* SignaturePadView.swift */; };
+		40C791CA568A0D7FA9BE9416 /* CardEditorScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 648910B8BB83E58AB4C1E7D3 /* CardEditorScreen.swift */; };
+		5BADA4733E04A7C61C793890 /* CardsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9ABBEF1DEC4E606C942BAE85 /* CardsScreen.swift */; };
+		4B99CDC4D482BDE23F1446DF /* Cloze.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED6118B25366A5D2D6D1DB9F /* Cloze.swift */; };
+		7E355CE5A9A6EE7ABC3CDFAD /* ReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4726CDE31513A08315B2931 /* ReviewView.swift */; };
+		2120B61CBE426517FD3DDA7E /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2162664A6D43115C292567EC /* Scheduler.swift */; };
+		7F9364BF6CBED977B91B5000 /* HomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F6FC03A291C025C4B78D4B9 /* HomeScreen.swift */; };
+		A3F99A5AFB1EA4307C53CD7D /* BookDetailsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FAF6CAECA6F61808FF8CE52 /* BookDetailsScreen.swift */; };
+		74BB3F3E2575526D85143E89 /* LibraryScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CDAF83FC1DC10AF93556555 /* LibraryScreen.swift */; };
+		ED7E385202DA4C1AE5C02401 /* NoteEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B55CD1441A766F33890E5FFE /* NoteEditorView.swift */; };
+		A00100010001000100010002 /* NoteExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100010001000100010001 /* NoteExporter.swift */; };
+		B00100010001000100010002 /* PageOverviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B00100010001000100010001 /* PageOverviewView.swift */; };
+		E8214AD57625913110BC50AD /* NotesHomeScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3C7AE7A43E72AA4EF7CDC75 /* NotesHomeScreen.swift */; };
+		7D1B501935FDD2E8FD583F47 /* PageTemplateRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128737277A88BDE5F0301D06 /* PageTemplateRenderer.swift */; };
+		6A67446DF145E711C3BCB2FD /* PDFKitContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D2A35878B2F705F7744F851 /* PDFKitContainerView.swift */; };
+		BFB54D13F7D848AF1B312D9C /* PDFReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD451F68582F401706152964 /* PDFReaderView.swift */; };
+		5EB849AB92D558264094B3A9 /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = C371BEEFE75F5CFE328D1CDE /* SettingsScreen.swift */; };
+		E4C24E73AC7F2B35299CBC7A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 382039EAE3932F5FB85EED8F /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		1FB16E1C2AED285F78A261A6 /* AHTBooksApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AHTBooksApp.swift"; sourceTree = "<group>"; };
+		5260D102A861B4E7D404AE7F /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MainTabView.swift"; sourceTree = "<group>"; };
+		831805EBB528BB0F863D1CF7 /* BookCoverCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BookCoverCard.swift"; sourceTree = "<group>"; };
+		5893526FDAF07E69A3E76E11 /* BookFlowEmblem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BookFlowEmblem.swift"; sourceTree = "<group>"; };
+		D4F0C94CF0E87A3505BDE77F /* DocumentPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DocumentPickerView.swift"; sourceTree = "<group>"; };
+		AB5F261C09B2E95D92388E7D /* PastelCollectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PastelCollectionCard.swift"; sourceTree = "<group>"; };
+		709EC2985E54E096A480B799 /* ReadingGoalRing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReadingGoalRing.swift"; sourceTree = "<group>"; };
+		2C9967C58FA69026F705DD5A /* ToolDial.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ToolDial.swift"; sourceTree = "<group>"; };
+		416B0E06437CA1DFCD97D511 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Theme.swift"; sourceTree = "<group>"; };
+		6D0C5C71F97DA76AE3CFFC8D /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models.swift"; sourceTree = "<group>"; };
+		7DED6E7BE94C728394D1A871 /* StorageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "StorageManager.swift"; sourceTree = "<group>"; };
+		F43BD030BAC6746E2A49E0F9 /* CollectionsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CollectionsScreen.swift"; sourceTree = "<group>"; };
+		7432401888DE30EE556C0BAD /* ESignHomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ESignHomeScreen.swift"; sourceTree = "<group>"; };
+		F5BA636DDA8B1105F7FFB33C /* SignEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SignEditorView.swift"; sourceTree = "<group>"; };
+		0084EB72FF30C39C73B77B78 /* SignaturePadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SignaturePadView.swift"; sourceTree = "<group>"; };
+		648910B8BB83E58AB4C1E7D3 /* CardEditorScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CardEditorScreen.swift"; sourceTree = "<group>"; };
+		9ABBEF1DEC4E606C942BAE85 /* CardsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CardsScreen.swift"; sourceTree = "<group>"; };
+		ED6118B25366A5D2D6D1DB9F /* Cloze.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Cloze.swift"; sourceTree = "<group>"; };
+		B4726CDE31513A08315B2931 /* ReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ReviewView.swift"; sourceTree = "<group>"; };
+		2162664A6D43115C292567EC /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Scheduler.swift"; sourceTree = "<group>"; };
+		4F6FC03A291C025C4B78D4B9 /* HomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HomeScreen.swift"; sourceTree = "<group>"; };
+		6FAF6CAECA6F61808FF8CE52 /* BookDetailsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BookDetailsScreen.swift"; sourceTree = "<group>"; };
+		4CDAF83FC1DC10AF93556555 /* LibraryScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LibraryScreen.swift"; sourceTree = "<group>"; };
+		B55CD1441A766F33890E5FFE /* NoteEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteEditorView.swift"; sourceTree = "<group>"; };
+		A00100010001000100010001 /* NoteExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NoteExporter.swift"; sourceTree = "<group>"; };
+		B00100010001000100010001 /* PageOverviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PageOverviewView.swift"; sourceTree = "<group>"; };
+		D3C7AE7A43E72AA4EF7CDC75 /* NotesHomeScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NotesHomeScreen.swift"; sourceTree = "<group>"; };
+		128737277A88BDE5F0301D06 /* PageTemplateRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PageTemplateRenderer.swift"; sourceTree = "<group>"; };
+		6D2A35878B2F705F7744F851 /* PDFKitContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFKitContainerView.swift"; sourceTree = "<group>"; };
+		BD451F68582F401706152964 /* PDFReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PDFReaderView.swift"; sourceTree = "<group>"; };
+		C371BEEFE75F5CFE328D1CDE /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsScreen.swift"; sourceTree = "<group>"; };
+		382039EAE3932F5FB85EED8F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets.xcassets"; sourceTree = "<group>"; };
+		B6A2CA5EF9649B459053A2D9 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info.plist"; sourceTree = "<group>"; };
+		C2FDDB7204EEDFFBE606C19B /* AHTBooks.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AHTBooks.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		30D0192AA19DE8685F9A4091 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		DBBF82639DE0201FCCF40D24 = {
+			isa = PBXGroup;
+			children = (
+				1262A6602470A5E702D12F25 /* AHTBooks */,
+				7FF56120FDE7D75FE4FEA536 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		7FF56120FDE7D75FE4FEA536 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C2FDDB7204EEDFFBE606C19B /* AHTBooks.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		FF4C3703B702A2B2535613A4 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				1FB16E1C2AED285F78A261A6 /* AHTBooksApp.swift */,
+				5260D102A861B4E7D404AE7F /* MainTabView.swift */,
+			);
+			path = "App";
+			sourceTree = "<group>";
+		};
+		6F28069944D4C7BA879EA5EC /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				831805EBB528BB0F863D1CF7 /* BookCoverCard.swift */,
+				5893526FDAF07E69A3E76E11 /* BookFlowEmblem.swift */,
+				D4F0C94CF0E87A3505BDE77F /* DocumentPickerView.swift */,
+				AB5F261C09B2E95D92388E7D /* PastelCollectionCard.swift */,
+				709EC2985E54E096A480B799 /* ReadingGoalRing.swift */,
+				2C9967C58FA69026F705DD5A /* ToolDial.swift */,
+			);
+			path = "Components";
+			sourceTree = "<group>";
+		};
+		E3B62E2ED2D504741874DAA5 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				416B0E06437CA1DFCD97D511 /* Theme.swift */,
+			);
+			path = "Theme";
+			sourceTree = "<group>";
+		};
+		CB6275A092159206E9FBDB49 /* Utilities */ = {
+			isa = PBXGroup;
+			children = ();
+			path = "Utilities";
+			sourceTree = "<group>";
+		};
+		4FF16921BDFB4D07D0AB10EC /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				6F28069944D4C7BA879EA5EC /* Components */,
+				E3B62E2ED2D504741874DAA5 /* Theme */,
+				CB6275A092159206E9FBDB49 /* Utilities */,
+			);
+			path = "Core";
+			sourceTree = "<group>";
+		};
+		5001A3D456D9155CEB637009 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				6D0C5C71F97DA76AE3CFFC8D /* Models.swift */,
+			);
+			path = "Models";
+			sourceTree = "<group>";
+		};
+		142F6FF36DBD425976EF4A3B /* Preferences */ = {
+			isa = PBXGroup;
+			children = ();
+			path = "Preferences";
+			sourceTree = "<group>";
+		};
+		2D1953889DBB6D3F45FE038D /* Storage */ = {
+			isa = PBXGroup;
+			children = (
+				7DED6E7BE94C728394D1A871 /* StorageManager.swift */,
+			);
+			path = "Storage";
+			sourceTree = "<group>";
+		};
+		99AD4FB55CB715E5AE05B322 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				5001A3D456D9155CEB637009 /* Models */,
+				142F6FF36DBD425976EF4A3B /* Preferences */,
+				2D1953889DBB6D3F45FE038D /* Storage */,
+			);
+			path = "Data";
+			sourceTree = "<group>";
+		};
+		151A7E1D4BE6D96DEFCE4866 /* Collections */ = {
+			isa = PBXGroup;
+			children = (
+				F43BD030BAC6746E2A49E0F9 /* CollectionsScreen.swift */,
+			);
+			path = "Collections";
+			sourceTree = "<group>";
+		};
+		950F8D3BEE171C93D5651859 /* ESign */ = {
+			isa = PBXGroup;
+			children = (
+				7432401888DE30EE556C0BAD /* ESignHomeScreen.swift */,
+				F5BA636DDA8B1105F7FFB33C /* SignEditorView.swift */,
+				0084EB72FF30C39C73B77B78 /* SignaturePadView.swift */,
+			);
+			path = "ESign";
+			sourceTree = "<group>";
+		};
+		C6AD88B4BBD79DA97FAA412E /* Flashcards */ = {
+			isa = PBXGroup;
+			children = (
+				648910B8BB83E58AB4C1E7D3 /* CardEditorScreen.swift */,
+				9ABBEF1DEC4E606C942BAE85 /* CardsScreen.swift */,
+				ED6118B25366A5D2D6D1DB9F /* Cloze.swift */,
+				B4726CDE31513A08315B2931 /* ReviewView.swift */,
+				2162664A6D43115C292567EC /* Scheduler.swift */,
+			);
+			path = "Flashcards";
+			sourceTree = "<group>";
+		};
+		0272E91EB2E98759472577D1 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				4F6FC03A291C025C4B78D4B9 /* HomeScreen.swift */,
+			);
+			path = "Home";
+			sourceTree = "<group>";
+		};
+		5B2957FBD463EBB0D6EC304A /* Library */ = {
+			isa = PBXGroup;
+			children = (
+				6FAF6CAECA6F61808FF8CE52 /* BookDetailsScreen.swift */,
+				4CDAF83FC1DC10AF93556555 /* LibraryScreen.swift */,
+			);
+			path = "Library";
+			sourceTree = "<group>";
+		};
+		B763B017DC2E9ED47150F84B /* Notes */ = {
+			isa = PBXGroup;
+			children = (
+				B55CD1441A766F33890E5FFE /* NoteEditorView.swift */,
+				A00100010001000100010001 /* NoteExporter.swift */,
+				B00100010001000100010001 /* PageOverviewView.swift */,
+				D3C7AE7A43E72AA4EF7CDC75 /* NotesHomeScreen.swift */,
+				128737277A88BDE5F0301D06 /* PageTemplateRenderer.swift */,
+			);
+			path = "Notes";
+			sourceTree = "<group>";
+		};
+		35A54EDC3A0B7D5AD718820B /* Reader */ = {
+			isa = PBXGroup;
+			children = (
+				6D2A35878B2F705F7744F851 /* PDFKitContainerView.swift */,
+				BD451F68582F401706152964 /* PDFReaderView.swift */,
+			);
+			path = "Reader";
+			sourceTree = "<group>";
+		};
+		A840645C852AA8B91914C61D /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				C371BEEFE75F5CFE328D1CDE /* SettingsScreen.swift */,
+			);
+			path = "Settings";
+			sourceTree = "<group>";
+		};
+		02968E8DE82496BB0FD7F040 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				151A7E1D4BE6D96DEFCE4866 /* Collections */,
+				950F8D3BEE171C93D5651859 /* ESign */,
+				C6AD88B4BBD79DA97FAA412E /* Flashcards */,
+				0272E91EB2E98759472577D1 /* Home */,
+				5B2957FBD463EBB0D6EC304A /* Library */,
+				B763B017DC2E9ED47150F84B /* Notes */,
+				35A54EDC3A0B7D5AD718820B /* Reader */,
+				A840645C852AA8B91914C61D /* Settings */,
+			);
+			path = "Features";
+			sourceTree = "<group>";
+		};
+		66DAA64B7EC6B5105FBEDCF0 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				382039EAE3932F5FB85EED8F /* Assets.xcassets */,
+			);
+			path = "Resources";
+			sourceTree = "<group>";
+		};
+		1262A6602470A5E702D12F25 /* AHTBooks */ = {
+			isa = PBXGroup;
+			children = (
+				FF4C3703B702A2B2535613A4 /* App */,
+				4FF16921BDFB4D07D0AB10EC /* Core */,
+				99AD4FB55CB715E5AE05B322 /* Data */,
+				02968E8DE82496BB0FD7F040 /* Features */,
+				66DAA64B7EC6B5105FBEDCF0 /* Resources */,
+				B6A2CA5EF9649B459053A2D9 /* Info.plist */,
+			);
+			path = "AHTBooks";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E998E4B30A3018FB6B285143 /* AHTBooks */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A69150639409DF7D1987D165 /* Build configuration list for PBXNativeTarget "AHTBooks" */;
+			buildPhases = (
+				C6F1EEBEB55E3E9250BFA718 /* Sources */,
+				30D0192AA19DE8685F9A4091 /* Frameworks */,
+				C7ED33E4335EE27C254AD650 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AHTBooks;
+			productName = AHTBooks;
+			productReference = C2FDDB7204EEDFFBE606C19B /* AHTBooks.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DB950EB577A44547BAE464FD /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					E998E4B30A3018FB6B285143 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = 6BD3F1A48C9FB883906FEA16 /* Build configuration list for PBXProject "AHTBooks" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = DBBF82639DE0201FCCF40D24;
+			productRefGroup = 7FF56120FDE7D75FE4FEA536 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E998E4B30A3018FB6B285143 /* AHTBooks */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C7ED33E4335EE27C254AD650 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E4C24E73AC7F2B35299CBC7A /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C6F1EEBEB55E3E9250BFA718 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				77A7992176D107BD9E1370B8 /* AHTBooksApp.swift in Sources */,
+				C1D782A153FAA47A0AC7C0D1 /* MainTabView.swift in Sources */,
+				2D869C8FCB5A8C63A61F53E5 /* BookCoverCard.swift in Sources */,
+				C77B428D47ED0E5DB744CB78 /* BookFlowEmblem.swift in Sources */,
+				48CF708005520419C9CDBBD6 /* DocumentPickerView.swift in Sources */,
+				E83E8E0C5ABB5C9E636AA56D /* PastelCollectionCard.swift in Sources */,
+				76B913A5FD34092FE59324BF /* ReadingGoalRing.swift in Sources */,
+				5F2B142645FD965FBF2B75B1 /* ToolDial.swift in Sources */,
+				1B72FA53433C377A4CBBDEAA /* Theme.swift in Sources */,
+				7C31B66F11526C4CEE24F507 /* Models.swift in Sources */,
+				8591B0E6D25590A5546CB94A /* StorageManager.swift in Sources */,
+				2471043014EA2FB4033DA829 /* CollectionsScreen.swift in Sources */,
+				FBDB3FE39A6AC30D11B80B8E /* ESignHomeScreen.swift in Sources */,
+				A71CA387817E89A34631A01F /* SignEditorView.swift in Sources */,
+				0FC44252B12703FE3F6F9CDD /* SignaturePadView.swift in Sources */,
+				40C791CA568A0D7FA9BE9416 /* CardEditorScreen.swift in Sources */,
+				5BADA4733E04A7C61C793890 /* CardsScreen.swift in Sources */,
+				4B99CDC4D482BDE23F1446DF /* Cloze.swift in Sources */,
+				7E355CE5A9A6EE7ABC3CDFAD /* ReviewView.swift in Sources */,
+				2120B61CBE426517FD3DDA7E /* Scheduler.swift in Sources */,
+				7F9364BF6CBED977B91B5000 /* HomeScreen.swift in Sources */,
+				A3F99A5AFB1EA4307C53CD7D /* BookDetailsScreen.swift in Sources */,
+				74BB3F3E2575526D85143E89 /* LibraryScreen.swift in Sources */,
+				ED7E385202DA4C1AE5C02401 /* NoteEditorView.swift in Sources */,
+				A00100010001000100010002 /* NoteExporter.swift in Sources */,
+				B00100010001000100010002 /* PageOverviewView.swift in Sources */,
+				E8214AD57625913110BC50AD /* NotesHomeScreen.swift in Sources */,
+				7D1B501935FDD2E8FD583F47 /* PageTemplateRenderer.swift in Sources */,
+				6A67446DF145E711C3BCB2FD /* PDFKitContainerView.swift in Sources */,
+				BFB54D13F7D848AF1B312D9C /* PDFReaderView.swift in Sources */,
+				5EB849AB92D558264094B3A9 /* SettingsScreen.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		E5FD639BADA4227F2BB8454D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		8C404E58F26C6BC681AC94BA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = "wholemodule";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		0AB4B14F56BEA3FBF32676DE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AHTBooks/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alhadaftech.bookflow;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		EA6D6EF895440CBBE7370B96 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = AHTBooks/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alhadaftech.bookflow;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		6BD3F1A48C9FB883906FEA16 /* Build configuration list for PBXProject "AHTBooks" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E5FD639BADA4227F2BB8454D /* Debug */,
+				8C404E58F26C6BC681AC94BA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A69150639409DF7D1987D165 /* Build configuration list for PBXNativeTarget "AHTBooks" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0AB4B14F56BEA3FBF32676DE /* Debug */,
+				EA6D6EF895440CBBE7370B96 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = DB950EB577A44547BAE464FD /* Project object */;
+}

@@ -36,3 +36,6 @@ keystore/
 *.jks
 *.keystore
 !debug.keystore
+
+# Xcode per-user state
+xcuserdata/
