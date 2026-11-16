@@ -5,6 +5,9 @@ import PencilKit
 struct NoteCanvasRepresentable: UIViewRepresentable {
     @ObservedObject var model: NoteEditorModel
 
+    /// The desk colour behind the pages. Drawn by SwiftUI because the canvas itself must stay clear.
+    static let deskColor = Color(hex: "#E5E9F0")
+
     func makeUIView(context: Context) -> NoteCanvasView {
         let canvas = NoteCanvasView(model: model)
         canvas.accessibilityIdentifier = "notes.canvas"
@@ -61,8 +64,10 @@ final class NoteCanvasView: PKCanvasView, UIGestureRecognizerDelegate, UITextVie
     init(model: NoteEditorModel) {
         self.model = model
         super.init(frame: .zero)
-        backgroundColor = UIColor(Color(hex: "#E5E9F0"))
-        isOpaque = true
+        // PKCanvasView paints `backgroundColor` into its ink layer, above `underlay`, so any colour here hides
+        // the pages. Keep it clear; the grey around the pages comes from `NoteCanvasRepresentable`.
+        backgroundColor = .clear
+        isOpaque = false
         events.canvas = self
         delegate = events
         alwaysBounceVertical = true
@@ -407,8 +412,34 @@ final class NoteCanvasView: PKCanvasView, UIGestureRecognizerDelegate, UITextVie
                 applying = false
             }
         }
+        after = clipNewStrokesToPages(after)
         model.inkChanged(from: committedInk, to: after)
         committedInk = after
+    }
+
+    /// Ink stops at the paper's edge: each newly drawn stroke gets its page's rectangle as a mask, so the part
+    /// that ran onto the desk or the next page is hidden (and left out of exports).
+    private func clipNewStrokesToPages(_ drawing: PKDrawing) -> PKDrawing {
+        guard let model, (model.tool == .pen || model.tool == .shape),
+              drawing.strokes.count > committedInk.strokes.count else { return drawing }
+        var strokes = drawing.strokes
+        var clipped = false
+        for i in committedInk.strokes.count..<strokes.count where strokes[i].mask == nil {
+            let bounds = strokes[i].renderBounds
+            let page = NoteLayout.frame(ofPage: NoteLayout.pageIndex(atY: bounds.midY, pageCount: model.pageCount))
+            guard !page.contains(bounds) else { continue }
+            // The mask is in the stroke's own path space, before its transform
+            let mask = UIBezierPath(rect: page)
+            mask.apply(strokes[i].transform.inverted())
+            strokes[i].mask = mask
+            clipped = true
+        }
+        guard clipped else { return drawing }
+        let result = PKDrawing(strokes: strokes)
+        applying = true
+        self.drawing = result
+        applying = false
+        return result
     }
 
     // MARK: - Taps

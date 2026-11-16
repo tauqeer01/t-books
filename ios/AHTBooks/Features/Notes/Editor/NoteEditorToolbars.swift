@@ -3,8 +3,22 @@ import PencilKit
 
 // MARK: - Main tool bar
 
+/// Where the tool bar sits. Top (like GoodNotes and Samsung Notes) keeps it clear of the writing hand
+/// and the home indicator; bottom is easier to reach with a thumb.
+enum NoteToolbarPosition: String, CaseIterable, Identifiable {
+    case top, bottom
+
+    static let storageKey = "notes.toolbarPosition"
+
+    var id: String { rawValue }
+    var title: String { self == .top ? "Top" : "Bottom" }
+    var icon: String { self == .top ? "rectangle.topthird.inset.filled" : "rectangle.bottomthird.inset.filled" }
+}
+
 struct NoteToolBar: View {
     @ObservedObject var model: NoteEditorModel
+    /// Icons only, in a shorter row (used when the bar sits at the top).
+    var compact = false
     var onSticky: () -> Void
     var onPhoto: () -> Void
     var onCamera: () -> Void
@@ -23,23 +37,25 @@ struct NoteToolBar: View {
                         } label: {
                             VStack(spacing: 3) {
                                 Image(systemName: tool == .pen ? model.pen.type.icon : tool.icon)
-                                    .font(.system(size: 17, weight: selected ? .bold : .regular))
+                                    .font(.system(size: compact ? 18 : 17, weight: selected ? .bold : .regular))
                                     .foregroundColor(selected ? Theme.brandPurple : Theme.appTextPrimary)
                                     .frame(height: 22)
-                                Text(tool.title)
-                                    .font(.system(size: 10, weight: selected ? .bold : .medium))
-                                    .foregroundColor(selected ? Theme.brandPurple : Theme.appTextSecondary)
+                                if !compact {
+                                    Text(tool.title)
+                                        .font(.system(size: 10, weight: selected ? .bold : .medium))
+                                        .foregroundColor(selected ? Theme.brandPurple : Theme.appTextSecondary)
+                                }
                             }
-                            .frame(width: 50, height: 46)
+                            .frame(width: compact ? 40 : 50, height: compact ? 36 : 46)
                             .background(RoundedRectangle(cornerRadius: 10).fill(selected ? Theme.brandPurpleSoft : .clear))
                         }
                         .accessibilityLabel(tool.title)
                         .accessibilityIdentifier("notes.tool.\(tool.rawValue)")
                     }
                 }
-                .padding(.horizontal, 6)
+                .padding(.horizontal, compact ? 4 : 6)
             }
-            Divider().frame(height: 30)
+            Divider().frame(height: compact ? 24 : 30)
             Menu {
                 Button(action: onSticky) { Label("Sticky note", systemImage: "note.text") }
                 Button(action: onPhoto) { Label("Photo", systemImage: "photo") }
@@ -51,14 +67,14 @@ struct NoteToolBar: View {
                     .disabled(!model.hasClipboard)
             } label: {
                 Image(systemName: "plus.circle.fill")
-                    .font(.system(size: 26))
+                    .font(.system(size: compact ? 24 : 26))
                     .foregroundColor(Theme.brandPurple)
-                    .frame(width: 50, height: 46)
+                    .frame(width: compact ? 44 : 50, height: compact ? 36 : 46)
             }
             .accessibilityLabel("Insert")
             .accessibilityIdentifier("notes.insert")
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, compact ? 2 : 4)
         .background(.ultraThinMaterial)
     }
 }

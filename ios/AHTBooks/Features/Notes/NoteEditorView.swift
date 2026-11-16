@@ -21,6 +21,9 @@ public struct NoteEditorView: View {
     @State private var shareItem: NoteShareItem?
     @State private var sourceBook: Book?
     @State private var confirmDeletePage = false
+    @AppStorage(NoteToolbarPosition.storageKey) private var toolbarPositionRaw = NoteToolbarPosition.top.rawValue
+
+    private var toolbarPosition: NoteToolbarPosition { NoteToolbarPosition(rawValue: toolbarPositionRaw) ?? .top }
 
     private let isUITesting = ProcessInfo.processInfo.arguments.contains("-UITests")
 
@@ -40,9 +43,18 @@ public struct NoteEditorView: View {
     public var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                if toolbarPosition == .top {
+                    toolBar(compact: true)
+                    Divider()
+                    contextBar
+                    Divider()
+                }
                 ZStack(alignment: .topTrailing) {
                     NoteCanvasRepresentable(model: model)
+                        .background { NoteCanvasRepresentable.deskColor }
                         .ignoresSafeArea(edges: .horizontal)
+                        // With the tools on top, the pages run down behind the home indicator
+                        .ignoresSafeArea(.container, edges: toolbarPosition == .top ? .bottom : [])
                     pageIndicator
                     if let message = model.message {
                         VStack {
@@ -64,16 +76,11 @@ public struct NoteEditorView: View {
                     }
                     if isUITesting { testProbe }
                 }
-                NoteContextBar(model: model,
-                               onEditPen: { showingPenEditor = true },
-                               onFormat: { model.formatHandler?($0) },
-                               onOpenSource: openSource)
-                Divider()
-                NoteToolBar(model: model,
-                            onSticky: { model.addStickyNote(page: model.currentPage) },
-                            onPhoto: { showingPhotoPicker = true },
-                            onCamera: { showingCamera = true },
-                            onAddPage: { beginTemplatePick(.newPage) })
+                if toolbarPosition == .bottom {
+                    contextBar
+                    Divider()
+                    toolBar(compact: false)
+                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { editorToolbar }
@@ -172,6 +179,16 @@ public struct NoteEditorView: View {
                     Button { model.revealAllTapes(true) } label: { Label("Show all tape", systemImage: "eye") }
                     Button { model.revealAllTapes(false) } label: { Label("Hide all tape", systemImage: "eye.slash") }
                 }
+                Section {
+                    Picker(selection: $toolbarPositionRaw) {
+                        ForEach(NoteToolbarPosition.allCases) { position in
+                            Label(position.title, systemImage: position.icon).tag(position.rawValue)
+                        }
+                    } label: {
+                        Label("Toolbar position", systemImage: toolbarPosition.icon)
+                    }
+                    .pickerStyle(.menu)
+                }
                 Section("Apple Pencil") {
                     Toggle(isOn: Binding(get: { model.fingerDrawing }, set: { model.setFingerDrawing($0) })) {
                         Label("Draw with finger", systemImage: "hand.draw")
@@ -187,6 +204,22 @@ public struct NoteEditorView: View {
             .accessibilityLabel("More")
             .accessibilityIdentifier("notes.more")
         }
+    }
+
+    private var contextBar: some View {
+        NoteContextBar(model: model,
+                       onEditPen: { showingPenEditor = true },
+                       onFormat: { model.formatHandler?($0) },
+                       onOpenSource: openSource)
+    }
+
+    private func toolBar(compact: Bool) -> some View {
+        NoteToolBar(model: model,
+                    compact: compact,
+                    onSticky: { model.addStickyNote(page: model.currentPage) },
+                    onPhoto: { showingPhotoPicker = true },
+                    onCamera: { showingCamera = true },
+                    onAddPage: { beginTemplatePick(.newPage) })
     }
 
     private var pageIndicator: some View {
