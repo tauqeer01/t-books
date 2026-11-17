@@ -39,73 +39,78 @@ Version **1.0.0**, build **1**. Both come from `MARKETING_VERSION` / `CURRENT_PR
 | Support URL | https://tauqeer01.github.io/t-books/ |
 | Marketing URL | https://tauqeer01.github.io/t-books/ (optional) |
 | Privacy Policy URL | https://tauqeer01.github.io/t-books/legal/privacy-policy-ios.html |
-| Copyright | 2026 Al Hadaf Tech |
+| Copyright | 2026 AL-Hadaf Technologies Private Limited |
 | Price | Free |
 | App icon | Comes from the build (`ios/AHTBooks/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`, 1024×1024, no alpha). A copy is at `store/app-store/icon-1024.png`. |
 
 `docs/` must be published on GitHub Pages from `main` before submitting, so the support and privacy URLs resolve. The iOS policy page and the updated support page are new in `docs/`.
 
-### Promotional text (164/170), can be changed without a new build
+### Promotional text (168/170), can be changed without a new build
 
 ```
-Read and mark up PDFs, write by hand in notebooks, study with flashcards, and fill and sign forms. Everything stays on your device: no account, no ads, no tracking.
+Highlight PDFs, write notes by hand with Apple Pencil, study with flashcards, and fill and sign forms. No account, no ads, no tracking. Everything stays on your device.
 ```
 
-### Keywords (100/100), comma-separated, no spaces
+### Keywords (96/100), comma-separated, no spaces
+
+Words already in the name or subtitle (AHT, Books, PDF, Reader, Notes, Read, annotate, sign) are indexed by Apple automatically, so they are not repeated here.
 
 ```
-pdf,annotate,highlight,notes,handwriting,notebook,flashcards,study,sign,fill,reader,textbook,offline
+highlight,handwriting,notebook,flashcard,study,markup,document,textbook,offline,pencil,signature
 ```
 
-### Description (2142/4000)
+### Description (2755/4000)
 
 ```
-AHT Books is a private PDF reader and study app for iPhone and iPad. Organize your documents, pick up where you left off, mark up pages, write notes by hand, and review with flashcards, all on your device.
+AHT Books is a private PDF reader, PDF annotator and handwriting notes app for iPhone and iPad. Read and highlight PDFs, write notes with Apple Pencil, study with flashcards, and fill and sign documents, all offline, with no account and no ads.
 
-READ YOUR WAY
-• Continuous scrolling, page-by-page swiping, or single-page reading
-• Light, Dark, Sepia and Mint page colors, plus Light and Dark app themes
-• Jump around with the table of contents and bookmarks
-• Search the text of any PDF that has selectable text
-• Return to your last page in every book
+Built for students, professionals and anyone who reads textbooks, manuals, papers and forms, AHT Books keeps your documents, notes and study progress in one place.
+
+READ PDFs YOUR WAY
+• Smooth PDF viewer with continuous scrolling, page-by-page swiping or single-page reading
+• Light, Dark, Sepia and Mint page colors, plus a full dark mode for the whole app
+• Jump through long documents with the table of contents and bookmarks
+• Search the text of any PDF with selectable text
+• Always reopen a book on the page where you stopped
+
+HIGHLIGHT AND ANNOTATE PDFs
+• Highlight, underline or strike through text in several colors
+• Draw on PDFs with pens and markers from a spinning tool dial at the edge of the page
+• Add notes and bookmarks, with undo and redo
+• Send a passage to your notebook or turn it into a flashcard in one tap
+• Share an annotated copy of any PDF
+
+HANDWRITTEN NOTES WITH APPLE PENCIL
+• Digital notebooks with blank, ruled, grid, dotted, Cornell, music, checklist and more paper templates
+• Low-latency Apple Pencil and finger writing, shape recognition, lasso, text boxes, photos and sticky notes
+• Study tape to hide answers while you revise, and a laser pointer for presenting
+• Organize notes with folders, tags and search, and export pages to PDF or image
+
+FLASHCARDS AND SPACED REPETITION
+• Basic, reversed and fill-in-the-blank (cloze) flashcards
+• Spaced repetition schedules every card for the right day, so you remember more with less study time
+• A handwriting scratchpad to work out answers before you reveal them
+
+FILL AND SIGN PDF FORMS
+• Draw and save your signature and initials
+• Add signatures, initials, text, dates and checkmarks to any PDF
+• Save a signed copy while your original file stays unchanged
+
+BUILD A DAILY READING HABIT
+• Set a daily reading goal and watch your progress ring fill
+• Keep your reading streak going and see your whole week at a glance
 
 ORGANIZE YOUR LIBRARY
-• Import PDFs from the Files app, or open them from other apps
-• Favorites, collections, and recently read books
+• Import PDFs from the Files app, or open them from any app with Open In
+• Favorites, collections and recently read books
 • Search, sort, and switch between grid and list views
 
-ANNOTATE AS YOU READ
-• Pick tools from a spinning tool dial at the edge of the page
-• Highlight, underline or strike through text in several colors
-• Draw with pens and highlighters, add notes and bookmarks, undo and redo
-• Send selected text to a notebook or turn it into a flashcard
-• Share an annotated copy of a PDF
+PRIVATE AND OFFLINE BY DESIGN
+AHT Books has no account, no ads and no tracking, and it does not connect to the internet. Your PDFs, notes, flashcards and signatures stay on your iPhone and iPad.
 
-HANDWRITTEN NOTES
-• Notebooks with blank, ruled, grid, dotted, Cornell, music, checklist and more page templates
-• Low-latency Apple Pencil and finger writing, shape recognition, lasso, text, photos and sticky notes
-• Study tape to hide answers, and a laser pointer for presenting
-• Folders, tags and search, and export to PDF or image
+Good to know: scanned PDFs without a text layer can be read and annotated, but their text cannot be searched.
 
-FLASHCARDS
-• Basic, reversed and fill-in-the-blank (cloze) cards
-• Spaced repetition that schedules each card for the right day
-• A handwriting scratchpad for working out answers
-
-FILL & SIGN
-• Draw and save your signature and initials
-• Place signatures, initials, text, dates and checkmarks on any PDF
-• Save a signed copy; your original stays unchanged
-
-DAILY READING GOAL
-Set a daily goal, watch your progress ring fill, and keep your reading streak going.
-
-PRIVATE BY DESIGN
-AHT Books has no account, no ads and no tracking, and it does not connect to the internet. Your library, notes, flashcards and signatures stay on your device.
-
-Scanned PDFs without a text layer can be read and annotated, but their text cannot be searched.
-
-AHT Books is made by Al Hadaf Tech (AHT).
+AHT Books is made by Al Hadaf Tech (AHT). Questions or feedback? Write to aht.apps@alhadaftech.com.
 ```
 
 ### What's New in This Version (1.0.0)
@@ -120,8 +125,11 @@ Listing images in the same style as the Google Play set: brand-purple gradient, 
 
 | Size slot in App Store Connect | Folder | Resolution |
 |---|---|---|
-| iPhone 6.9" Display (required) | `store/app-store/screenshots/iphone-6.9/` (8 images) | 1320×2868 |
-| iPad 13" Display (required because the app runs on iPad) | `store/app-store/screenshots/ipad-13/` (8 images) | 2064×2752 |
+| **iPhone with Dynamic Island (medium display)** (required) | `store/app-store/screenshots/iphone-6.3/` (8 images) | 1206×2622 |
+| iPhone with Dynamic Island (large display) (optional; reach it via *View All Sizes in Media Manager*) | `store/app-store/screenshots/iphone-6.9/` (8 images) | 1320×2868 |
+| **iPad 13" display** (required because the app runs on iPad) | `store/app-store/screenshots/ipad-13/` (8 images) | 2064×2752 |
+
+Each slot accepts only its own sizes. Dropping the 1320×2868 set into the medium slot fails with "File dimensions are invalid".
 
 Smaller iPhone and iPad sizes are scaled from these automatically. All images are RGB with no alpha channel.
 
