@@ -64,7 +64,7 @@ public struct SignaturePadView: View {
                         let bounds = drawing.bounds
                         guard bounds.width > 0 && bounds.height > 0 else { return }
                         let targetRect = bounds.insetBy(dx: -10, dy: -10)
-                        let image = drawing.image(from: targetRect, scale: 3.0)
+                        let image = drawing.trueColorImage(from: targetRect, scale: 3.0)
                         onSave(image)
                         dismiss()
                     }
@@ -84,15 +84,29 @@ private struct SignatureCanvas: UIViewRepresentable {
         let canvas = PKCanvasView()
         canvas.backgroundColor = .clear
         canvas.isOpaque = false
+        canvas.overrideUserInterfaceStyle = .light // white pad: show black ink as black in dark mode
         canvas.drawing = drawing
         canvas.tool = PKInkingTool(.pen, color: .black, width: 3.0)
         canvas.drawingPolicy = .anyInput
+        canvas.delegate = context.coordinator
+        canvas.accessibilityIdentifier = "signature.canvas"
         return canvas
     }
-    
+
     func updateUIView(_ canvas: PKCanvasView, context: Context) {
         if canvas.drawing != drawing {
             canvas.drawing = drawing
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(drawing: $drawing) }
+
+    /// Reports strokes back to SwiftUI so Done can save the signature and Clear can reset it.
+    final class Coordinator: NSObject, PKCanvasViewDelegate {
+        var drawing: Binding<PKDrawing>
+        init(drawing: Binding<PKDrawing>) { self.drawing = drawing }
+        func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+            if drawing.wrappedValue != canvasView.drawing { drawing.wrappedValue = canvasView.drawing }
         }
     }
 }

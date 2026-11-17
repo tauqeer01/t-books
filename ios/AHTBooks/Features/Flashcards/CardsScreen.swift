@@ -6,6 +6,7 @@ public struct CardsScreen: View {
     @State private var newDeckName = ""
     @State private var reviewingDeck: Deck? = nil
     @State private var addingCardToDeckId: String? = nil
+    @State private var deckToDelete: Deck? = nil
     
     public init() {}
     
@@ -95,9 +96,7 @@ public struct CardsScreen: View {
                                     Label("Add Card", systemImage: "plus")
                                 }
                                 Button(role: .destructive) {
-                                    storage.decks.removeAll { $0.id == deck.id }
-                                    storage.cards.removeAll { $0.deckId == deck.id }
-                                    storage.saveAll()
+                                    deckToDelete = deck
                                 } label: {
                                     Label("Delete Deck", systemImage: "trash")
                                 }
@@ -123,11 +122,20 @@ public struct CardsScreen: View {
                 Button("Cancel", role: .cancel) { newDeckName = "" }
                 Button("Create") {
                     guard !newDeckName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                    let deck = Deck(name: newDeckName.trimmingCharacters(in: .whitespaces))
-                    storage.decks.append(deck)
-                    storage.saveAll()
+                    storage.addDeck(name: newDeckName.trimmingCharacters(in: .whitespaces))
                     newDeckName = ""
                 }
+            }
+            .alert("Delete Deck?", isPresented: Binding(
+                get: { deckToDelete != nil },
+                set: { if !$0 { deckToDelete = nil } }
+            )) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete", role: .destructive) {
+                    if let deck = deckToDelete { storage.deleteDeck(id: deck.id) }
+                }
+            } message: {
+                Text("“\(deckToDelete?.name ?? "")” and all its cards and review history will be deleted.")
             }
             .sheet(item: $reviewingDeck) { deck in
                 ReviewView(deck: deck)

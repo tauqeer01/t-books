@@ -79,8 +79,9 @@ public struct ESignHomeScreen: View {
                                     ForEach(signatures) { sig in
                                         if let img = storage.getSignatureImage(fileName: sig.imageFileName) {
                                             ZStack {
+                                                // Signatures are dark ink on transparency: always show them on paper white
                                                 RoundedRectangle(cornerRadius: 12)
-                                                    .fill(Theme.appSurface)
+                                                    .fill(Color.white)
                                                     .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
                                                 Image(uiImage: img)
                                                     .resizable()
@@ -132,8 +133,9 @@ public struct ESignHomeScreen: View {
                                     ForEach(initials) { sig in
                                         if let img = storage.getSignatureImage(fileName: sig.imageFileName) {
                                             ZStack {
+                                                // Signatures are dark ink on transparency: always show them on paper white
                                                 RoundedRectangle(cornerRadius: 12)
-                                                    .fill(Theme.appSurface)
+                                                    .fill(Color.white)
                                                     .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
                                                 Image(uiImage: img)
                                                     .resizable()

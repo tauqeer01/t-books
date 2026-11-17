@@ -2,10 +2,12 @@ import SwiftUI
 
 public struct PastelCollectionCard: View {
     public let collection: BookCollection
+    public let bookCount: Int
     public var onSelect: () -> Void
-    
-    public init(collection: BookCollection, onSelect: @escaping () -> Void) {
+
+    public init(collection: BookCollection, bookCount: Int, onSelect: @escaping () -> Void) {
         self.collection = collection
+        self.bookCount = bookCount
         self.onSelect = onSelect
     }
     
@@ -19,12 +21,12 @@ public struct PastelCollectionCard: View {
                             .frame(width: 38, height: 38)
                         Image(systemName: collection.iconName)
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(Theme.brandPurpleDark)
+                            .foregroundColor(Color(hex: "#3730A3"))
                     }
                     Spacer()
-                    Text("\(collection.bookCount)")
+                    Text("\(bookCount)")
                         .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(Theme.appTextSecondary)
+                        .foregroundColor(Theme.onPastelSecondary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
                         .background(Capsule().fill(Color.white.opacity(0.6)))
@@ -33,12 +35,12 @@ public struct PastelCollectionCard: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(collection.name)
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(Theme.appTextPrimary)
+                        .foregroundColor(Theme.onPastelPrimary)
                         .lineLimit(1)
                     
                     Text(collection.description.isEmpty ? "Collection" : collection.description)
                         .font(.system(size: 12))
-                        .foregroundColor(Theme.appTextSecondary)
+                        .foregroundColor(Theme.onPastelSecondary)
                         .lineLimit(1)
                 }
             }

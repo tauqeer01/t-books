@@ -17,9 +17,11 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
@@ -27,11 +29,14 @@
 	<key>UIFileSharingEnabled</key>
 	<true/>
 	<key>UILaunchScreen</key>
-	<dict/>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>AHT Books uses the camera to scan signatures or document pages into your notes.</string>
+	<string>AHT Books uses the camera only when you choose to take a photo to add to a note.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>AHT Books accesses your photo library to attach images to your notes and flashcards.</string>
+	<string>AHT Books uses photos you choose to add images to your notes.</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

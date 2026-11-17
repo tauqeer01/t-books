@@ -373,6 +373,8 @@ private struct SignaturePickerSheet: View {
                                     .resizable()
                                     .scaledToFit()
                                     .frame(height: 50)
+                                    .padding(.horizontal, 8)
+                                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.white))
                             }
                             Spacer()
                             Text(sig.kind.title)

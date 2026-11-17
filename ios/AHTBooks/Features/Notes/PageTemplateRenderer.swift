@@ -282,7 +282,7 @@ public struct PageTemplatePicker: View {
                                 .padding(.vertical, 8)
                                 .background(
                                     Capsule()
-                                        .fill(selectedTheme == theme ? Theme.brandPurpleSoft : Color(hex: "#F1F5F9"))
+                                        .fill(selectedTheme == theme ? Theme.brandPurpleSoft : Theme.appSurfaceVariant)
                                 )
                                 .overlay(
                                     Capsule()

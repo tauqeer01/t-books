@@ -37,6 +37,7 @@ public struct PDFReaderView: View {
     @State private var selectionNoteDraft: ReaderTextSelection?
 
     @State private var sessionStartTimestamp = Date()
+    @Environment(\.scenePhase) private var scenePhase
 
     private let isUITesting = ProcessInfo.processInfo.arguments.contains("-UITests")
 
@@ -166,8 +167,24 @@ public struct PDFReaderView: View {
         .onAppear {
             loadDocument()
             applyDialTool(selectedDialTool)
+            sessionStartTimestamp = Date()
+            UIApplication.shared.isIdleTimerDisabled = storage.preferences.keepScreenOn
         }
-        .onDisappear { recordReadingTime() }
+        .onDisappear {
+            recordReadingTime()
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
+        .onChange(of: storage.preferences.keepScreenOn) { _, keepOn in
+            UIApplication.shared.isIdleTimerDisabled = keepOn
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // Only time with the reader on screen counts toward the reading goal
+            if phase == .active {
+                sessionStartTimestamp = Date()
+            } else {
+                recordReadingTime()
+            }
+        }
         .sheet(isPresented: $showingOutlineSheet) {
             OutlineSheetView(pdfDocument: pdfDocument) { jumpToPage($0) }
         }
@@ -886,7 +903,6 @@ public struct ReaderSettingsSheet: View {
                         Text("Continuous Vertical").tag(PageScrollMode.CONTINUOUS_VERTICAL)
                         Text("Horizontal Paging").tag(PageScrollMode.HORIZONTAL_PAGING)
                         Text("Single Page").tag(PageScrollMode.SINGLE_PAGE)
-                        Text("Book Page Curl").tag(PageScrollMode.BOOK_CURL)
                     }
                 }
                 
@@ -902,7 +918,6 @@ public struct ReaderSettingsSheet: View {
                 
                 Section(header: Text("Display Settings")) {
                     Toggle("Keep Screen Awake", isOn: $storage.preferences.keepScreenOn)
-                    Toggle("High-Resolution Rendering", isOn: $storage.preferences.highResolutionRendering)
                 }
             }
             .navigationTitle("Reader Settings")
@@ -910,7 +925,7 @@ public struct ReaderSettingsSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
-                        storage.saveAll()
+                        storage.savePreferences()
                         dismiss()
                     }
                 }

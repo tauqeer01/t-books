@@ -37,7 +37,7 @@ public enum NoteExporter {
             }
             
             // 3. Draw PencilKit ink
-            let inkImage = drawing.image(from: CGRect(origin: .zero, size: CGSize(width: a4Width, height: a4Height)), scale: scale)
+            let inkImage = drawing.trueColorImage(from: CGRect(origin: .zero, size: CGSize(width: a4Width, height: a4Height)), scale: scale)
             inkImage.draw(in: rect)
             
             // 4. Draw tape elements (on top of ink)
@@ -83,7 +83,7 @@ public enum NoteExporter {
                 
                 // 3. Ink layer
                 let drawing = loadDrawing(index)
-                let inkImage = drawing.image(from: pageRect, scale: 2.0)
+                let inkImage = drawing.trueColorImage(from: pageRect, scale: 2.0)
                 inkImage.draw(in: pageRect)
                 
                 // 4. Tape layer (above ink)

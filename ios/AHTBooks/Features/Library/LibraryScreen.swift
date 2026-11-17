@@ -4,10 +4,12 @@ public struct LibraryScreen: View {
     @ObservedObject var storage = StorageManager.shared
     @Binding var activeBook: Book?
     @State private var searchQuery: String = ""
-    @State private var isGridView: Bool = true
+    private var isGridView: Bool { storage.preferences.libraryGrid }
     @State private var selectedFilter: String = "All"
     @State private var showingDocPicker: Bool = false
     @State private var bookForDetails: Book? = nil
+    @State private var bookForCollections: Book? = nil
+    @State private var bookToDelete: Book? = nil
     
     private let filters = ["All", "Favorites", "Recent", "Unread", "Completed"]
     
@@ -19,6 +21,10 @@ public struct LibraryScreen: View {
         var list = storage.books
         if selectedFilter == "Favorites" {
             list = list.filter { $0.isFavorite }
+        } else if selectedFilter == "Recent" {
+            // Opened in the last 14 days
+            let cutoff = Int64(Date().addingTimeInterval(-14 * 86_400).timeIntervalSince1970 * 1000)
+            list = list.filter { $0.lastReadTimestamp >= cutoff }
         } else if selectedFilter == "Unread" {
             list = list.filter { $0.readingProgress < 0.05 }
         } else if selectedFilter == "Completed" {
@@ -93,13 +99,17 @@ public struct LibraryScreen: View {
                     Spacer()
                     
                     // Toggle Grid/List
-                    Button(action: { isGridView.toggle() }) {
+                    Button(action: {
+                        storage.preferences.libraryGrid.toggle()
+                        storage.savePreferences()
+                    }) {
                         Image(systemName: isGridView ? "list.bullet" : "square.grid.2x2")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(Theme.brandPurple)
                             .padding(8)
                             .background(Circle().fill(Theme.appSurface))
                     }
+                    .accessibilityLabel(isGridView ? "Show as list" : "Show as grid")
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
@@ -142,9 +152,14 @@ public struct LibraryScreen: View {
                                     } label: {
                                         Label(book.isFavorite ? "Remove from Favorites" : "Add to Favorites", systemImage: "star")
                                     }
+                                    Button {
+                                        bookForCollections = book
+                                    } label: {
+                                        Label("Collections…", systemImage: "square.stack.3d.up")
+                                    }
                                     Divider()
                                     Button(role: .destructive) {
-                                        storage.deleteBook(bookId: book.id)
+                                        bookToDelete = book
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
@@ -195,17 +210,35 @@ public struct LibraryScreen: View {
                             }
                         }
                         .onDelete { indexSet in
-                            for idx in indexSet {
-                                storage.deleteBook(bookId: filteredBooks[idx].id)
-                            }
+                            if let idx = indexSet.first { bookToDelete = filteredBooks[idx] }
                         }
                     }
                     .listStyle(PlainListStyle())
+                    .scrollContentBackground(.hidden)
                 }
             }
             .navigationTitle("Library")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Menu {
+                        Picker("Sort by", selection: Binding(
+                            get: { storage.preferences.librarySort },
+                            set: { storage.preferences.librarySort = $0; storage.savePreferences() }
+                        )) {
+                            Text("Recently Opened").tag(BookSortOrder.RECENTLY_OPENED)
+                            Text("Title").tag(BookSortOrder.TITLE)
+                            Text("Author").tag(BookSortOrder.AUTHOR)
+                            Text("Progress").tag(BookSortOrder.PROGRESS)
+                            Text("Date Added").tag(BookSortOrder.DATE_ADDED)
+                        }
+                    } label: {
+                        Image(systemName: "arrow.up.arrow.down")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(Theme.brandPurple)
+                    }
+                    .accessibilityLabel("Sort books")
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showingDocPicker = true }) {
                         Image(systemName: "plus")
@@ -221,6 +254,20 @@ public struct LibraryScreen: View {
                         activeBook = newBook
                     }
                 }
+            }
+            .sheet(item: $bookForCollections) { b in
+                BookCollectionsSheet(bookId: b.id)
+            }
+            .alert("Remove from Library?", isPresented: Binding(
+                get: { bookToDelete != nil },
+                set: { if !$0 { bookToDelete = nil } }
+            )) {
+                Button("Cancel", role: .cancel) {}
+                Button("Remove", role: .destructive) {
+                    if let book = bookToDelete { storage.deleteBook(bookId: book.id) }
+                }
+            } message: {
+                Text("“\(bookToDelete?.title ?? "")” and its highlights, notes and bookmarks will be deleted from AHT Books.")
             }
             .sheet(item: $bookForDetails) { b in
                 BookDetailsScreen(book: b, onOpenReader: {

@@ -8,6 +8,8 @@ public struct HomeScreen: View {
     @State private var showingSettings = false
     @State private var showingCollections = false
     @State private var showingReadingGoal = false
+    @AppStorage(AppThemeMode.storageKey) private var themeMode: AppThemeMode = .system
+    @Environment(\.colorScheme) private var colorScheme
 
     public init(selectedTab: Binding<Int>, activeBook: Binding<Book?>) {
         self._selectedTab = selectedTab
@@ -55,12 +57,21 @@ public struct HomeScreen: View {
                                     .font(.system(size: 26))
                                     .foregroundColor(Theme.brandPurple)
                             }
+                            .accessibilityLabel("Import PDF")
                             
                             Button(action: { showingSettings = true }) {
                                 Image(systemName: "gearshape")
                                     .font(.system(size: 20, weight: .medium))
                                     .foregroundColor(Theme.appTextPrimary)
                             }
+                            .accessibilityLabel("Settings")
+
+                            Button(action: { themeMode = colorScheme == .dark ? .light : .dark }) {
+                                Image(systemName: colorScheme == .dark ? "sun.max.fill" : "moon.fill")
+                                    .font(.system(size: 19, weight: .medium))
+                                    .foregroundColor(Theme.appTextPrimary)
+                            }
+                            .accessibilityLabel(colorScheme == .dark ? "Switch to light mode" : "Switch to dark mode")
                         }
                     }
                     .padding(.horizontal, 20)
@@ -158,7 +169,7 @@ public struct HomeScreen: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 12) {
                                 ForEach(storage.collections) { col in
-                                    PastelCollectionCard(collection: col) {
+                                    PastelCollectionCard(collection: col, bookCount: storage.bookCount(in: col)) {
                                         showingCollections = true
                                     }
                                 }

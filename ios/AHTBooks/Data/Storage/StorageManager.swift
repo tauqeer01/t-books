@@ -40,19 +40,16 @@ public final class StorageManager: ObservableObject {
         createSubdirectoriesIfNeeded()
         migrateLegacySignatures()
         loadAll()
-        
-        // Ensure sample PDF exists on disk even across container UUID changes
-        createSampleBookIfNeeded()
-        
-        if collections.isEmpty {
-            createDefaultCollections()
+
+        // Starter content is added once, on first launch only, so anything the user deletes stays deleted.
+        if !UserDefaults.standard.bool(forKey: Self.didSeedStarterContentKey) {
+            if books.isEmpty { createSampleBook() }
+            if collections.isEmpty { createDefaultCollections() }
+            if decks.isEmpty { createSampleDeck() }
+            if notes.isEmpty { createSampleNoteIfNeeded() }
+            UserDefaults.standard.set(true, forKey: Self.didSeedStarterContentKey)
         }
-        if decks.isEmpty {
-            createSampleDeck()
-        }
-        if notes.isEmpty {
-            createSampleNoteIfNeeded()
-        }
+        restoreSampleBookFileIfNeeded()
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-UITestsReset") {
             resetSampleBookForUITests()
@@ -63,7 +60,8 @@ public final class StorageManager: ObservableObject {
     #if DEBUG
     /// UI tests start from a clean sample book: no annotations or bookmarks, page 1, horizontal paging.
     private func resetSampleBookForUITests() {
-        let sampleId = "sample_aircraft"
+        let sampleId = Self.sampleBookId
+        if !books.contains(where: { $0.id == sampleId }) { createSampleBook() }
         annotations.removeAll { $0.bookId == sampleId }
         bookmarks.removeAll { $0.bookId == sampleId }
         if let i = books.firstIndex(where: { $0.id == sampleId }) {
@@ -175,6 +173,83 @@ public final class StorageManager: ObservableObject {
         self.savedSignatures = loadJSON(filename: "signatures.json", fallback: [])
         self.preferences = loadJSON(filename: "preferences.json", fallback: UserReadingPreferences())
         self.readingStats = loadJSON(filename: "reading_stats.json", fallback: ReadingStats())
+
+        // Page curl was never a separate mode on iOS; it behaved as horizontal paging.
+        if preferences.scrollMode == .BOOK_CURL { preferences.scrollMode = .HORIZONTAL_PAGING }
+
+        // iOS can move the app's data container between launches (app updates, device restores),
+        // so absolute paths saved earlier are re-anchored to the current Documents folder.
+        var pathsChanged = false
+        for i in books.indices {
+            let file = relocated(books[i].filePath, in: "PDFs")
+            if file != books[i].filePath { books[i].filePath = file; pathsChanged = true }
+            if let thumb = books[i].thumbnailPath {
+                let moved = relocated(thumb, in: "Thumbnails")
+                if moved != thumb { books[i].thumbnailPath = moved; pathsChanged = true }
+            }
+        }
+        if pathsChanged { saveJSON(books, filename: "books.json") }
+    }
+
+    /// Returns the file's path in the current container when the saved absolute path no longer exists.
+    private func relocated(_ path: String, in folder: String) -> String {
+        guard !path.isEmpty, !fileManager.fileExists(atPath: path) else { return path }
+        let candidate = documentsURL.appendingPathComponent(folder)
+            .appendingPathComponent((path as NSString).lastPathComponent).path
+        return fileManager.fileExists(atPath: candidate) ? candidate : path
+    }
+
+    public func savePreferences() {
+        saveJSON(preferences, filename: "preferences.json")
+    }
+
+    // MARK: - Collections
+
+    public func bookCount(in collection: BookCollection) -> Int {
+        books.reduce(0) { $0 + ($1.collectionIds.contains(collection.id) ? 1 : 0) }
+    }
+
+    public func setCollections(bookId: String, collectionIds: [String]) {
+        guard let index = books.firstIndex(where: { $0.id == bookId }) else { return }
+        books[index].collectionIds = collectionIds
+        saveJSON(books, filename: "books.json")
+    }
+
+    public func addCollection(name: String, description: String) {
+        let pastels = ["#EDE9FE", "#DCFCE7", "#FFE4E6", "#FEF3C7", "#D1FAE5", "#FFEDD5", "#DBEAFE"]
+        let color = pastels[collections.count % pastels.count]
+        collections.append(BookCollection(name: name, description: description, pastelColorHex: color, iconName: "folder.fill"))
+        saveJSON(collections, filename: "collections.json")
+    }
+
+    /// Deletes the collection only; its books stay in the library.
+    public func deleteCollection(id: String) {
+        collections.removeAll { $0.id == id }
+        for i in books.indices where books[i].collectionIds.contains(id) {
+            books[i].collectionIds.removeAll { $0 == id }
+        }
+        saveJSON(collections, filename: "collections.json")
+        saveJSON(books, filename: "books.json")
+    }
+
+    // MARK: - Decks
+
+    public func addDeck(name: String) {
+        decks.append(Deck(name: name))
+        saveJSON(decks, filename: "decks.json")
+    }
+
+    /// Deletes a deck with its cards, their review schedules and review history.
+    public func deleteDeck(id: String) {
+        let cardIds = Set(cards.filter { $0.deckId == id }.map(\.id))
+        decks.removeAll { $0.id == id }
+        cards.removeAll { $0.deckId == id }
+        schedules.removeAll { cardIds.contains($0.cardId) }
+        reviewLogs.removeAll { $0.deckId == id || cardIds.contains($0.cardId) }
+        saveJSON(decks, filename: "decks.json")
+        saveJSON(cards, filename: "cards.json")
+        saveJSON(schedules, filename: "schedules.json")
+        saveJSON(reviewLogs, filename: "review_logs.json")
     }
     
     // MARK: - Book & Library Operations
@@ -205,10 +280,12 @@ public final class StorageManager: ObservableObject {
         let attr = (try? fileManager.attributesOfItem(atPath: destURL.path)) ?? [:]
         let fileSize = (attr[.size] as? NSNumber)?.int64Value ?? 0
         
-        let title = pdfDoc.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String
-            ?? sourceURL.deletingPathExtension().lastPathComponent
-        let author = pdfDoc.documentAttributes?[PDFDocumentAttribute.authorAttribute] as? String
-            ?? "Unknown Author"
+        func attribute(_ key: PDFDocumentAttribute) -> String? {
+            let value = (pdfDoc.documentAttributes?[key] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return value?.isEmpty == false ? value : nil
+        }
+        let title = attribute(.titleAttribute) ?? sourceURL.deletingPathExtension().lastPathComponent
+        let author = attribute(.authorAttribute) ?? "Unknown Author"
         
         let thumbPath = generateThumbnail(for: pdfDoc, id: fileId)
         
@@ -451,10 +528,47 @@ public final class StorageManager: ObservableObject {
         saveAll()
     }
     
-    private func createSampleBookIfNeeded() {
-        let sampleFileName = "aircraft_systems_sample.pdf"
-        let destURL = documentsURL.appendingPathComponent("PDFs").appendingPathComponent(sampleFileName)
-        
+    private static let didSeedStarterContentKey = "starterContent.seeded.v1"
+    private static let sampleBookId = "sample_aircraft"
+    private var sampleBookURL: URL {
+        documentsURL.appendingPathComponent("PDFs").appendingPathComponent("aircraft_systems_sample.pdf")
+    }
+
+    /// Adds the bundled sample document to an empty library (first launch only).
+    private func createSampleBook() {
+        guard let data = renderSamplePDF(to: sampleBookURL),
+              let pdfDoc = PDFDocument(url: sampleBookURL) else { return }
+        let now = Int64(Date().timeIntervalSince1970 * 1000)
+        books.insert(Book(
+            id: Self.sampleBookId,
+            title: "Aircraft Systems & Operations",
+            author: "AHT Books sample document",
+            filePath: sampleBookURL.path,
+            fileSizeBytes: Int64(data.count),
+            pageCount: pdfDoc.pageCount,
+            category: "Sample",
+            thumbnailPath: generateThumbnail(for: pdfDoc, id: Self.sampleBookId),
+            coverColorHex: "#5935FF",
+            lastReadTimestamp: now,
+            addedTimestamp: now
+        ), at: 0)
+        saveJSON(books, filename: "books.json")
+    }
+
+    /// Re-creates the sample PDF if the user still has the sample book but its file is gone.
+    private func restoreSampleBookFileIfNeeded() {
+        guard let index = books.firstIndex(where: { $0.id == Self.sampleBookId }),
+              !fileManager.fileExists(atPath: books[index].filePath) else { return }
+        guard renderSamplePDF(to: sampleBookURL) != nil, let pdfDoc = PDFDocument(url: sampleBookURL) else { return }
+        books[index].filePath = sampleBookURL.path
+        if books[index].thumbnailPath.map({ fileManager.fileExists(atPath: $0) }) != true {
+            books[index].thumbnailPath = generateThumbnail(for: pdfDoc, id: Self.sampleBookId)
+        }
+        saveJSON(books, filename: "books.json")
+    }
+
+    @discardableResult
+    private func renderSamplePDF(to destURL: URL) -> Data? {
         // Render 2-page sample PDF
         let format = UIGraphicsPDFRendererFormat()
         let pageRect = CGRect(x: 0, y: 0, width: 612, height: 792) // Standard Letter
@@ -465,15 +579,15 @@ public final class StorageManager: ObservableObject {
             context.beginPage()
             let titleAttr: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 26, weight: .bold),
-                .foregroundColor: UIColor(Theme.brandPurple)
+                .foregroundColor: UIColor(red: 0x59/255, green: 0x35/255, blue: 1, alpha: 1)
             ]
             let headingAttr: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 18, weight: .semibold),
-                .foregroundColor: UIColor(Theme.appTextPrimary)
+                .foregroundColor: UIColor(red: 0x10/255, green: 0x13/255, blue: 0x26/255, alpha: 1)
             ]
             let bodyAttr: [NSAttributedString.Key: Any] = [
                 .font: UIFont.systemFont(ofSize: 13, weight: .regular),
-                .foregroundColor: UIColor(Theme.appTextPrimary)
+                .foregroundColor: UIColor(red: 0x10/255, green: 0x13/255, blue: 0x26/255, alpha: 1)
             ]
             
             "AHT Books Reference Manual".draw(at: CGPoint(x: 54, y: 60), withAttributes: titleAttr)
@@ -506,36 +620,11 @@ public final class StorageManager: ObservableObject {
             textPage2.draw(in: CGRect(x: 54, y: 95, width: 504, height: 600), withAttributes: bodyAttr)
         }
         
-        try? data.write(to: destURL)
-        
-        if let pdfDoc = PDFDocument(url: destURL) {
-            let thumb = generateThumbnail(for: pdfDoc, id: "sample_aircraft")
-            if let index = self.books.firstIndex(where: { $0.id == "sample_aircraft" }) {
-                self.books[index].filePath = destURL.path
-                if self.books[index].thumbnailPath == nil {
-                    self.books[index].thumbnailPath = thumb
-                }
-            } else if self.books.isEmpty {
-                let sampleBook = Book(
-                    id: "sample_aircraft",
-                    title: "Aircraft Systems & Operations",
-                    author: "Federal Aviation Administration",
-                    filePath: destURL.path,
-                    fileSizeBytes: Int64(data.count),
-                    pageCount: 2,
-                    currentPage: 0,
-                    readingProgress: 0.0,
-                    isFavorite: true,
-                    category: "Aviation & Systems",
-                    collectionIds: [],
-                    thumbnailPath: thumb,
-                    coverColorHex: "#5935FF",
-                    lastReadTimestamp: Int64(Date().timeIntervalSince1970 * 1000),
-                    addedTimestamp: Int64(Date().timeIntervalSince1970 * 1000)
-                )
-                self.books = [sampleBook]
-            }
-            saveJSON(self.books, filename: "books.json")
+        do {
+            try data.write(to: destURL, options: .atomic)
+            return data
+        } catch {
+            return nil
         }
     }
 }

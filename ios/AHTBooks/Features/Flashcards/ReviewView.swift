@@ -266,12 +266,25 @@ private struct ScratchpadCanvas: UIViewRepresentable {
     func makeUIView(context: Context) -> PKCanvasView {
         let canvas = PKCanvasView()
         canvas.backgroundColor = UIColor.white.withAlphaComponent(0.85)
+        canvas.overrideUserInterfaceStyle = .light // white pad: show black ink as black in dark mode
         canvas.drawing = drawing
         canvas.tool = PKInkingTool(.pen, color: .black, width: 2.0)
+        canvas.delegate = context.coordinator
         return canvas
     }
     
     func updateUIView(_ canvas: PKCanvasView, context: Context) {
-        canvas.drawing = drawing
+        // Only push changes made from SwiftUI (clearing for the next card); otherwise keep the user's ink
+        if canvas.drawing != drawing { canvas.drawing = drawing }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(drawing: $drawing) }
+
+    final class Coordinator: NSObject, PKCanvasViewDelegate {
+        var drawing: Binding<PKDrawing>
+        init(drawing: Binding<PKDrawing>) { self.drawing = drawing }
+        func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) {
+            if drawing.wrappedValue != canvasView.drawing { drawing.wrappedValue = canvasView.drawing }
+        }
     }
 }

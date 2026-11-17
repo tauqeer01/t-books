@@ -69,6 +69,15 @@ def main():
         build_files.append(f'\t\t{assets_bf_uuid} /* Assets.xcassets in Resources */ = {{isa = PBXBuildFile; fileRef = {assets_uuid} /* Assets.xcassets */; }};')
         resources_entries.append(f'\t\t\t\t{assets_bf_uuid} /* Assets.xcassets in Resources */,')
 
+    # Privacy manifest (App Store requires it for required-reason APIs such as UserDefaults)
+    privacy_path = SRC_DIR / "Resources" / "PrivacyInfo.xcprivacy"
+    privacy_uuid = make_uuid("FILE_PrivacyInfo.xcprivacy")
+    if privacy_path.exists():
+        privacy_bf_uuid = make_uuid("BUILDFILE_PrivacyInfo.xcprivacy")
+        file_refs.append(f'\t\t{privacy_uuid} /* PrivacyInfo.xcprivacy */ = {{isa = PBXFileReference; lastKnownFileType = text.xml; path = "PrivacyInfo.xcprivacy"; sourceTree = "<group>"; }};')
+        build_files.append(f'\t\t{privacy_bf_uuid} /* PrivacyInfo.xcprivacy in Resources */ = {{isa = PBXBuildFile; fileRef = {privacy_uuid} /* PrivacyInfo.xcprivacy */; }};')
+        resources_entries.append(f'\t\t\t\t{privacy_bf_uuid} /* PrivacyInfo.xcprivacy in Resources */,')
+
     # Info.plist
     info_plist_path = SRC_DIR / "Info.plist"
     info_plist_uuid = make_uuid("FILE_Info.plist")
@@ -217,6 +226,8 @@ def main():
                 children.append(f'{make_uuid("FILE_Assets.xcassets")} /* Assets.xcassets */')
             elif item.name == "Info.plist":
                 children.append(f'{info_plist_uuid} /* Info.plist */')
+            elif item.name == "PrivacyInfo.xcprivacy":
+                children.append(f'{privacy_uuid} /* PrivacyInfo.xcprivacy */')
             elif item.is_dir() and not item.name.endswith(".xcassets") and not item.name.endswith(".appiconset") and not item.name.endswith(".colorset"):
                 sub_uuid, sub_defs = build_group(item, item.name)
                 children.append(f'{sub_uuid} /* {item.name} */')

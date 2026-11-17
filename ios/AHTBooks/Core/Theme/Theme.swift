@@ -1,19 +1,51 @@
 import SwiftUI
 
+/// App-wide appearance, matching Android's AppThemeMode. Stored with @AppStorage(AppThemeMode.storageKey).
+public enum AppThemeMode: String, CaseIterable, Identifiable {
+    case system, light, dark
+    public static let storageKey = "app.themeMode"
+    public var id: String { rawValue }
+    public var displayName: String {
+        switch self {
+        case .system: return "System default"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+    public var colorScheme: ColorScheme? {
+        switch self {
+        case .system: return nil
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
 public enum Theme {
+    /// A color that follows light/dark appearance (values mirror Android's light and dark color schemes).
+    private static func adaptive(_ light: String, _ dark: String) -> Color {
+        let lightColor = UIColor(Color(hex: light))
+        let darkColor = UIColor(Color(hex: dark))
+        return Color(UIColor { $0.userInterfaceStyle == .dark ? darkColor : lightColor })
+    }
+
     // Brand Colors (matching Android BookFlow / AHT Books palette)
     public static let brandPurple = Color(hex: "#5935FF")
     public static let brandPurpleLight = Color(hex: "#6366F1")
-    public static let brandPurpleSoft = Color(hex: "#ECEBFA")
-    public static let brandPurpleDark = Color(hex: "#3730A3")
-    
+    public static let brandPurpleSoft = adaptive("#ECEBFA", "#1E1B4B")
+    public static let brandPurpleDark = adaptive("#3730A3", "#C7D2FE")
+
     // Backgrounds & Neutrals
-    public static let appBackground = Color(hex: "#F8F8FF")
-    public static let appSurface = Color.white
-    public static let appSurfaceVariant = Color(hex: "#F1F5F9")
-    public static let appTextPrimary = Color(hex: "#101326")
-    public static let appTextSecondary = Color(hex: "#666B85")
-    public static let appDivider = Color(hex: "#E2E8F0")
+    public static let appBackground = adaptive("#F8F8FF", "#0B1120")
+    public static let appSurface = adaptive("#FFFFFF", "#151E2E")
+    public static let appSurfaceVariant = adaptive("#F1F5F9", "#243044")
+    public static let appTextPrimary = adaptive("#101326", "#F1F5F9")
+    public static let appTextSecondary = adaptive("#666B85", "#A3B1C6")
+    public static let appDivider = adaptive("#E2E8F0", "#2A3547")
+
+    /// Text drawn on top of the fixed pastel collection colors, which stay light in both appearances.
+    public static let onPastelPrimary = Color(hex: "#101326")
+    public static let onPastelSecondary = Color(hex: "#4B5068")
     
     // Pastel Collection Colors
     public static let pastelPurple = Color(hex: "#EDE9FE")

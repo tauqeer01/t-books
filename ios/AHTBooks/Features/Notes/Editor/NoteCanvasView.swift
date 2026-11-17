@@ -68,6 +68,8 @@ final class NoteCanvasView: PKCanvasView, UIGestureRecognizerDelegate, UITextVie
         // the pages. Keep it clear; the grey around the pages comes from `NoteCanvasRepresentable`.
         backgroundColor = .clear
         isOpaque = false
+        // Pages have their own paper colors; keep PencilKit from re-coloring ink for the app's dark mode
+        overrideUserInterfaceStyle = .light
         events.canvas = self
         delegate = events
         alwaysBounceVertical = true
@@ -824,7 +826,7 @@ final class NotePageView: UIView {
             l.frame.size.height = max(l.frame.height, l.sizeThatFits(CGSize(width: l.frame.width, height: .greatestFiniteMagnitude)).height)
             container.addSubview(l)
         case .QUOTE:
-            container.backgroundColor = UIColor(Theme.brandPurpleSoft).withAlphaComponent(darkPaper ? 0.2 : 0.8)
+            container.backgroundColor = UIColor(Color(hex: "#ECEBFA")).withAlphaComponent(darkPaper ? 0.2 : 0.8)
             container.layer.cornerRadius = 6
             let bar = UIView(frame: CGRect(x: 0, y: 0, width: 4, height: CGFloat(el.height)))
             bar.backgroundColor = UIColor(Color(hex: el.fillColor ?? "#5935FF"))
