@@ -3,49 +3,442 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AHT Books – PDF Reader &amp; Notes</title>
-<meta name="description" content="AHT Books is a private, offline PDF reader for iPhone, iPad and Android: read and annotate PDFs, take handwritten notes, and study with flashcards.">
+<title>AHT Books – PDF Reader, Notes &amp; Flashcards</title>
+<meta name="description" content="AHT Books is a private, offline PDF reader for iPhone, iPad and Android. Highlight and annotate PDFs, write notes by hand, study with flashcards, and fill and sign documents. No account, no ads.">
+<meta name="theme-color" content="#5935FF">
+<meta property="og:title" content="AHT Books – PDF Reader, Notes & Flashcards">
+<meta property="og:description" content="Read PDFs, mark them up, write notes by hand and study with flashcards. Offline, with no account and no ads.">
+<meta property="og:image" content="https://tauqeer01.github.io/t-books/icon-512.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&display=swap" rel="stylesheet">
 <style>
-:root { color-scheme: light dark; --ink: #101326; --muted: #666b85; --bg: #f8f8ff; --card: #ffffff; --brand: #5935ff; }
-@media (prefers-color-scheme: dark) { :root { --ink: #f1f5f9; --muted: #a3b1c6; --bg: #0b1120; --card: #151e2e; --brand: #8b7bff; } }
+/* AHT Books: the page is a Cornell notes sheet. Cue column on the left behind a margin rule,
+   notes on the right, a summary strip at the bottom. */
+:root {
+  color-scheme: light dark;
+  --paper: #F6F6FB;
+  --sheet: #FFFFFF;
+  --ink: #14162B;
+  --graphite: #5A5F7A;
+  --rule: #DADCF0;
+  --pen: #5935FF;
+  --hl: #FFE94D;
+  --margin: rgba(89, 53, 255, .35);
+  --bezel: #14162B;
+  --bezel-edge: transparent;
+  --cue-w: 13rem;
+  --serif: "Literata", "Iowan Old Style", Georgia, serif;
+  --hand: "Caveat", "Bradley Hand", cursive;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #0E1222;
+    --sheet: #151B30;
+    --ink: #EEF0F8;
+    --graphite: #A2AAC4;
+    --rule: #262E4A;
+    --pen: #A493FF;
+    --hl: rgba(255, 226, 0, .38);
+    --margin: rgba(164, 147, 255, .4);
+    --bezel: #04060E;
+    --bezel-edge: rgba(255, 255, 255, .14);
+  }
+}
+
 * { box-sizing: border-box; }
-body { margin: 0; font: 16px/1.6 -apple-system, system-ui, Roboto, sans-serif; color: var(--ink); background: var(--bg); }
-main { max-width: 720px; margin: 0 auto; padding: 48px 20px; }
-header { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
-header img { width: 64px; height: 64px; border-radius: 16px; }
-h1 { font-size: 30px; margin: 0; }
-.tagline { color: var(--muted); margin: 0 0 28px; }
-.card { background: var(--card); border-radius: 16px; padding: 20px 22px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
-.card h2 { font-size: 17px; margin: 0 0 6px; }
-.card p { margin: 0; color: var(--muted); }
-a { color: var(--brand); font-weight: 600; text-decoration: none; }
-a:hover { text-decoration: underline; }
-footer { color: var(--muted); font-size: 14px; margin-top: 28px; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1.0625rem/1.7 var(--serif);
+  font-optical-sizing: auto;
+}
+img { display: block; max-width: 100%; height: auto; }
+a { color: var(--pen); text-underline-offset: .18em; text-decoration-thickness: 1px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 3px solid var(--pen); outline-offset: 3px; border-radius: 4px; }
+
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 1rem; top: 1rem; background: var(--sheet); padding: .5rem .8rem; z-index: 10; }
+
+/* ---------- Top bar ---------- */
+.bar {
+  max-width: 72rem; margin: 0 auto; padding: 1.25rem 1.5rem;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.brand { display: flex; align-items: center; gap: .7rem; color: var(--ink); text-decoration: none; font-weight: 700; font-size: 1.15rem; }
+.brand img { width: 2.4rem; height: 2.4rem; border-radius: .6rem; }
+.bar nav { display: flex; gap: 1.4rem; font-size: .95rem; }
+.bar nav a { color: var(--graphite); text-decoration: none; }
+.bar nav a:hover { color: var(--pen); }
+
+/* ---------- Cornell sheet ---------- */
+.sheet { max-width: 72rem; margin: 0 auto; padding: 0 1.5rem; }
+.row {
+  display: grid;
+  grid-template-columns: var(--cue-w) minmax(0, 1fr);
+  border-top: 1px solid var(--rule);
+}
+.cue {
+  padding: 2.6rem 1.5rem 2rem 0;
+  border-right: 2px solid var(--margin);
+  font: 600 1.85rem/1.15 var(--hand);
+  color: var(--pen);
+}
+.cue small { display: block; font-size: 1.25rem; font-weight: 500; color: var(--graphite); margin-top: .35rem; }
+.notes { padding: 2.6rem 0 3.2rem 2.5rem; }
+
+/* ---------- Hero ---------- */
+.hero .notes { padding-top: 3.5rem; padding-bottom: 4rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3rem; align-items: center; }
+.hero h1 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  line-height: 1.04;
+  font-weight: 700;
+  letter-spacing: -.02em;
+  margin: 0 0 1.4rem;
+}
+.hero h1 span { display: block; white-space: nowrap; }
+.lede { font-size: 1.3rem; line-height: 1.6; max-width: 34ch; margin: 0 0 2rem; color: var(--ink); }
+.mark {
+  background-image: linear-gradient(transparent 14%, var(--hl) 14%, var(--hl) 90%, transparent 90%);
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+  padding: 0 .12em;
+  margin: 0 -.12em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mark { background-size: 0% 100%; animation: sweep .9s cubic-bezier(.6, .05, .3, 1) .5s forwards; }
+  @keyframes sweep { to { background-size: 100% 100%; } }
+}
+
+.stores { display: flex; flex-wrap: wrap; gap: .8rem; align-items: center; }
+.store {
+  display: inline-flex; flex-direction: column; justify-content: center;
+  min-width: 11.5rem; padding: .6rem 1.1rem; border-radius: .7rem;
+  background: var(--ink); color: var(--paper); text-decoration: none; line-height: 1.2;
+}
+.store span { font-size: .78rem; opacity: .8; }
+.store strong { font-size: 1.12rem; font-weight: 600; }
+.store:hover { background: var(--pen); color: #fff; }
+.store.soon { background: transparent; color: var(--graphite); border: 1.5px dashed var(--rule); cursor: default; }
+
+/* Phones */
+.phone {
+  width: 16.5rem;
+  border-radius: 2.4rem;
+  padding: .45rem;
+  background: var(--bezel);
+  box-shadow: 0 30px 60px -28px rgba(20, 22, 43, .55), 0 0 0 1px var(--bezel-edge);
+}
+.phone img { border-radius: 2rem; aspect-ratio: 600 / 1304; object-fit: cover; }
+.hero-phones { position: relative; width: 25rem; height: 41rem; }
+.hero-phones .phone { position: absolute; }
+.hero-phones .back { left: 0; top: 2.5rem; width: 13rem; transform: rotate(-5deg); }
+.hero-phones .front { right: 0; top: 0; }
+.hero-note {
+  position: absolute; left: .4rem; bottom: 0; margin: 0;
+  font: 600 1.45rem/1.1 var(--hand); color: var(--pen);
+  transform: rotate(-4deg);
+}
+
+/* ---------- Feature rows ---------- */
+.feature .notes { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3rem; align-items: start; }
+.feature h2, .plain h2 { font-size: 1.9rem; line-height: 1.2; font-weight: 700; letter-spacing: -.01em; margin: 0 0 .8rem; max-width: 22ch; }
+.feature p.intro, .plain p.intro { color: var(--graphite); margin: 0 0 1.2rem; max-width: 52ch; }
+.points { margin: 0; padding: 0; list-style: none; max-width: 52ch; }
+.points li { position: relative; padding-left: 1.5rem; margin: .45rem 0; }
+.points li::before {
+  content: ""; position: absolute; left: 0; top: .78em;
+  width: .7rem; height: 2px; background: var(--pen); border-radius: 2px;
+}
+.feature .phone { width: 14.5rem; }
+
+/* Two smaller features side by side, no phone */
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+.duo h3 { font-size: 1.3rem; margin: 0 0 .5rem; }
+.duo p { margin: 0; color: var(--graphite); }
+
+/* Privacy */
+.private { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem 2.5rem; margin: 1.4rem 0 1.2rem; padding: 0; list-style: none; max-width: 46rem; }
+.private li { padding: .55rem 0; border-bottom: 1px solid var(--rule); }
+
+/* FAQ */
+.faq { max-width: 46rem; }
+.faq details { border-bottom: 1px solid var(--rule); }
+.faq summary {
+  cursor: pointer; list-style: none; padding: 1rem 2rem 1rem 0; position: relative;
+  font-weight: 600; font-size: 1.08rem;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: "+"; position: absolute; right: .2rem; top: .7rem;
+  font: 600 1.6rem/1 var(--hand); color: var(--pen);
+  transition: transform .2s ease;
+}
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq details p { margin: 0 0 1.1rem; color: var(--graphite); max-width: 60ch; }
+.faq .platform { color: var(--ink); font-weight: 600; }
+
+/* Support */
+.contact { font-size: 1.35rem; margin: .4rem 0 .6rem; }
+.legal { display: flex; flex-wrap: wrap; gap: .4rem 1.6rem; margin-top: 1.2rem; }
+
+/* Summary strip (bottom of a Cornell page) */
+.summary { border-top: 2px solid var(--margin); padding: 2.2rem 0 3rem; display: grid; grid-template-columns: var(--cue-w) minmax(0, 1fr); }
+.summary .cue { border: 0; padding: 0; font-size: 1.6rem; }
+.summary p { margin: 0 0 0 2.5rem; color: var(--graphite); max-width: 62ch; font-size: .98rem; }
+
+/* ---------- Small screens: cue sits above its notes ---------- */
+@media (max-width: 880px) {
+  :root { --cue-w: 1fr; }
+  .row, .summary { grid-template-columns: 1fr; }
+  .cue { border-right: 0; border-left: 3px solid var(--margin); padding: 1.6rem 0 0 .9rem; font-size: 1.7rem; }
+  .notes { padding: 1rem 0 2.6rem; }
+  .hero .notes, .feature .notes { grid-template-columns: 1fr; gap: 2.4rem; }
+  .hero-phones { width: 100%; max-width: 22rem; height: 36rem; margin: 0 auto; }
+  .hero-phones .back { width: 11.5rem; }
+  .hero-phones .front { width: 14.5rem; }
+  .feature .phone { margin: 0 auto; }
+  .duo, .private { grid-template-columns: 1fr; }
+  .summary p { margin: .6rem 0 0; }
+  .bar nav { display: none; }
+}
+@media (max-width: 420px) {
+  .sheet, .bar { padding-left: 1rem; padding-right: 1rem; }
+  .hero-phones { height: 32rem; }
+  .hero-phones .back { width: 10rem; }
+  .hero-phones .front { width: 12.5rem; }
+}
 </style>
 </head>
 <body>
-<main>
-  <header>
-    <img src="icon-512.png" alt="AHT Books icon">
-    <h1>AHT Books</h1>
-  </header>
-  <p class="tagline">Read and annotate PDFs, write notes, and study with flashcards on iPhone, iPad and Android. Private and offline: no account, no ads, no tracking.</p>
+<a class="skip" href="#features">Skip to features</a>
 
-  <div class="card">
-    <h2>Privacy Policy</h2>
-    <p>How AHT Books handles your data. In short: everything stays on your device.</p>
-    <p><a href="legal/privacy-policy-ios.html">iPhone &amp; iPad</a> · <a href="legal/privacy-policy.html">Android</a></p>
-  </div>
-  <div class="card">
-    <h2><a href="legal/terms-of-use.html">Terms of Use</a></h2>
-    <p>The rules for using AHT Books.</p>
-  </div>
-  <div class="card">
-    <h2>Support</h2>
-    <p>Questions or problems? Email <a href="mailto:aht.apps@alhadaftech.com">aht.apps@alhadaftech.com</a>. On Android you can also use Settings › Report a problem in the app.</p>
-  </div>
+<header class="bar">
+  <a class="brand" href="#top"><img src="icon-512.png" alt="">AHT Books</a>
+  <nav aria-label="Page sections">
+    <a href="#features">Features</a>
+    <a href="#privacy">Privacy</a>
+    <a href="#faq">Questions</a>
+    <a href="#support">Support</a>
+  </nav>
+</header>
 
-  <footer>AHT Books is published by Al Hadaf Tech (AHT).</footer>
+<main class="sheet" id="top">
+
+  <section class="row hero" aria-labelledby="hero-title">
+    <div class="cue" aria-hidden="true">PDF reader<small>+ notebook<br>+ flashcards</small></div>
+    <div class="notes">
+      <div>
+        <h1 id="hero-title"><span>Read it.</span> <span>Mark it up.</span> <span>Remember it.</span></h1>
+        <p class="lede">AHT Books is a PDF reader, handwriting notebook and flashcard app in one. <span class="mark">It works offline, with no account and no ads.</span></p>
+        <div class="stores">
+          <a class="store" href="https://play.google.com/store/apps/details?id=com.alhadaftech.bookflow"><span>Get it on</span><strong>Google Play</strong></a>
+          <!-- When the iOS app is live, replace this with: <a class="store" href="https://apps.apple.com/app/id6835819358"><span>Download on the</span><strong>App Store</strong></a> -->
+          <span class="store soon"><span>iPhone &amp; iPad</span><strong>App Store soon</strong></span>
+        </div>
+      </div>
+      <div class="hero-phones">
+        <div class="phone back"><img src="assets/08-dark-mode.webp" alt="AHT Books home screen in dark mode" width="600" height="1304"></div>
+        <div class="phone front"><img src="assets/01-home.webp" alt="AHT Books home screen with continue reading, collections and library" width="600" height="1304"></div>
+        <p class="hero-note" aria-hidden="true">light or dark,<br>always offline</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="features"></div>
+
+  <section class="row feature" aria-labelledby="read-title">
+    <div class="cue">Read</div>
+    <div class="notes">
+      <div>
+        <h2 id="read-title">A calm place to read long PDFs</h2>
+        <p class="intro">Textbooks, manuals, papers and forms open fast and reopen on the page where you stopped.</p>
+        <ul class="points">
+          <li>Continuous scrolling, page-by-page swiping or single-page reading</li>
+          <li>Light, Dark, Sepia and Mint page colors, plus a dark mode for the whole app</li>
+          <li>Table of contents and bookmarks to move through long documents</li>
+          <li>Search the text of any PDF that has selectable text</li>
+          <li>Favorites, collections, sorting, and grid or list views for your library</li>
+        </ul>
+      </div>
+      <div class="phone"><img src="assets/02-reader.webp" alt="PDF reader showing a chapter on aircraft hydraulic systems" width="600" height="1304" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="row plain" aria-labelledby="mark-title">
+    <div class="cue">Annotate</div>
+    <div class="notes">
+      <h2 id="mark-title">Mark up pages the way you would on paper</h2>
+      <p class="intro">Pick a tool from the round dial at the edge of the page and keep reading. Everything you add stays with the book.</p>
+      <ul class="points">
+        <li>Highlight, underline or strike through text in several colors</li>
+        <li>Draw with pens and markers, add notes and bookmarks, and undo or redo</li>
+        <li>Send a passage to a notebook, or turn it into a flashcard</li>
+        <li>Share an annotated copy of any PDF</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="row feature" aria-labelledby="write-title">
+    <div class="cue">Write by hand</div>
+    <div class="notes">
+      <div>
+        <h2 id="write-title">Notebooks that feel like paper</h2>
+        <p class="intro">Write with Apple Pencil, a stylus or your finger on pages made for studying.</p>
+        <ul class="points">
+          <li>Blank, ruled, grid, dotted, Cornell, music, checklist and more templates</li>
+          <li>Low-latency ink, shape recognition, lasso, text boxes, photos and sticky notes</li>
+          <li>Study tape hides answers until you tap it, and a laser pointer helps you present</li>
+          <li>Folders, tags and search, with export to PDF or image</li>
+        </ul>
+      </div>
+      <div class="phone"><img src="assets/03-notes.webp" alt="Note editor with pens, shapes, eraser, lasso and text tools" width="600" height="1304" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="row feature" aria-labelledby="study-title">
+    <div class="cue">Study</div>
+    <div class="notes">
+      <div>
+        <h2 id="study-title">Flashcards that come back at the right time</h2>
+        <p class="intro">Spaced repetition schedules every card for the day you are about to forget it, so you remember more with less review.</p>
+        <ul class="points">
+          <li>Basic, reversed and fill-in-the-blank cards</li>
+          <li>Rate each answer Again, Hard, Good or Easy to set the next review</li>
+          <li>A handwriting scratchpad for working out answers first</li>
+        </ul>
+      </div>
+      <div class="phone"><img src="assets/04-flashcards.webp" alt="Flashcard review with the answer shown and Again, Hard, Good and Easy buttons" width="600" height="1304" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="row feature" aria-labelledby="sign-title">
+    <div class="cue">Sign</div>
+    <div class="notes">
+      <div>
+        <h2 id="sign-title">Fill in and sign PDF forms</h2>
+        <p class="intro">Draw your signature once and place it on any document in seconds.</p>
+        <ul class="points">
+          <li>Saved signatures and initials</li>
+          <li>Add text, dates and checkmarks anywhere on the page</li>
+          <li>A signed copy is saved and your original stays unchanged</li>
+        </ul>
+      </div>
+      <div class="phone"><img src="assets/05-fill-sign.webp" alt="Fill and Sign screen with a saved signature and a document ready to sign" width="600" height="1304" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="row feature" aria-labelledby="habit-title">
+    <div class="cue">Keep going</div>
+    <div class="notes">
+      <div>
+        <h2 id="habit-title">A daily reading goal you can actually keep</h2>
+        <p class="intro">Time in the reader counts toward your goal. Watch the ring fill, keep your streak, and see your week at a glance.</p>
+        <div class="duo">
+          <div>
+            <h3>Day or night</h3>
+            <p>Switch the whole app to dark mode from the moon button, or follow your device setting.</p>
+          </div>
+          <div>
+            <h3>Phone and tablet</h3>
+            <p>Made for iPhone, iPad and Android phones and tablets, in portrait or landscape.</p>
+          </div>
+        </div>
+      </div>
+      <div class="phone"><img src="assets/06-reading-goal.webp" alt="Today's Reading sheet with an 11 minute ring, a 4 day streak and a weekly chart" width="600" height="1304" loading="lazy"></div>
+    </div>
+  </section>
+
+  <section class="row plain" id="privacy" aria-labelledby="privacy-title">
+    <div class="cue">Your privacy</div>
+    <div class="notes">
+      <h2 id="privacy-title">Your documents never leave your device</h2>
+      <p class="intro">AHT Books has no account, no ads, no analytics and no tracking, and it does not connect to the internet.</p>
+      <ul class="private">
+        <li>PDFs and page thumbnails</li>
+        <li>Highlights, drawings and bookmarks</li>
+        <li>Handwritten notebooks and photos you add</li>
+        <li>Flashcards and review history</li>
+        <li>Signatures and initials, in protected storage</li>
+        <li>Reading time and your settings</li>
+      </ul>
+      <p>Read the full privacy policy for <a href="legal/privacy-policy-ios.html">iPhone and iPad</a> or <a href="legal/privacy-policy.html">Android</a>.</p>
+    </div>
+  </section>
+
+  <section class="row plain" id="faq" aria-labelledby="faq-title">
+    <div class="cue">Questions</div>
+    <div class="notes faq">
+      <h2 id="faq-title">Common questions</h2>
+      <details>
+        <summary>Is AHT Books free?</summary>
+        <p>Yes. There are no ads, no subscriptions and no in-app purchases.</p>
+      </details>
+      <details>
+        <summary>Do I need an account or an internet connection?</summary>
+        <p>No. You can use every feature offline from the moment you install the app.</p>
+      </details>
+      <details>
+        <summary>How do I add a PDF?</summary>
+        <p><span class="platform">iPhone and iPad:</span> tap + on Home or Library and choose a file, or share a PDF to AHT Books from Files, Mail or Safari.</p>
+        <p><span class="platform">Android:</span> tap + to pick a file, or open a PDF with AHT Books from another app.</p>
+      </details>
+      <details>
+        <summary>Where are my files stored?</summary>
+        <p><span class="platform">iPhone and iPad:</span> imported PDFs are copied into the app. You can see them in the Files app under On My iPhone (or iPad) › AHT Books.</p>
+        <p><span class="platform">Android:</span> PDFs are read from where they already are. Files opened from another app are copied into the app so they keep working.</p>
+      </details>
+      <details>
+        <summary>Does removing a book delete my original file?</summary>
+        <p>No. Removing a book deletes it from AHT Books only. Your original file is never changed.</p>
+      </details>
+      <details>
+        <summary>Can I search a scanned PDF?</summary>
+        <p>Scanned PDFs can be read and annotated, but their text can only be searched if the PDF already contains a text layer. AHT Books does not include text recognition (OCR).</p>
+      </details>
+      <details>
+        <summary>How are my notes backed up?</summary>
+        <p><span class="platform">iPhone and iPad:</span> app data is included in iCloud Backup or a computer backup when you have them turned on.</p>
+        <p><span class="platform">Android:</span> Android backup can save your library details, annotations and settings to your Google account. PDF files are not included.</p>
+      </details>
+      <details>
+        <summary>Does it work with Apple Pencil and other styluses?</summary>
+        <p>Yes. Notebooks and PDF drawing support Apple Pencil and Android styluses, and you can also write with your finger.</p>
+      </details>
+      <details>
+        <summary>How do I delete all of my data?</summary>
+        <p>Delete books, notes, decks and signatures inside the app, or uninstall AHT Books to remove everything it stored.</p>
+      </details>
+    </div>
+  </section>
+
+  <section class="row plain" id="support" aria-labelledby="support-title">
+    <div class="cue">Need help?</div>
+    <div class="notes">
+      <h2 id="support-title">Support</h2>
+      <p class="intro">Questions, problems or ideas? Write to us and include your device and what you were doing.</p>
+      <p class="contact"><a href="mailto:aht.apps@alhadaftech.com">aht.apps@alhadaftech.com</a></p>
+      <p>On Android you can also send a report from Settings › Report a problem.</p>
+      <div class="legal">
+        <a href="legal/privacy-policy-ios.html">Privacy policy for iPhone and iPad</a>
+        <a href="legal/privacy-policy.html">Privacy policy for Android</a>
+        <a href="legal/terms-of-use.html">Terms of use</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="summary">
+    <div class="cue" aria-hidden="true">Summary</div>
+    <p>AHT Books is a private PDF reader, notebook and flashcard app for iPhone, iPad and Android, made by Al Hadaf Technologies (AHT). © 2026 AL-Hadaf Technologies Private Limited.</p>
+  </footer>
+
 </main>
 </body>
 </html>
