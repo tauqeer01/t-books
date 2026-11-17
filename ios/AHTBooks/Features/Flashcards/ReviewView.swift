@@ -77,7 +77,7 @@ public struct ReviewView: View {
                             // Question or Answer Text
                             if !isFlipped {
                                 if card.type == .CLOZE {
-                                    Text(Cloze.render(text: card.front.text, ordinal: 1, revealed: false))
+                                    Text(Cloze.styled(text: card.front.text, ordinal: 1, revealed: false))
                                         .font(.system(size: 20, weight: .medium))
                                         .multilineTextAlignment(.center)
                                         .foregroundColor(Theme.appTextPrimary)
@@ -89,7 +89,7 @@ public struct ReviewView: View {
                                 }
                             } else {
                                 if card.type == .CLOZE {
-                                    Text(Cloze.render(text: card.front.text, ordinal: 1, revealed: true))
+                                    Text(Cloze.styled(text: card.front.text, ordinal: 1, revealed: true))
                                         .font(.system(size: 20, weight: .medium))
                                         .multilineTextAlignment(.center)
                                         .foregroundColor(Theme.appTextPrimary)
@@ -138,7 +138,7 @@ public struct ReviewView: View {
                         let previews = Scheduler.shared.preview(schedule: currentSchedule)
                         HStack(spacing: 10) {
                             reviewButton(title: "Again", subtitle: previews[.AGAIN] ?? "<1m", color: Theme.annotationRed, rating: .AGAIN)
-                            reviewButton(title: "Hard", subtitle: previews[.HARD] ?? "10m", color: Theme.pastelOrange, rating: .HARD)
+                            reviewButton(title: "Hard", subtitle: previews[.HARD] ?? "10m", color: Color(hex: "#F59E0B"), rating: .HARD)
                             reviewButton(title: "Good", subtitle: previews[.GOOD] ?? "1d", color: Theme.brandPurple, rating: .GOOD)
                             reviewButton(title: "Easy", subtitle: previews[.EASY] ?? "4d", color: Theme.highlightGreen, rating: .EASY)
                         }

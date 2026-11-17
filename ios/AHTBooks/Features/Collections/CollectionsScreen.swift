@@ -32,7 +32,7 @@ public struct CollectionsScreen: View {
                             message: "Tap + to create a collection, then add books to it."
                         )
                     } else {
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 160, maximum: 220), spacing: 14)], spacing: 14) {
                             ForEach(storage.collections) { col in
                                 PastelCollectionCard(collection: col, bookCount: storage.bookCount(in: col)) {
                                     selectedCollectionId = col.id
@@ -152,7 +152,7 @@ public struct CollectionsScreen: View {
             }
             .frame(maxWidth: .infinity)
         } else {
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 18) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 16)], spacing: 18) {
                 ForEach(booksInCol) { book in
                     BookCoverCard(book: book, onOpen: { activeBook = book })
                         .contextMenu {

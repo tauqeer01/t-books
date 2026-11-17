@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 public struct Cloze {
     // Matches {{c1::answer}} or {{c1::answer::hint}}
@@ -17,6 +18,37 @@ public struct Cloze {
         return Array(Set(numbers)).sorted()
     }
     
+    /// The card text for display: the active blank is bold and in the brand color, showing the answer
+    /// once revealed or its hint before. Built as an AttributedString so the user's own text is never
+    /// interpreted as Markdown (a plain `Text(String)` would show `**` literally).
+    public static func styled(text: String, ordinal: Int, revealed: Bool) -> AttributedString {
+        guard let regex = regex else { return AttributedString(text) }
+        let nsString = text as NSString
+        var result = AttributedString()
+        var lastLocation = 0
+        for match in regex.matches(in: text, options: [], range: NSRange(location: 0, length: nsString.length)) {
+            if match.range.location > lastLocation {
+                result += AttributedString(nsString.substring(with: NSRange(location: lastLocation, length: match.range.location - lastLocation)))
+            }
+            let num = Int(nsString.substring(with: match.range(at: 1))) ?? 1
+            let answer = nsString.substring(with: match.range(at: 2))
+            let hint = match.numberOfRanges > 3 && match.range(at: 3).location != NSNotFound ? nsString.substring(with: match.range(at: 3)) : ""
+            if num != ordinal {
+                result += AttributedString(answer)
+            } else {
+                var blank = AttributedString(revealed ? answer : "[\(hint.isEmpty ? "..." : hint)]")
+                blank.font = .system(size: 20, weight: .bold)
+                blank.foregroundColor = Theme.brandPurple
+                result += blank
+            }
+            lastLocation = match.range.location + match.range.length
+        }
+        if lastLocation < nsString.length {
+            result += AttributedString(nsString.substring(from: lastLocation))
+        }
+        return result
+    }
+
     public static func render(text: String, ordinal: Int, revealed: Bool) -> String {
         guard let regex = regex else { return text }
         let nsString = text as NSString
@@ -38,7 +70,7 @@ public struct Cloze {
             if num != ordinal {
                 result += answer
             } else if revealed {
-                result += "**\(answer)**"
+                result += answer
             } else {
                 let displayHint = hint.isEmpty ? "..." : hint
                 result += "[\(displayHint)]"

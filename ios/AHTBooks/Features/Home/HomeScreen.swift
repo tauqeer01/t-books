@@ -193,7 +193,7 @@ public struct HomeScreen: View {
                         }
                         .padding(.horizontal, 20)
                         
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 16) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 16)], spacing: 16) {
                             ForEach(storage.books.prefix(4)) { book in
                                 BookCoverCard(book: book, onOpen: {
                                     activeBook = book

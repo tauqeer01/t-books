@@ -131,7 +131,7 @@ public struct LibraryScreen: View {
                     }
                 } else if isGridView {
                     ScrollView(.vertical, showsIndicators: false) {
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 16), GridItem(.flexible(), spacing: 16)], spacing: 18) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 16)], spacing: 18) {
                             ForEach(filteredBooks) { book in
                                 BookCoverCard(book: book, onOpen: {
                                     activeBook = book
