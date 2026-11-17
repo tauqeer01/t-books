@@ -33,12 +33,13 @@ public struct SettingsScreen: View {
                 
                 // Study & Habits
                 Section(header: Text("Study Goals")) {
-                    Picker("Daily Reading Goal", selection: $storage.readingStats.dailyGoalMinutes) {
-                        Text("15 minutes").tag(15)
-                        Text("30 minutes").tag(30)
-                        Text("45 minutes").tag(45)
-                        Text("60 minutes").tag(60)
-                        Text("90 minutes").tag(90)
+                    Stepper(value: $storage.readingStats.dailyGoalMinutes, in: ReadingStats.goalRangeMinutes, step: 5) {
+                        HStack {
+                            Text("Daily Reading Goal")
+                            Spacer()
+                            Text("\(storage.readingStats.dailyGoalMinutes) min")
+                                .foregroundColor(Theme.appTextSecondary)
+                        }
                     }
                     
                     HStack {

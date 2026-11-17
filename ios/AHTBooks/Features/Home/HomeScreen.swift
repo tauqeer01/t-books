@@ -7,7 +7,8 @@ public struct HomeScreen: View {
     @State private var showingDocPicker = false
     @State private var showingSettings = false
     @State private var showingCollections = false
-    
+    @State private var showingReadingGoal = false
+
     public init(selectedTab: Binding<Int>, activeBook: Binding<Book?>) {
         self._selectedTab = selectedTab
         self._activeBook = activeBook
@@ -35,13 +36,19 @@ public struct HomeScreen: View {
                         
                         // Reading Goal Ring & Actions
                         HStack(spacing: 10) {
-                            ReadingGoalRing(
-                                progress: storage.readingStats.goalProgress,
-                                minutes: storage.readingStats.minutesReadToday,
-                                goalMinutes: storage.readingStats.dailyGoalMinutes,
-                                size: 40,
-                                lineWidth: 4
-                            )
+                            Button(action: { showingReadingGoal = true }) {
+                                ReadingGoalRing(
+                                    progress: storage.readingStats.goalProgress,
+                                    minutes: storage.readingStats.minutesReadToday,
+                                    goalMinutes: storage.readingStats.dailyGoalMinutes,
+                                    size: 40,
+                                    lineWidth: 4
+                                )
+                                .contentShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("home.readingGoal")
+                            .accessibilityHint("Shows today's reading and your daily goal")
                             
                             Button(action: { showingDocPicker = true }) {
                                 Image(systemName: "plus.circle.fill")
@@ -203,6 +210,14 @@ public struct HomeScreen: View {
             }
             .sheet(isPresented: $showingSettings) {
                 SettingsScreen()
+            }
+            .sheet(isPresented: $showingReadingGoal) {
+                ReadingGoalSheet(stats: storage.readingStats) { minutes in
+                    storage.setDailyGoal(minutes: minutes)
+                }
+                .presentationDetents([.height(570), .large])
+                .presentationDragIndicator(.visible)
+                .presentationCornerRadius(28)
             }
         }
     }

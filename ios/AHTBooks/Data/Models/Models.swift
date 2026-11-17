@@ -213,31 +213,106 @@ public struct UserReadingPreferences: Codable, Equatable {
     public init() {}
 }
 
+/// Seconds spent reading on one calendar day.
+public struct DayReading: Identifiable, Equatable {
+    public let date: Date
+    public let seconds: Int64
+    public var id: Date { date }
+    public var minutes: Int { Int(seconds / 60) }
+}
+
+/// Daily reading goal progress, like Apple Books' Reading Goals ring (mirrors Android's ReadingStats).
+/// Reading time is logged per local calendar day; today, the streak and the week are derived from that log.
 public struct ReadingStats: Codable, Equatable {
-    public var dailyGoalMinutes: Int = 30
-    public var secondsReadToday: Int64 = 0
-    public var currentStreakDays: Int = 1
-    public var totalMinutesRead: Int = 0
-    
-    public var minutesReadToday: Int {
-        Int(secondsReadToday / 60)
-    }
-    
-    public var goalProgress: Double {
-        guard dailyGoalMinutes > 0 else { return 0 }
-        return min(1.0, Double(minutesReadToday) / Double(dailyGoalMinutes))
-    }
-    
+    public static let defaultDailyGoalMinutes = 15
+    public static let goalRangeMinutes = 5...180
+    /// Days older than this are dropped on write; plenty for streaks and the weekly chart.
+    public static let retainedDays = 400
+
+    public var dailyGoalMinutes: Int
+    /// Seconds read per local calendar day, keyed "yyyy-MM-dd".
+    public var secondsByDay: [String: Int64]
+    public var totalMinutesRead: Int
+
     public init(
-        dailyGoalMinutes: Int = 30,
-        secondsReadToday: Int64 = 0,
-        currentStreakDays: Int = 1,
+        dailyGoalMinutes: Int = ReadingStats.defaultDailyGoalMinutes,
+        secondsByDay: [String: Int64] = [:],
         totalMinutesRead: Int = 0
     ) {
         self.dailyGoalMinutes = dailyGoalMinutes
-        self.secondsReadToday = secondsReadToday
-        self.currentStreakDays = currentStreakDays
+        self.secondsByDay = secondsByDay
         self.totalMinutesRead = totalMinutesRead
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case dailyGoalMinutes, secondsByDay, totalMinutesRead
+    }
+
+    // Older files only had a running `secondsReadToday` that never reset, so it can't be placed on a day and is dropped.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let goal = try c.decodeIfPresent(Int.self, forKey: .dailyGoalMinutes) ?? Self.defaultDailyGoalMinutes
+        dailyGoalMinutes = min(max(goal, Self.goalRangeMinutes.lowerBound), Self.goalRangeMinutes.upperBound)
+        secondsByDay = try c.decodeIfPresent([String: Int64].self, forKey: .secondsByDay) ?? [:]
+        totalMinutesRead = try c.decodeIfPresent(Int.self, forKey: .totalMinutesRead) ?? 0
+    }
+
+    public static func dayKey(_ date: Date, calendar: Calendar = .current) -> String {
+        let c = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+    }
+
+    public func seconds(on date: Date) -> Int64 {
+        secondsByDay[Self.dayKey(date)] ?? 0
+    }
+
+    public var secondsReadToday: Int64 { seconds(on: Date()) }
+    public var minutesReadToday: Int { Int(secondsReadToday / 60) }
+    public var goalSeconds: Int64 { Int64(dailyGoalMinutes) * 60 }
+
+    public var goalProgress: Double {
+        guard goalSeconds > 0 else { return 0 }
+        return min(1.0, max(0.0, Double(secondsReadToday) / Double(goalSeconds)))
+    }
+
+    public var isGoalMet: Bool { goalSeconds > 0 && secondsReadToday >= goalSeconds }
+
+    /// Consecutive days that met the goal, counting today only once it is met
+    /// (so an unfinished today doesn't break a streak that ran through yesterday).
+    public var currentStreakDays: Int {
+        guard goalSeconds > 0 else { return 0 }
+        let calendar = Calendar.current
+        func met(_ day: Date) -> Bool { seconds(on: day) >= goalSeconds }
+        let today = calendar.startOfDay(for: Date())
+        var day = met(today) ? today : calendar.date(byAdding: .day, value: -1, to: today)!
+        var streak = 0
+        while met(day) && streak < Self.retainedDays {
+            streak += 1
+            day = calendar.date(byAdding: .day, value: -1, to: day)!
+        }
+        return streak
+    }
+
+    /// Oldest first, ending today.
+    public var lastSevenDays: [DayReading] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return (0..<7).reversed().map { back in
+            let date = calendar.date(byAdding: .day, value: -back, to: today)!
+            return DayReading(date: date, seconds: seconds(on: date))
+        }
+    }
+
+    public var secondsThisWeek: Int64 { lastSevenDays.reduce(0) { $0 + $1.seconds } }
+
+    public mutating func addReadingTime(_ seconds: Int64, on date: Date = Date()) {
+        guard seconds > 0 else { return }
+        secondsByDay[Self.dayKey(date), default: 0] += seconds
+        totalMinutesRead += Int(seconds / 60)
+        if let cutoff = Calendar.current.date(byAdding: .day, value: -Self.retainedDays, to: date) {
+            let cutoffKey = Self.dayKey(cutoff)
+            secondsByDay = secondsByDay.filter { $0.key >= cutoffKey }
+        }
     }
 }
 

@@ -282,8 +282,13 @@ public final class StorageManager: ObservableObject {
     
     public func addReadingTime(seconds: Int64) {
         guard seconds > 0 else { return }
-        readingStats.secondsReadToday += seconds
-        readingStats.totalMinutesRead += Int(seconds / 60)
+        readingStats.addReadingTime(seconds)
+        saveJSON(readingStats, filename: "reading_stats.json")
+    }
+
+    public func setDailyGoal(minutes: Int) {
+        let range = ReadingStats.goalRangeMinutes
+        readingStats.dailyGoalMinutes = min(max(minutes, range.lowerBound), range.upperBound)
         saveJSON(readingStats, filename: "reading_stats.json")
     }
     
